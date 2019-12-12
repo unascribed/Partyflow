@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+	{{> head.hbs.html}}
+</head>
+<body>
+	<h1>All releases</h1>
+	<div class="releases">
+		{{^releases}}
+			<div class="no-releases">
+				No releases here!
+			</div>
+		{{/releases}}
+		{{#releases}}
+		<a class="release" href="{{root}}releases/{{slug}}">
+			<div class="art" style="background-image: url({{art}})"></div>
+			<div class="title">{{title}}</div>
+		</a>
+		{{/releases}}
+	</div>
+	{{> footer.hbs.html}}
+</body>
+</html>

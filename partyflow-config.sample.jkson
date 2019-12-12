@@ -1,0 +1,47 @@
+http: {
+	bind: "0.0.0.0"
+	port: 3000
+	path: "/"
+	// Set to /dev/null (even on Windows) to suppress logging
+	accessLog: "./access.log"
+	// Should be left to true unless you're doing development and are changing templates
+	cacheTemplates: true
+}
+logger: {
+	// TRACE, DEBUG, INFO, WARN, or ERROR
+	level: "INFO"
+	// true to enable ANSI color support
+	color: true
+}
+database: {
+	// The only valid option right now is "h2", which is similar to SQLite
+	driver: "h2"
+	// .mv.db suffix is added automatically
+	file: "./partyflow"
+}
+storage: {
+	// The only valid option right now is "fs" - support for S3, Swift, etc, will be added later
+	driver: "fs"
+	dir: "./files"
+	// If this isn't an absolute URL, it will be resolved relative to http.path
+	// If this is an absolute path, it will be resolved relative to the domain
+	// {} will be replaced with the file path
+	publicUrlPattern: "files/{}"
+}
+programs: {
+	// Shell syntax. Using some form of sandboxing (e.g. firejail) is recommended in production.
+	// An example firejail config file is available in the Partyflow repository.
+	// All IO with FFmpeg is done via stdin and stdout; it does not need access to media files.
+	ffmpeg: "ffmpeg"
+	// Example secured ffmpeg execution (requires a user with NOPASSWD sudo permission for user nobody):
+	//ffmpeg: "/usr/bin/sudo -u nobody /usr/bin/env -i /usr/bin/firejail --profile=/opt/partyflow/firejail-restrictive.profile /usr/bin/ffmpeg"
+	
+	// Shell syntax. Using some form of sandboxing (e.g. firejail) is recommended in production.
+	// An example firejail config file is available in the Partyflow repository.
+	// All IO with ImageMagick is done via stdin and stdout; it does not need access to image files.
+	magickConvert: "convert"
+	// For newer versions of ImageMagick:
+	//magickConvert: "magick convert"
+	// Example secured magick execution (requires a user with NOPASSWD sudo permission for user nobody):
+	//magickConvert: "/usr/bin/sudo -u nobody /usr/bin/env -i /usr/bin/firejail --profile=/opt/partyflow/firejail-restrictive.profile /usr/bin/magick convert"
+}

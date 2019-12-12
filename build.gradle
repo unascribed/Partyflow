@@ -1,0 +1,48 @@
+plugins {
+	id 'java'
+	id 'eclipse'
+	id 'net.minecrell.licenser' version '0.4.1'
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.eclipse.jetty:jetty-server:9.4.24.v20191120'
+	implementation 'org.apache.jclouds:jclouds-blobstore:2.2.0'
+	implementation 'org.apache.jclouds.driver:jclouds-slf4j:2.2.0'
+	implementation 'org.apache.jclouds.api:filesystem:2.2.0'
+	implementation 'blue.endless:jankson:1.2.0'
+	implementation 'com.google.guava:guava:28.1-jre'
+	implementation 'com.h2database:h2:1.4.200'
+	implementation 'com.github.spullara.mustache.java:compiler:0.9.6'
+	implementation 'org.slf4j:slf4j-api:1.7.9'
+}
+
+license {
+	matching('**/com/unascribed/asyncsimplelog/**') {
+		header = file('headers/asyncsimplelog.txt')
+	}
+	matching('**/org/slf4j/impl/**') {
+		header = file('headers/asyncsimplelog.txt')
+	}
+	matching('**/com/unascribed/random/**') {
+		header = file('headers/cc0.txt')
+	}
+	header = file('headers/partyflow.txt')
+	
+	include '**/*.java'
+}
+
+task sourceZip(type: Zip) {
+	destinationDirectory = file('src/main/resources/static')
+	archiveBaseName = 'quine'
+	reproducibleFileOrder = true
+	file('.gitignore').eachLine { exclude(it) }
+	exclude '.git'
+	from(file('.')) {
+	}
+}
+
+tasks.processResources.dependsOn sourceZip

@@ -1,0 +1,12 @@
+partyflow-config.jkson
+*.db
+*.log
+.gradle
+.metadata
+.settings
+.project
+.classpath
+/build
+/bin
+/files
+src/main/resources/static/quine.zip

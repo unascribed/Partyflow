@@ -1,0 +1,145 @@
+*, *:before, *:after {
+	box-sizing: border-box;
+}
+body {
+	background: #263238;
+	color: #ECEFF1;
+	line-height: 1.4;
+	min-height: 100vh;
+	margin: 0;
+	padding-top: 1px;
+	font-family: sans-serif;
+}
+a:link, a:link:visited {
+	color: #00B0FF;
+}
+
+footer {
+	border-top: 1px #FFF solid;
+	text-align: right;
+	margin-top: 32px;
+	padding: 16px;
+	opacity: 0.7;
+}
+
+.release {
+	max-width: 800px;
+	margin: auto;
+	display: block;
+}
+.release:after {
+	content: "";
+	display: table;
+	clear: both;
+}
+
+.release .art {
+	float: right;
+	width: 192px;
+	height: 192px;
+	background-size: cover;
+	background-position: center center;
+	background-repeat: no-repeat;
+}
+.release.editing .art {
+	position: relative;
+}
+.js .release.editing .art input {
+	position: absolute;
+	opacity: 0;
+	top: 0; right: 0; bottom: 0; left: 0;
+	cursor: pointer;
+}
+.release.editing .art input {
+	position: absolute;
+	margin-top: 4px;
+	top: 100%;
+}
+.release.editing .art:before {
+	content: "";
+	position: absolute;
+	top: 0; right: 0; bottom: 0; left: 0;
+	opacity: 0;
+	background-color: rgba(26, 35, 39, 0.5);
+	background-image: url({{root}}static/upload_circle.svg);
+	background-size: 64px 64px;
+	background-position: center center;
+	background-repeat: no-repeat;
+	transition: opacity 0.6s;
+}
+.release.editing .art:focus {
+	outline: none;
+}
+.release.editing .art:hover:before, .release.editing .art:focus:before {
+	opacity: 1;
+}
+
+.ghost-input {
+	background: none;
+	border: 1px rgba(255, 255, 255, 0.5) dashed;
+	color: inherit;
+	padding: 4px;
+	display: block;
+}
+.ghost-input:invalid {
+	box-shadow: none;
+	border-color: #F00;
+}
+
+.release .title {
+	font-size: 20px;
+	font-weight: bold;
+	width: calc(100% - 208px);
+}
+
+.release .subtitle {
+	font-size: 14px;
+	font-weight: bold;
+	width: calc(100% - 208px);
+}
+
+.release .description {
+	width: calc(100% - 208px);
+	min-height: 3em;
+	resize: vertical;
+	font-family: sans-serif;
+}
+
+button {
+	border: none;
+	border-radius: 0;
+	color: #FFF;
+	background: #9C27B0;
+	padding: 8px 16px;
+	font-size: 12px;
+	min-height: 40x;
+	line-height: 24px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: background 0.6s;
+}
+button:hover, button:focus {
+	background: #D500F9;
+}
+button.danger {
+	background: #E53935;
+}
+button.danger:hover, button.danger:focus {
+	background: #FF1744;
+}
+
+button img {
+	width: 24px;
+	height: 24px;
+	vertical-align: middle;
+}
+
+.releases .release {
+	margin-bottom: 8px;
+}
+.releases .release .art {
+	float: left;
+	width: 64px;
+	height: 64px;
+	margin-right: 8px;
+}
