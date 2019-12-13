@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+	{{> _head.hbs.html}}
+	<style>
+		form {
+			max-width: 24em;
+			margin: auto;
+		}
+		form small {
+			width: 100%;
+			display: block;
+			padding-top: 0.5em;
+			padding-left: 1em;
+		}
+	</style>
+</head>
+<body>
+	{{> _header.hbs.html}}
+	<div class="inner">
+		<h1>Log in</h1>
+		{{#message}}
+			<div class="message">{{message}}</div>
+		{{/message}}
+		{{#error}}
+			<div class="message error">{{error}}</div>
+		{{/error}}
+		<noscript>
+			<div class="message warning">
+				JavaScript is disabled. The password will be sent to the server instead of being
+				hashed client-side. (The password stored in the database will still be secure.)
+			</div>
+		</noscript>
+		<div id="no-crypto-warning" style="display: none" class="message warning">
+			WebCrypto is not available. The password will be sent to the server instead of being
+			hashed client-side. (The password stored in the database will still be secure.)
+		</div>
+		<form method="POST">
+			<div class="bumper">
+				<label for="name">Name</label><br/>
+				<input required id="name" name="name" type="text" maxlength="64"/><br/>
+			</div>
+			<div class="bumper">
+				<label for="password">Password</label><br/>
+				<input required id="password" name="password" type="password" minlength="8"/><br/>
+			</div>
+			<input type="hidden" id="hashed-password"/>
+			<div class="bumper">
+				<input type="checkbox" id="remember" name="remember"/><label for="remember">Stay logged in</label>
+			</div>
+			<div style="text-align: center">
+				<button>Log in</button>
+			</div>
+		</form>
+	</div>
+	<script src="{{root}}assets/password-hasher.js"></script>
+	{{> _footer.hbs.html}}
+</body>
+</html>

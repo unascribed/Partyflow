@@ -6,6 +6,7 @@ partyflow-config.jkson
 .settings
 .project
 .classpath
+.dbeaver
 /build
 /bin
 /files

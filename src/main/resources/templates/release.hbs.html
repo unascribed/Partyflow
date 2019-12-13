@@ -1,24 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-	{{> head.hbs.html}}
+	{{> _head.hbs.html}}
 </head>
 <body>
-	<div class="release">
-		<div class="art" style="background-image: url({{art}})"></div>
-		<div class="title">{{title}}</div>
-		<div class="subtitle">{{subtitle}}</div>
-		<i style="display: inline-block; margin: 16px">Tracks go here</i>
-		<p class="description">
-			{{description}}
-		</p>
-		<form action="{{root}}releases/{{slug}}/delete" method="POST">
-			<button class="danger">
-				<img src="{{root}}static/trash.svg"/>
-				Delete
-			</button>
-		</form>
+	{{> _header.hbs.html}}
+	<div class="inner">
+		<div class="release">
+			<div class="art" style="background-image: url({{art}})"></div>
+			<div class="title">{{title}}</div>
+			<div class="subtitle">{{subtitle}}</div>
+			<i style="display: inline-block; margin: 16px">Tracks go here</i>
+			<p class="description">
+				{{description}}
+			</p>
+			<form action="{{root}}releases/{{slug}}/delete" method="POST">
+				<button class="danger">
+					<img src="{{root}}static/trash.svg"/>
+					Delete
+				</button>
+			</form>
+		</div>
 	</div>
-	{{> footer.hbs.html}}
+	{{> _footer.hbs.html}}
 </body>
 </html>

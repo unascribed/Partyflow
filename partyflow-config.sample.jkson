@@ -19,6 +19,14 @@ database: {
 	// .mv.db suffix is added automatically
 	file: "./partyflow"
 }
+security: {
+	// Used to secure session cookies. Should be set to something long and random; if null, an
+	// appropriate value will be generated for you.
+	sessionSecret: null
+	// If true, some additional protections will be activated that rely on the site being served
+	// over HTTPS. (This has to be done at a reverse proxy; Partyflow itself does not support SSL.)
+	https: false
+}
 storage: {
 	// The only valid option right now is "fs" - support for S3, Swift, etc, will be added later
 	driver: "fs"

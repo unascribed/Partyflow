@@ -40,6 +40,8 @@ import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.MultipartData;
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.SessionHelper;
+import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
@@ -57,7 +59,13 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
-		MustacheHandler.serveTemplate(res, "create-release.hbs.html");
+		Session session = SessionHelper.getSession(req);
+		if (session != null) {
+			res.setStatus(HTTP_200_OK);
+			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html");
+		} else {
+			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+		}
 	}
 
 	@Override
@@ -69,28 +77,28 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		String description = Strings.nullToEmpty(data.getPartAsString("description", 65536));
 		if (title.trim().isEmpty()) {
 			res.setStatus(HTTP_400_BAD_REQUEST);
-			MustacheHandler.serveTemplate(res, "create-release.hbs.html", new Object() {
+			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
 				String error = "Title is required";
 			});
 			return;
 		}
 		if (title.length() > 255) {
 			res.setStatus(HTTP_400_BAD_REQUEST);
-			MustacheHandler.serveTemplate(res, "create-release.hbs.html", new Object() {
+			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
 				String error = "Title is too long";
 			});
 			return;
 		}
 		if (subtitle.length() > 255) {
 			res.setStatus(HTTP_400_BAD_REQUEST);
-			MustacheHandler.serveTemplate(res, "create-release.hbs.html", new Object() {
+			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
 				String error = "Subtitle is too long";
 			});
 			return;
 		}
 		if (description.length() > 16384) {
 			res.setStatus(HTTP_400_BAD_REQUEST);
-			MustacheHandler.serveTemplate(res, "create-release.hbs.html", new Object() {
+			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
 				String error = "Description is too long";
 			});
 			return;
@@ -111,7 +119,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 				format = "jpeg";
 			} else {
 				res.setStatus(HTTP_400_BAD_REQUEST);
-				MustacheHandler.serveTemplate(res, "create-release.hbs.html", new Object() {
+				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
 					String error = "Invalid file format for art; only PNG and JPEG are accepted";
 				});
 				return;
@@ -132,7 +140,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 				String s = new String(ByteStreams.toByteArray(magick.getErrorStream()), Charsets.UTF_8);
 				log.warn("Failed to process image with ImageMagick:\n{}", s);
 				res.setStatus(HTTP_500_INTERNAL_SERVER_ERROR);
-				MustacheHandler.serveTemplate(res, "create-release.hbs.html", new Object() {
+				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
 					String error = "Failed to process art";
 				});
 				return;
@@ -169,8 +177,8 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 				slug = slug+suffix;
 			}
 			try (PreparedStatement s = c.prepareStatement(
-					"INSERT INTO releases (title, subtitle, slug, published, art, description) "
-					+ "VALUES (?, ?, ?, FALSE, ?, ?);")) {
+					"INSERT INTO releases (title, subtitle, slug, published, art, description, created_at, last_updated) "
+					+ "VALUES (?, ?, ?, FALSE, ?, ?, NOW(), NOW());")) {
 				s.setString(1, title);
 				s.setString(2, subtitle);
 				s.setString(3, slug);

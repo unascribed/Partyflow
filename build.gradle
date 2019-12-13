@@ -18,6 +18,7 @@ dependencies {
 	implementation 'com.h2database:h2:1.4.200'
 	implementation 'com.github.spullara.mustache.java:compiler:0.9.6'
 	implementation 'org.slf4j:slf4j-api:1.7.9'
+	implementation 'org.mariadb.jdbc:mariadb-java-client:2.4.4'
 }
 
 license {
@@ -29,6 +30,9 @@ license {
 	}
 	matching('**/com/unascribed/random/**') {
 		header = file('headers/cc0.txt')
+	}
+	matching('**/com/lambdaworks/**') {
+		header = file('headers/scrypt.txt')
 	}
 	header = file('headers/partyflow.txt')
 	

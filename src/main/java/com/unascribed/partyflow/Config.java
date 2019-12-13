@@ -47,6 +47,12 @@ public final class Config {
 		public String file;
 	}
 
+	public SecuritySection security;
+	public static final class SecuritySection {
+		public String sessionSecret;
+		public boolean https;
+	}
+
 	public StorageSection storage;
 	public static final class StorageSection {
 		public enum StorageDriver {

@@ -1,0 +1,11 @@
+<div class="header">
+	<a href="{{root}}">Partyflow!</a>
+	<a href="{{root}}releases">All releases</a>
+	{{#loggedIn}}
+		<form class="inline" action="{{root}}logout" method="POST">
+			<input type="hidden" name="csrf" value="{{csrf}}"/>
+			<button class="link">Log out</button>
+		</form>
+	{{/loggedIn}}
+	{{^loggedIn}}<a href="{{root}}login">Log in</a>{{/loggedIn}}
+</div>

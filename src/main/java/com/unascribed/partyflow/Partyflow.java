@@ -25,15 +25,26 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.BindException;
 import java.net.InetSocketAddress;
+import java.net.URL;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.Random;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import javax.crypto.SecretKey;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -58,32 +69,46 @@ import org.slf4j.LoggerFactory;
 import com.unascribed.asyncsimplelog.AsyncSimpleLog;
 import com.unascribed.partyflow.handler.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.FilesHandler;
+import com.unascribed.partyflow.handler.LoginHandler;
+import com.unascribed.partyflow.handler.LogoutHandler;
 import com.unascribed.partyflow.handler.MustacheHandler;
 import com.unascribed.partyflow.handler.ReleaseHandler;
 import com.unascribed.partyflow.handler.ReleasesHandler;
+import com.unascribed.partyflow.handler.SetupHandler;
 import com.unascribed.partyflow.handler.StaticHandler;
 import com.unascribed.random.RandomXoshiro256StarStar;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
+import com.google.common.collect.Maps;
+import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Files;
+import com.google.common.io.Resources;
 import com.google.common.net.UrlEscapers;
 
 import blue.endless.jankson.Jankson;
+import blue.endless.jankson.JsonObject;
 import blue.endless.jankson.api.DeserializationException;
 import blue.endless.jankson.api.SyntaxError;
 
 public class Partyflow {
 
-	private static final Logger log = LoggerFactory.getLogger(Partyflow.class);
+	private static final Logger log = LoggerFactory.getLogger("Bootstrap");
 
 	public static Config config;
 	public static DataSource sql;
 	public static BlobStore storage;
 	public static String storageContainer;
+	public static String setupToken;
+	public static Key sessionSecret;
+
+	public static ConcurrentMap<String, Long> csrfTokens = Maps.newConcurrentMap();
+
+	public static final ScheduledExecutorService sched = Executors.newSingleThreadScheduledExecutor();
 
 	private static final ThreadLocal<RandomXoshiro256StarStar> rand = ThreadLocal.withInitial(RandomXoshiro256StarStar::new);
+	private static final SecureRandom secureRand = new SecureRandom();
 
 	public static RandomXoshiro256StarStar getRandom() {
 		return rand.get();
@@ -93,8 +118,23 @@ public class Partyflow {
 		System.out.print("\u001Bc");
 		AsyncSimpleLog.startLogging();
 		try {
-			String configStr = "{\n"+Files.asCharSource(new File("partyflow-config.jkson"), Charsets.UTF_8).read()+"\n}";
-			config = Jankson.builder().build().fromJsonCarefully(configStr, Config.class);
+			File file = new File("partyflow-config.jkson");
+			String configStr = Files.asCharSource(file, Charsets.UTF_8).read();
+			Jankson jkson = Jankson.builder().build();
+			JsonObject obj = jkson.load("{\n"+configStr+"\n}");
+			config = jkson.fromJsonCarefully(obj, Config.class);
+			if (config.security.sessionSecret == null) {
+				String secret;
+				BaseEncoding hex = BaseEncoding.base16().lowerCase();
+				try {
+					secret = hex.encode(SecureRandom.getInstanceStrong().generateSeed(32));
+				} catch (NoSuchAlgorithmException e) {
+					secret = hex.encode(new SecureRandom().generateSeed(32));
+				}
+				config.security.sessionSecret = secret;
+				String hack = configStr.replaceFirst("(\"?)sessionSecret(\"?:\\s+)null", "$1sessionSecret$2\""+secret+"\"");
+				Files.asCharSink(file, Charsets.UTF_8).write(hack);
+			}
 		} catch (FileNotFoundException e) {
 			log.error("partyflow-config.jkson does not exist. Cannot start.");
 			return;
@@ -110,39 +150,67 @@ public class Partyflow {
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.eclipse\\.jetty"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
 
+		byte[] sessionSecretBytes = config.security.sessionSecret.getBytes(Charsets.UTF_8);
+		sessionSecret = new SecretKey() {
+
+			@Override
+			public String getFormat() {
+				return "RAW";
+			}
+
+			@Override
+			public byte[] getEncoded() {
+				return sessionSecretBytes.clone();
+			}
+
+			@Override
+			public String getAlgorithm() {
+				return "RAW";
+			}
+		};
+
 		try {
 			String url = "jdbc:h2:"+UrlEscapers.urlPathSegmentEscaper().escape(config.database.file).replace("%2F", "/");
 			sql = JdbcConnectionPool.create(url, "", "");
 			((JdbcConnectionPool)sql).setMaxConnections(1);
 			try (Connection c = sql.getConnection()) {
 				try (Statement s = c.createStatement()) {
-					s.execute("CREATE TABLE IF NOT EXISTS releases (\n" +
-							"    release_id  BIGINT AUTO_INCREMENT PRIMARY KEY,\n" +
-							"    title       VARCHAR(255) NOT NULL,\n" +
-							"    subtitle    VARCHAR(255) NOT NULL,\n" +
-							"    slug        VARCHAR(255) NOT NULL UNIQUE,\n" +
-							"    published   BOOL NOT NULL,\n" +
-							"    art         VARCHAR(255),\n" +
-							"    description CLOB NOT NULL\n" +
-							");");
-					s.execute("CREATE TABLE IF NOT EXISTS tracks (\n" +
-							"    track_id    BIGINT AUTO_INCREMENT PRIMARY KEY,\n" +
-							"    release_id  BIGINT NOT NULL,\n" +
-							"    title       VARCHAR(255) NOT NULL,\n" +
-							"    subtitle    VARCHAR(255) NOT NULL,\n" +
-							"    slug        VARCHAR(255) NOT NULL UNIQUE,\n" +
-							"    art         VARCHAR(255),\n" +
-							"    master      VARCHAR(255),\n" +
-							"    description CLOB NOT NULL\n" +
-							");");
-					s.execute("CREATE TABLE IF NOT EXISTS transcodes (\n" +
-							"    track_id    BIGINT AUTO_INCREMENT PRIMARY KEY,\n" +
-							"    master      VARCHAR(255),\n" +
-							"    format      INT,\n" +
-							"    file        VARCHAR(255)\n" +
-							");");
+					int dataVersion;
+					try {
+						try (ResultSet rs = s.executeQuery("SELECT value FROM meta WHERE name = 'data_version';")) {
+							if (rs.first()) {
+								dataVersion = Integer.parseInt(rs.getString("value"));
+							} else {
+								throw new SQLException("data_version not present");
+							}
+						}
+					} catch (SQLException e) {
+						if (e.getMessage() != null && e.getMessage().contains("not found")) {
+							log.info("Initializing database...");
+							s.execute(new String(Resources.toByteArray(ClassLoader.getSystemResource("sql/init.sql")), Charsets.UTF_8));
+							dataVersion = 0;
+						} else {
+							throw e;
+						}
+					}
+					if (dataVersion > 0 && ClassLoader.getSystemResource("sql/upgrade_to_"+dataVersion) == null) {
+						log.error("Database version {} is not recognized by this version of Partyflow", dataVersion);
+						return;
+					}
+					while (true) {
+						URL upgrade = ClassLoader.getSystemResource("sql/upgrade_to_"+(dataVersion+1)+".sql");
+						if (upgrade != null) {
+							log.info("Upgrading database from v{} to v{}...", dataVersion, dataVersion+1);
+							s.execute(new String(Resources.toByteArray(upgrade), Charsets.UTF_8));
+							dataVersion++;
+						} else {
+							break;
+						}
+					}
 				}
 			}
+		} catch (IOException e) {
+			log.error("Failed to load init.sql off classpath", e);
 		} catch (SQLException e) {
 			if (e.getCause() != null && e.getCause() instanceof IllegalStateException && e.getCause().getMessage().contains("file is locked")) {
 				log.error("Failed to open the database at {}.mv.db: The file is in use.\n"
@@ -189,10 +257,14 @@ public class Partyflow {
 				setHeader("Clacks-Overhead", "GNU Natalie Nguyen, Shiina Mota"),
 				setHeader("Server", "Partyflow v"+Version.FULL),
 				setHeader("Powered-By", poweredBy),
+				new SetupHandler().asJettyHandler(),
 				handler("", new MustacheHandler("index.hbs.html")),
 				handler("assets/partyflow.css", new MustacheHandler("partyflow.hbs.css")),
+				handler("assets/password-hasher.js", new MustacheHandler("password-hasher.hbs.js")),
 				handler("assets/create-release.js", new MustacheHandler("create-release.hbs.js")),
 				handler("create-release", new CreateReleaseHandler()),
+				handler("login", new LoginHandler()),
+				handler("logout", new LogoutHandler()),
 				handler("releases", new ReleasesHandler()),
 				handler("releases/", new ReleaseHandler()),
 				handler("static/", new StaticHandler()),
@@ -216,6 +288,41 @@ public class Partyflow {
 		log.info("Listening on http://{}:{}", displayBind, config.http.port);
 		log.info("Ready.");
 
+		try (Connection c = sql.getConnection()) {
+			try (Statement s = c.createStatement()) {
+				try (ResultSet rs = s.executeQuery("SELECT 1 FROM users WHERE admin = true LIMIT 1;")) {
+					if (!rs.first()) {
+						setupToken = randomString(32);
+						log.info("There are no admin users. Entering setup mode.\n"
+								+ "The secret token is {}", setupToken);
+					}
+				}
+			}
+		} catch (SQLException e) {
+			log.warn("Failed to check for the existence of admin users");
+		}
+
+		sched.scheduleWithFixedDelay(() -> {
+			try (Connection c = sql.getConnection()) {
+				try (Statement s = c.createStatement()) {
+					int deleted = s.executeUpdate("DELETE FROM sessions WHERE expires < NOW();");
+					if (deleted > 0) {
+						log.debug("Pruned {} expired sessions", deleted);
+					}
+				}
+			} catch (SQLException e) {
+				log.warn("Failed to prune expired sessions");
+			}
+		}, 0, 1, TimeUnit.HOURS);
+		sched.scheduleWithFixedDelay(() -> {
+			Iterator<Long> i = csrfTokens.values().iterator();
+			long now = System.currentTimeMillis();
+			while (i.hasNext()) {
+				if (i.next() < now) {
+					i.remove();
+				}
+			}
+		}, 15, 15, TimeUnit.MINUTES);
 	}
 
 	private static Handler setHeader(String header, String value) {
@@ -234,6 +341,20 @@ public class Partyflow {
 
 	// misc utilities
 
+	public static String allocateCsrfToken() {
+		String token;
+		synchronized (secureRand) {
+			token = randomString(secureRand, 32);
+		}
+		csrfTokens.put(token, System.currentTimeMillis()+(30*60*1000));
+		return token;
+	}
+
+	public static boolean isCsrfTokenValid(String token) {
+		Long l = csrfTokens.get(token);
+		return l != null && l > System.currentTimeMillis();
+	}
+
 	public static byte[] readWithLimit(InputStream in, long limit) throws IOException {
 		byte[] bys = ByteStreams.toByteArray(ByteStreams.limit(in, limit));
 		if (in.read() != -1) return null;
@@ -243,8 +364,11 @@ public class Partyflow {
 	private static final String RANDOM_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
 
 	public static String randomString(int len) {
+		return randomString(getRandom(), len);
+	}
+
+	public static String randomString(Random rand, int len) {
 		StringBuilder sb = new StringBuilder(len);
-		RandomXoshiro256StarStar rand = getRandom();
 		for (int i = 0; i < len; i++) {
 			sb.append(RANDOM_CHARS.charAt(rand.nextInt(RANDOM_CHARS.length())));
 		}

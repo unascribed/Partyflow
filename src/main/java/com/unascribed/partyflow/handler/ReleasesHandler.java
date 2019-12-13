@@ -55,7 +55,7 @@ public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 						});
 					}
 					res.setStatus(HTTP_200_OK);
-					MustacheHandler.serveTemplate(res, "releases.hbs.html", new Object() {
+					MustacheHandler.serveTemplate(req, res, "releases.hbs.html", new Object() {
 						List<Object> releases = li;
 					});
 				}

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+	{{> _head.hbs.html}}
+	<style>
+		form {
+			max-width: 24em;
+			margin: auto;
+		}
+		form small {
+			width: 100%;
+			display: block;
+			padding-top: 0.5em;
+			padding-left: 1em;
+		}
+	</style>
+</head>
+<body>
+	<div class="header">
+	</div>
+	<div class="inner">
+		<h1>Partyflow setup</h1>
+		<p>
+			Welcome to Partyflow! You're seeing this page because there are no admin users.
+			Let's set one up.
+		</p>
+		<p>
+			All of this can be changed later, so don't worry too much about it. (Well, you should
+			probably worry about the password at least a little. This <em>is</em> an admin user,
+			after all.)
+		</p>
+		{{#error}}
+			<div class="message error">{{error}}</div>
+		{{/error}}
+		<noscript>
+			<div class="message warning">
+				JavaScript is disabled. The password will be sent to the server instead of being
+				hashed client-side. (The password stored in the database will still be secure.)
+			</div>
+		</noscript>
+		<div id="no-crypto-warning" style="display: none" class="message warning">
+			WebCrypto is not available. The password will be sent to the server instead of being
+			hashed client-side. (The password stored in the database will still be secure.)
+		</div>
+		<form method="POST">
+			<div class="bumper">
+				<label for="token">Secret token</label><br/>
+				<input required style="font-family: monospace" id="token" name="token" type="text" minlength="32" maxlength="32"/><br/>
+				<small>
+					This is printed out in Partyflow's log.
+				</small>
+			</div>
+			<div class="bumper">
+				<label for="name">Name</label><br/>
+				<input required id="name" name="name" type="text" maxlength="64"/><br/>
+				<small>
+					Up to 64 characters. Symbols will be removed in URLs. Letters in any language
+					will be kept.
+				</small>
+			</div>
+			<div class="bumper">
+				<label for="password">Password</label><br/>
+				<input required id="password" name="password" type="password" minlength="8"/><br/>
+				<small>
+					At least 8 characters. No other restrictions. Try and make it something secure.
+				</small>
+			</div>
+			<input type="hidden" id="hashed-password"/>
+			<div class="bumper">
+				<label for="confirm-password">Confirm password</label><br/>
+				<input required id="confirm-password" name="confirm-password" type="password" minlength="8"/><br/>
+				<small>
+					Just to make sure you're paying attention.
+				</small>
+			</div>
+			<div style="text-align: center">
+				<button>Submit</button>
+			</div>
+		</form>
+	</div>
+	<script src="{{root}}assets/password-hasher.js"></script>
+	{{> _footer.hbs.html}}
+</body>
+</html>

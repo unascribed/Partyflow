@@ -21,20 +21,29 @@ package com.unascribed.partyflow;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import org.eclipse.jetty.http.MultiPartFormInputStream;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.base.Splitter.MapSplitter;
+import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 
 public class SimpleHandler {
@@ -107,6 +116,15 @@ public class SimpleHandler {
 	private static final File TEMP_DIR = Files.createTempDir();
 	private static final MultipartConfigElement MP_CFG = new MultipartConfigElement(TEMP_DIR.getAbsolutePath(), 32L*1024L*1024L, 34L*1024L*1024L, 2*1024*1024);;
 
+	private static final MapSplitter URLENCODED_SPLITTER = Splitter.on('&').withKeyValueSeparator('=');
+
+	public interface Any {
+		/**
+		 * @return {@code true} to suppress default behavior
+		 */
+		boolean any(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
+	}
+
 	public interface Get {
 		void get(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
 	}
@@ -157,6 +175,28 @@ public class SimpleHandler {
 		}
 		void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data) throws IOException, ServletException;
 	}
+	public interface UrlEncodedPost extends Post {
+		@Override
+		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+			if (req.getContentType().equals("application/x-www-form-urlencoded")) {
+				byte[] bys;
+				try {
+					bys = Partyflow.readWithLimit(req.getInputStream(), 8192);
+				} finally {
+					req.getInputStream().close();
+				}
+				if (bys == null) {
+					res.sendError(HTTP_413_PAYLOAD_TOO_LARGE);
+					return;
+				}
+				String str = new String(bys, Charsets.UTF_8);
+				urlEncodedPost(path, req, res, parseUrlEncoded(str));
+			} else {
+				res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
+			}
+		}
+		void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException;
+	}
 
 	// Handler has a bunch of gross and spammy lifecycle methods that we'd rather not expose to subclasses
 
@@ -169,6 +209,9 @@ public class SimpleHandler {
 	};
 
 	public void handle(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+		if (this instanceof Any) {
+			if (((Any)this).any(path, req, res)) return;
+		}
 		switch (req.getMethod().toUpperCase(Locale.ROOT)) {
 			case "GET":
 				if (this instanceof Get) ((Get)this).get(path, req, res);
@@ -213,6 +256,25 @@ public class SimpleHandler {
 
 	public Handler asJettyHandler() {
 		return jettyHandler;
+	}
+
+	protected static Map<String, String> parseQuery(HttpServletRequest req) {
+		String query = req.getQueryString();
+		if (query == null) return Collections.emptyMap();
+		return parseUrlEncoded(query);
+	}
+
+	protected static Map<String, String> parseUrlEncoded(String str) {
+		try {
+			Map<String, String> params = URLENCODED_SPLITTER.split(str);
+			Map<String, String> decodedParams = Maps.newHashMapWithExpectedSize(params.size());
+			for (Map.Entry<String, String> en : params.entrySet()) {
+				decodedParams.put(URLDecoder.decode(en.getKey(), "UTF-8"), URLDecoder.decode(en.getValue(), "UTF-8"));
+			}
+		return decodedParams;
+		} catch (UnsupportedEncodingException e) {
+			throw new AssertionError(e);
+		}
 	}
 
 }

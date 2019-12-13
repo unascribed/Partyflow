@@ -1,23 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-	{{> head.hbs.html}}
+	{{> _head.hbs.html}}
 </head>
 <body>
-	<h1>All releases</h1>
-	<div class="releases">
-		{{^releases}}
-			<div class="no-releases">
-				No releases here!
-			</div>
-		{{/releases}}
-		{{#releases}}
-		<a class="release" href="{{root}}releases/{{slug}}">
-			<div class="art" style="background-image: url({{art}})"></div>
-			<div class="title">{{title}}</div>
-		</a>
-		{{/releases}}
+	{{> _header.hbs.html}}
+	<div class="inner">
+		<h1>All releases</h1>
+		<div class="releases">
+			{{^releases}}
+				<div class="no-releases">
+					No releases here!
+				</div>
+			{{/releases}}
+			{{#releases}}
+			<a class="release" href="{{root}}releases/{{slug}}">
+				<div class="art" style="background-image: url({{art}})"></div>
+				<div class="title">{{title}}</div>
+			</a>
+			{{/releases}}
+		</div>
 	</div>
-	{{> footer.hbs.html}}
+	{{> _footer.hbs.html}}
 </body>
 </html>

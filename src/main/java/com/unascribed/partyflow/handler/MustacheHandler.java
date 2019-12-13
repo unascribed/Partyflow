@@ -28,8 +28,10 @@ import javax.servlet.http.HttpServletResponse;
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.MustacheFactory;
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.Version;
+import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 
 import com.google.common.base.Function;
@@ -60,13 +62,13 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head) throws IOException, ServletException {
 		if (contextComputer == null) {
-			serveTemplate(res, template);
+			serveTemplate(req, res, template);
 		} else {
-			serveTemplate(res, template, contextComputer.apply(req));
+			serveTemplate(req, res, template, contextComputer.apply(req));
 		}
 	}
 
-	public static void serveTemplate(HttpServletResponse res, String path, Object... context) throws IOException {
+	public static void serveTemplate(HttpServletRequest req, HttpServletResponse res, String path, Object... context) throws IOException, ServletException {
 		if (path.endsWith(".html")) {
 			res.setHeader("Content-Type", "text/html; charset=utf-8");
 		} else if (path.endsWith(".css")) {
@@ -74,9 +76,14 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		} else if (path.endsWith(".js")) {
 			res.setHeader("Content-Type", "application/javascript; charset=utf-8");
 		}
-		Object[] arr = new Object[context.length+1];
+		Object[] arr = new Object[context.length+2];
 		arr[0] = globalContext;
-		System.arraycopy(context, 0, arr, 1, context.length);
+		Session session = SessionHelper.getSession(req);
+		arr[1] = new Object() {
+			boolean loggedIn = session != null;
+			String csrf = Partyflow.allocateCsrfToken();
+		};
+		System.arraycopy(context, 0, arr, 2, context.length);
 		(Partyflow.config.http.cacheTemplates ? mustache : new DefaultMustacheFactory("templates"))
 			.compile(path).execute(res.getWriter(), arr);
 		res.getWriter().close();
