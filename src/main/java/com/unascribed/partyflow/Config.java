@@ -51,6 +51,9 @@ public final class Config {
 	public static final class SecuritySection {
 		public String sessionSecret;
 		public boolean https;
+		public int scryptCpu;
+		public int scryptMemory;
+		public int scryptParallelization;
 	}
 
 	public StorageSection storage;

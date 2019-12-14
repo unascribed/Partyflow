@@ -31,7 +31,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SimpleHandler;
+import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 
 import com.google.common.collect.Lists;
@@ -41,14 +43,23 @@ public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
+		Session s = SessionHelper.getSession(req);
 		try (Connection c = Partyflow.sql.getConnection()) {
-			try (PreparedStatement ps = c.prepareStatement("SELECT title, subtitle, slug, published, art FROM releases;")) {
+			String suffix = s == null ? "" : " OR releases.user_id = ?";
+			try (PreparedStatement ps = c.prepareStatement(
+					"SELECT title, subtitle, slug, published, art, users.display_name FROM releases"
+					+ " JOIN users ON users.user_id = releases.user_id"
+					+ " WHERE published = true"+suffix+";")) {
+				if (s != null) {
+					ps.setInt(1, s.userId);
+				}
 				try (ResultSet rs = ps.executeQuery()) {
 					List<Object> li = Lists.newArrayList();
 					while (rs.next()) {
 						li.add(new Object() {
 							String title = rs.getString("title");
 							String subtitle = rs.getString("subtitle");
+							String creator = rs.getString("users.display_name");
 							String slug = rs.getString("slug");
 							boolean published = rs.getBoolean("published");
 							String art = Partyflow.resolveArt(rs.getString("art"));

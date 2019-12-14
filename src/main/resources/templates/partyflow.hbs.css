@@ -21,6 +21,7 @@ a:link, a:link:visited {
 	padding: 8px;
 	height: 56px;
 	position: fixed;
+	z-index: 10000;
 	width: 100%;
 	top: 0;
 	left: 0;
@@ -39,6 +40,13 @@ footer {
 	max-width: 800px;
 	margin: auto;
 	display: block;
+}
+.release {
+	display: block;
+	padding: 8px;
+	position: relative;
+	text-decoration: none;
+	color: inherit !important;
 }
 .release:after {
 	content: "";
@@ -87,18 +95,6 @@ footer {
 	opacity: 1;
 }
 
-.ghost-input {
-	background: none;
-	border: 1px rgba(255, 255, 255, 0.5) dashed;
-	color: inherit;
-	padding: 4px;
-	display: block;
-}
-.ghost-input:invalid {
-	box-shadow: none;
-	border-color: #F00;
-}
-
 .release .title {
 	font-size: 20px;
 	font-weight: bold;
@@ -116,11 +112,13 @@ footer {
 	min-height: 3em;
 	resize: vertical;
 	font-family: sans-serif;
+	font-size: 16px;
+	white-space: pre-wrap;
 }
 
 button {
 	border: none;
-	border-radius: 0;
+	border-radius: 2px;
 	color: #FFF;
 	background: #9C27B0;
 	padding: 8px 16px;
@@ -141,6 +139,19 @@ button.danger {
 button.danger:hover, button.danger:focus {
 	background: #FF1744;
 }
+button.good {
+	background: #009688;
+}
+button.good:hover, button.good:focus {
+	background: #0DBC9D;
+}
+button.subdued {
+	background: transparent;
+	border: 2px #D500F9 solid;
+}
+button.subdued:hover, button.subdued:focus {
+	background: rgba(213, 0, 249, 0.25);
+}
 
 button img {
 	width: 24px;
@@ -156,6 +167,38 @@ button img {
 	width: 64px;
 	height: 64px;
 	margin-right: 8px;
+}
+
+.release.solo {
+	padding-bottom: 96px;
+}
+.release .buttons {
+	position: absolute;
+	left: 8px;
+	bottom: 8px;
+}
+
+.release.unpublished {
+	background-image: repeating-linear-gradient(
+		70deg,
+		rgba(144, 164, 174, 0.2),
+		rgba(144, 164, 174, 0.2) 16px,
+		rgba(26, 35, 39, 0.2) 16px,
+		rgba(26, 35, 39, 0.2) 32px
+	);
+}
+.release.unpublished:before {
+	content: "UNPUBLISHED";
+	font-size: 0.75em;
+	position: absolute;
+	right: 8px;
+	bottom: 8px;
+	color: #FFF;
+	font-weight: bold;
+	background: #AD1457;
+	border: 2px #F50057 solid;
+	border-radius: 2px;
+	padding: 4px;
 }
 
 input[type="text"], input[type="password"], textarea {
@@ -210,3 +253,16 @@ button.link {
 	width: auto;
 	height: auto;
 }
+
+input.ghost-input, textarea.ghost-input {
+	background: none;
+	border: 1px rgba(255, 255, 255, 0.5) dashed;
+	color: inherit;
+	padding: 4px;
+	display: block;
+}
+input.ghost-input:invalid, textarea.ghost-input:invalid {
+	box-shadow: none;
+	border-color: #F00;
+}
+

@@ -47,6 +47,7 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Splitter.MapSplitter;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.hash.Hashing;
+import com.google.common.math.IntMath;
 
 public class SetupHandler extends SimpleHandler implements Any {
 
@@ -123,7 +124,10 @@ public class SetupHandler extends SimpleHandler implements Any {
 					}
 					String name = URLDecoder.decode(params.get("name"), "UTF-8");
 					String username = Partyflow.sanitizeSlug(name);
-					String scrypt = SCrypt.scrypt(passwordSha512, 65536, 16, 1);
+					int N = IntMath.pow(2, Partyflow.config.security.scryptCpu);
+					int r = Partyflow.config.security.scryptMemory;
+					int p = Partyflow.config.security.scryptParallelization;
+					String scrypt = SCrypt.scrypt(passwordSha512, N, r, p);
 					try (Connection c = Partyflow.sql.getConnection()) {
 						try (PreparedStatement ps = c.prepareStatement("INSERT INTO users (username, display_name, password, admin, created_at) "
 								+ "VALUES (?, ?, ?, TRUE, NOW());")) {

@@ -172,7 +172,6 @@ public class Partyflow {
 		try {
 			String url = "jdbc:h2:"+UrlEscapers.urlPathSegmentEscaper().escape(config.database.file).replace("%2F", "/");
 			sql = JdbcConnectionPool.create(url, "", "");
-			((JdbcConnectionPool)sql).setMaxConnections(1);
 			try (Connection c = sql.getConnection()) {
 				try (Statement s = c.createStatement()) {
 					int dataVersion;
@@ -261,7 +260,7 @@ public class Partyflow {
 				handler("", new MustacheHandler("index.hbs.html")),
 				handler("assets/partyflow.css", new MustacheHandler("partyflow.hbs.css")),
 				handler("assets/password-hasher.js", new MustacheHandler("password-hasher.hbs.js")),
-				handler("assets/create-release.js", new MustacheHandler("create-release.hbs.js")),
+				handler("assets/edit-art.js", new MustacheHandler("edit-art.hbs.js")),
 				handler("create-release", new CreateReleaseHandler()),
 				handler("login", new LoginHandler()),
 				handler("logout", new LogoutHandler()),
@@ -351,6 +350,7 @@ public class Partyflow {
 	}
 
 	public static boolean isCsrfTokenValid(String token) {
+		if (token == null) return false;
 		Long l = csrfTokens.get(token);
 		return l != null && l > System.currentTimeMillis();
 	}
@@ -375,16 +375,14 @@ public class Partyflow {
 		return sb.toString();
 	}
 
-	private static final Pattern ILLEGAL = Pattern.compile("[^\\p{IsLetter}\\p{IsDigit}- ]");
-	private static final Pattern PUNCT = Pattern.compile("[\\p{IsPunctuation}]");
+	private static final Pattern ILLEGAL = Pattern.compile("[^\\p{IsLetter}\\p{IsDigit} ]");
 	private static final Pattern SPACE = Pattern.compile("[\\p{Space}]+");
 
 	public static String sanitizeSlug(String name) {
 		String s = Normalizer.normalize(name, Form.NFC);
-		s = PUNCT.matcher(s).replaceAll("-");
 		s = SPACE.matcher(s).replaceAll(" ");
 		s = ILLEGAL.matcher(s).replaceAll("");
-		return s;
+		return s.trim();
 	}
 
 	public static String resolveArt(String art) {

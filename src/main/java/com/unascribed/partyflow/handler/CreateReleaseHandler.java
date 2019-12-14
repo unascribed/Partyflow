@@ -71,125 +71,140 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 	@Override
 	public void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data)
 			throws IOException, ServletException {
-		Part art = data.getPart("art");
-		String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
-		String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
-		String description = Strings.nullToEmpty(data.getPartAsString("description", 65536));
-		if (title.trim().isEmpty()) {
-			res.setStatus(HTTP_400_BAD_REQUEST);
-			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-				String error = "Title is required";
-			});
-			return;
-		}
-		if (title.length() > 255) {
-			res.setStatus(HTTP_400_BAD_REQUEST);
-			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-				String error = "Title is too long";
-			});
-			return;
-		}
-		if (subtitle.length() > 255) {
-			res.setStatus(HTTP_400_BAD_REQUEST);
-			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-				String error = "Subtitle is too long";
-			});
-			return;
-		}
-		if (description.length() > 16384) {
-			res.setStatus(HTTP_400_BAD_REQUEST);
-			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-				String error = "Description is too long";
-			});
-			return;
-		}
-		String artPath = null;
-		if (art != null && art.getSize() > 0) {
-			byte[] probe = new byte[4];
-			try (InputStream is = art.getInputStream()) {
-				ByteStreams.readFully(is, probe);
+		Session session = SessionHelper.getSession(req);
+		if (session != null) {
+			String csrf = data.getPartAsString("csrf", 64);
+			if (!Partyflow.isCsrfTokenValid(csrf)) {
+				res.sendRedirect(Partyflow.config.http.path);
+				return;
 			}
-			String mime;
-			String format;
-			if (Arrays.equals(probe, PNG_HEADER)) {
-				mime = "image/png";
-				format = "png";
-			} else if (Arrays.equals(probe, JPEG_HEADER)) {
-				mime = "image/jpeg";
-				format = "jpeg";
-			} else {
+			Part art = data.getPart("art");
+			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
+			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
+			String description = Strings.nullToEmpty(data.getPartAsString("description", 65536));
+			if (title.trim().isEmpty()) {
 				res.setStatus(HTTP_400_BAD_REQUEST);
 				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-					String error = "Invalid file format for art; only PNG and JPEG are accepted";
+					String error = "Title is required";
 				});
 				return;
 			}
-			Process magick = Partyflow.magick_convert("- -strip -resize x576> -quality 80 "+format+":-");
-			ByteStreams.copy(art.getInputStream(), magick.getOutputStream());
-			magick.getOutputStream().close();
-			byte[] imgData = ByteStreams.toByteArray(magick.getInputStream());
-			magick.getInputStream().close();
-			while (magick.isAlive()) {
-				try {
-					magick.waitFor();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			if (magick.exitValue() != 0) {
-				String s = new String(ByteStreams.toByteArray(magick.getErrorStream()), Charsets.UTF_8);
-				log.warn("Failed to process image with ImageMagick:\n{}", s);
-				res.setStatus(HTTP_500_INTERNAL_SERVER_ERROR);
+			if (title.length() > 255) {
+				res.setStatus(HTTP_400_BAD_REQUEST);
 				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-					String error = "Failed to process art";
+					String error = "Title is too long";
 				});
 				return;
 			}
-			String name;
-			do {
-				String rand = Partyflow.randomString(16);
-				name = "art/"+rand.substring(0, 3)+"/"+rand+"."+format;
-			} while (Partyflow.storage.blobExists(Partyflow.storageContainer, name));
-			Blob b = Partyflow.storage.blobBuilder(name)
-					.payload(imgData)
-					.cacheControl("public, immutable")
-					.contentLength(imgData.length)
-					.contentType(mime)
-					.build();
-			Partyflow.storage.putBlob(Partyflow.storageContainer, b, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
-			artPath = name;
-		}
-		try (Connection c = Partyflow.sql.getConnection()) {
-			String slug = Partyflow.sanitizeSlug(title);
-			try (PreparedStatement s = c.prepareStatement("SELECT 1 FROM releases WHERE slug = ?;")) {
-				int i = 0;
-				String suffix = "";
-				while (true) {
-					if (i > 0) {
-						suffix = "-"+(i+1);
-					}
-					s.setString(1, slug+suffix);
-					try (ResultSet rs = s.executeQuery()) {
-						if (!rs.first()) break;
-					}
-					i++;
+			if (subtitle.length() > 255) {
+				res.setStatus(HTTP_400_BAD_REQUEST);
+				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
+					String error = "Subtitle is too long";
+				});
+				return;
+			}
+			if (description.length() > 16384) {
+				res.setStatus(HTTP_400_BAD_REQUEST);
+				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
+					String error = "Description is too long";
+				});
+				return;
+			}
+			String artPath = null;
+			if (art != null && art.getSize() > 4) {
+				try {
+					artPath = processArt(art);
+				} catch (IllegalArgumentException e) {
+					res.setStatus(HTTP_400_BAD_REQUEST);
+					MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
+						String error = e.getMessage();
+					});
+					return;
 				}
-				slug = slug+suffix;
 			}
-			try (PreparedStatement s = c.prepareStatement(
-					"INSERT INTO releases (title, subtitle, slug, published, art, description, created_at, last_updated) "
-					+ "VALUES (?, ?, ?, FALSE, ?, ?, NOW(), NOW());")) {
-				s.setString(1, title);
-				s.setString(2, subtitle);
-				s.setString(3, slug);
-				s.setString(4, artPath);
-				s.setString(5, description);
-				s.executeUpdate();
+			try (Connection c = Partyflow.sql.getConnection()) {
+				String slug = Partyflow.sanitizeSlug(title);
+				try (PreparedStatement s = c.prepareStatement("SELECT 1 FROM releases WHERE slug = ?;")) {
+					int i = 0;
+					String suffix = "";
+					while (true) {
+						if (i > 0) {
+							suffix = "-"+(i+1);
+						}
+						s.setString(1, slug+suffix);
+						try (ResultSet rs = s.executeQuery()) {
+							if (!rs.first()) break;
+						}
+						i++;
+					}
+					slug = slug+suffix;
+				}
+				try (PreparedStatement s = c.prepareStatement(
+						"INSERT INTO releases (user_id, title, subtitle, slug, published, art, description, created_at, last_updated) "
+						+ "VALUES (?, ?, ?, ?, FALSE, ?, ?, NOW(), NOW());")) {
+					s.setInt(1, session.userId);
+					s.setString(2, title);
+					s.setString(3, subtitle);
+					s.setString(4, slug);
+					s.setString(5, artPath);
+					s.setString(6, description);
+					s.executeUpdate();
+				}
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
+			} catch (SQLException e) {
+				throw new ServletException(e);
 			}
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
-		} catch (SQLException e) {
-			throw new ServletException(e);
+		} else {
+			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
 		}
+	}
+
+	public static String processArt(Part art) throws IOException, IllegalArgumentException {
+		byte[] probe = new byte[4];
+		try (InputStream is = art.getInputStream()) {
+			ByteStreams.readFully(is, probe);
+		}
+		String mime;
+		String format;
+		if (Arrays.equals(probe, PNG_HEADER)) {
+			mime = "image/png";
+			format = "png";
+		} else if (Arrays.equals(probe, JPEG_HEADER)) {
+			mime = "image/jpeg";
+			format = "jpeg";
+		} else {
+			throw new IllegalArgumentException("Invalid file format for art; only PNG and JPEG are accepted");
+		}
+		Process magick = Partyflow.magick_convert("- -strip -resize x576> -quality 80 "+format+":-");
+		ByteStreams.copy(art.getInputStream(), magick.getOutputStream());
+		magick.getOutputStream().close();
+		byte[] imgData = ByteStreams.toByteArray(magick.getInputStream());
+		magick.getInputStream().close();
+		while (magick.isAlive()) {
+			try {
+				magick.waitFor();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		if (magick.exitValue() != 0) {
+			String s = new String(ByteStreams.toByteArray(magick.getErrorStream()), Charsets.UTF_8);
+			log.warn("Failed to process image with ImageMagick:\n{}", s);
+			throw new IllegalArgumentException("Failed to process art");
+		}
+		String name;
+		do {
+			String rand = Partyflow.randomString(16);
+			name = "art/"+rand.substring(0, 3)+"/"+rand+"."+format;
+		} while (Partyflow.storage.blobExists(Partyflow.storageContainer, name));
+		Blob b = Partyflow.storage.blobBuilder(name)
+				.payload(imgData)
+				.cacheControl("public, immutable")
+				.contentLength(imgData.length)
+				.contentType(mime)
+				.build();
+		Partyflow.storage.putBlob(Partyflow.storageContainer, b, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
+		return b.getMetadata().getName();
 	}
 
 }

@@ -28,12 +28,13 @@ import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;
 import com.google.common.hash.Hashing;
 import com.google.common.io.BaseEncoding;
+import com.google.common.math.IntMath;
 
 public class LoginHandler extends SimpleHandler implements GetOrHead, UrlEncodedPost {
 
 	private static final CharMatcher HEX = CharMatcher.anyOf("0123456789abcdef");
 
-	private static final String DUMMY = "$s0$f0801$hJyPXcPmrCP9YacjtfRxbQ==$ttcR1Ccf3fUElWc2qLBcORQkgwt5UZVkTJnuMGS2XZ4=";
+	private static final String DUMMY = SCrypt.scrypt("cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e", IntMath.pow(2, Partyflow.config.security.scryptCpu), Partyflow.config.security.scryptMemory, Partyflow.config.security.scryptParallelization);
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)

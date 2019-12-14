@@ -26,6 +26,16 @@ security: {
 	// If true, some additional protections will be activated that rely on the site being served
 	// over HTTPS. (This has to be done at a reverse proxy; Partyflow itself does not support SSL.)
 	https: false
+	// N. Scrypt work factor. Higher values are slower, which increases security in the event of a
+	// database leak. Exponential; 17 is 2x the work of 16.
+	scryptCpu: 16
+	// r. Scrypt memory factor. Increases memory usage when hashing passwords. Linear; 17 is 6.25%
+	// more work than 16.
+	scryptMemory: 16
+	// p. Scrypt parallelization factor. Values greater than 1 allow parallelization; Partyflow's
+	// scrypt implementation (and in fact, most normal scrypt implementations) do not parallelize,
+	// so setting this >1 basically just weakens your hashes. Linear; 1 is 1 core, 2 is 2 cores.
+	scryptParallelization: 1
 }
 storage: {
 	// The only valid option right now is "fs" - support for S3, Swift, etc, will be added later

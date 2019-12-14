@@ -26,9 +26,13 @@ public class SessionHelper {
 	public static class Session {
 		public final UUID sessionId;
 		public final int userId;
-		private Session(UUID sessionId, int userId) {
+		public final String username;
+		public final String displayName;
+		private Session(UUID sessionId, int userId, String username, String displayName) {
 			this.sessionId = sessionId;
 			this.userId = userId;
+			this.username = username;
+			this.displayName = displayName;
 		}
 	}
 
@@ -37,10 +41,8 @@ public class SessionHelper {
 	public static @Nullable Session getSession(HttpServletRequest req) throws ServletException {
 		Object cache = req.getAttribute(SessionHelper.class.getName()+".cache");
 		if (cache == NOT_LOGGED_IN) {
-			System.out.println("cached for this request: not logged in");
 			return null;
 		} else if (cache instanceof Session) {
-			System.out.println("cached for this request: logged in as "+cache);
 			return (Session)cache;
 		}
 		String cookies = req.getHeader("Cookie");
@@ -64,12 +66,14 @@ public class SessionHelper {
 								byte[] hmac = mac.doFinal();
 								if (MessageDigest.isEqual(hmac, theirHmac)) {
 									try (Connection c = Partyflow.sql.getConnection()) {
-										try (PreparedStatement ps = c.prepareStatement("SELECT user_id FROM sessions WHERE session_id = ? AND expires > NOW();")) {
+										try (PreparedStatement ps = c.prepareStatement(
+												"SELECT sessions.user_id, users.display_name, users.username FROM sessions JOIN users ON users.user_id = sessions.user_id "
+												+ "WHERE session_id = ? AND expires > NOW();")) {
 											ps.setString(1, sessionId.toString());
 											try (ResultSet rs = ps.executeQuery()) {
 												if (rs.first()) {
 													int uid = rs.getInt("user_id");
-													Session s = new Session(sessionId, uid);
+													Session s = new Session(sessionId, uid, rs.getString("users.username"), rs.getString("users.display_name"));
 													req.setAttribute(SessionHelper.class.getName()+".cache", s);
 													return s;
 												} else {

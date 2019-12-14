@@ -20,39 +20,57 @@
 package com.unascribed.partyflow.handler;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.Part;
 
+import com.unascribed.partyflow.MultipartData;
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.SessionHelper;
+import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
-import com.unascribed.partyflow.SimpleHandler.Post;;
+import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
 
-public class ReleaseHandler extends SimpleHandler implements GetOrHead, Post {
+import com.google.common.base.Objects;
+import com.google.common.base.Strings;;
 
-	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete)?$");
+public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
+
+	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/publish|/unpublish|/edit)?$");
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
-		if ("/delete".equals(m.group(2))) {
+		if (m.group(2) != null) {
 			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
 			return;
 		}
+		Map<String, String> query = parseQuery(req);
+		Session s = SessionHelper.getSession(req);
 		try (Connection c = Partyflow.sql.getConnection()) {
 			String slugs = m.group(1);
-			try (PreparedStatement ps = c.prepareStatement("SELECT title, subtitle, published, art, description FROM releases WHERE slug = ?;")) {
+			String suffix = s == null ? "" : " OR releases.user_id = ?";
+			try (PreparedStatement ps = c.prepareStatement(
+					"SELECT title, subtitle, published, art, description, releases.user_id, users.display_name FROM releases "
+					+ "JOIN users ON releases.user_id = users.user_id "
+					+ "WHERE slug = ? AND (published = true"+suffix+");")) {
 				ps.setString(1, slugs);
+				if (s != null) {
+					ps.setInt(2, s.userId);
+				}
 				try (ResultSet rs = ps.executeQuery()) {
 					// slug is UNIQUE, we don't need to handle more than one row
 					if (rs.first()) {
@@ -60,10 +78,13 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, Post {
 						MustacheHandler.serveTemplate(req, res, "release.hbs.html", new Object() {
 							String title = rs.getString("title");
 							String subtitle = rs.getString("subtitle");
+							String creator = rs.getString("users.display_name");
 							String slug = slugs;
+							boolean editable = s != null && rs.getInt("releases.user_id") == s.userId;
 							boolean published = rs.getBoolean("published");
 							String art = Partyflow.resolveArt(rs.getString("art"));
 							String description = rs.getString("description");
+							String error = query.get("error");
 						});
 					} else {
 						res.sendError(HTTP_404_NOT_FOUND);
@@ -77,37 +98,192 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, Post {
 	}
 
 	@Override
-	public void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
-		if (!"/delete".equals(m.group(2))) {
-			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
-			return;
-		}
-		try (Connection c = Partyflow.sql.getConnection()) {
-			String slugs = m.group(1);
-			int releaseId;
-			try (PreparedStatement ps = c.prepareStatement("SELECT release_id, art FROM releases WHERE slug = ?;")) {
-				ps.setString(1, slugs);
-				try (ResultSet rs = ps.executeQuery()) {
-					// slug is UNIQUE, we don't need to handle more than one row
-					if (rs.first()) {
-						releaseId = rs.getInt("release_id");
-						Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("art"));
-					} else {
-						res.sendError(HTTP_404_NOT_FOUND);
-						return;
+		if ("/delete".equals(m.group(2))) {
+			Session s = SessionHelper.getSession(req);
+			if (s == null) {
+				res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+				return;
+			}
+			String csrf = params.get("csrf");
+			if (!Partyflow.isCsrfTokenValid(csrf)) {
+				res.sendRedirect(Partyflow.config.http.path);
+				return;
+			}
+			try (Connection c = Partyflow.sql.getConnection()) {
+				String slugs = m.group(1);
+				int releaseId;
+				try (PreparedStatement ps = c.prepareStatement("SELECT release_id, art FROM releases WHERE slug = ? AND user_id = ?;")) {
+					ps.setString(1, slugs);
+					ps.setInt(2, s.userId);
+					try (ResultSet rs = ps.executeQuery()) {
+						// slug is UNIQUE, we don't need to handle more than one row
+						if (rs.first()) {
+							releaseId = rs.getInt("release_id");
+							String art = Strings.emptyToNull(rs.getString("art"));
+							if (art != null) {
+								Partyflow.storage.removeBlob(Partyflow.storageContainer, art);
+							}
+						} else {
+							res.sendError(HTTP_404_NOT_FOUND);
+							return;
+						}
 					}
 				}
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM releases WHERE release_id = ?; DELETE FROM tracks WHERE release_id = ?;")) {
+					ps.setInt(1, releaseId);
+					ps.setInt(2, releaseId);
+					ps.executeUpdate();
+					res.sendRedirect(Partyflow.config.http.path+"releases");
+				}
+			} catch (SQLException e) {
+				throw new ServletException(e);
 			}
-			try (PreparedStatement ps = c.prepareStatement("DELETE FROM releases WHERE release_id = ?; DELETE FROM tracks WHERE release_id = ?;")) {
-				ps.setInt(1, releaseId);
-				ps.setInt(2, releaseId);
-				ps.executeUpdate();
-				res.sendRedirect(Partyflow.config.http.path+"releases");
+		} else if ("/publish".equals(m.group(2)) || "/unpublish".equals(m.group(2))) {
+			Session s = SessionHelper.getSession(req);
+			if (s == null) {
+				res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+				return;
 			}
-		} catch (SQLException e) {
-			throw new ServletException(e);
+			String csrf = params.get("csrf");
+			if (!Partyflow.isCsrfTokenValid(csrf)) {
+				res.sendRedirect(Partyflow.config.http.path);
+				return;
+			}
+			boolean published = "/publish".equals(m.group(2));
+			try (Connection c = Partyflow.sql.getConnection()) {
+				String slug = m.group(1);
+				String midfix = published ? ", published_at = NOW()" : "";
+				try (PreparedStatement ps = c.prepareStatement("UPDATE releases SET published = ?"+midfix+" WHERE slug = ? AND user_id = ?;")) {
+					ps.setBoolean(1, published);
+					ps.setString(2, slug);
+					ps.setInt(3, s.userId);
+					if (ps.executeUpdate() >= 1) {
+						res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
+					} else {
+						res.sendRedirect(Partyflow.config.http.path+"releases/"+slug+"?error=You're not allowed to do that");
+					}
+				}
+			} catch (SQLException e) {
+				throw new ServletException(e);
+			}
+		} else if ("/edit".equals(m.group(2))) {
+			res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
+		} else {
+			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
+		}
+	}
+
+	@Override
+	public void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data)
+			throws IOException, ServletException {
+		Matcher m = PATH_PATTERN.matcher(path);
+		if (!m.matches()) return;
+		if ("/edit".equals(m.group(2))) {
+			Session s = SessionHelper.getSession(req);
+			if (s == null) {
+				res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+				return;
+			}
+			String csrf = data.getPartAsString("csrf", 64);
+			if (!Partyflow.isCsrfTokenValid(csrf)) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Invalid CSRF token");
+				return;
+			}
+			Part art = data.getPart("art");
+			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
+			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
+			String description = Strings.nullToEmpty(data.getPartAsString("description", 65536));
+			if (title.trim().isEmpty()) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Title is required");
+				return;
+			}
+			if (title.length() > 255) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Title is too long");
+				return;
+			}
+			if (subtitle.length() > 255) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Subtitle is too long");
+				return;
+			}
+			if (description.length() > 16384) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Description is too long");
+				return;
+			}
+			String artPath = null;
+			if (art != null && art.getSize() > 4) {
+				try {
+					artPath = CreateReleaseHandler.processArt(art);
+				} catch (IllegalArgumentException e) {
+					res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8"));
+					return;
+				}
+			}
+			try (Connection c = Partyflow.sql.getConnection()) {
+				boolean published;
+				try (PreparedStatement ps = c.prepareStatement(
+						"SELECT published FROM releases "
+						+ "WHERE slug = ? AND user_id = ?;")) {
+					ps.setString(1, m.group(1));
+					ps.setInt(2, s.userId);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.first()) {
+							published = rs.getBoolean("published");
+						} else {
+							res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=You're not allowed to do that");
+							return;
+						}
+					}
+				}
+				String slug = published ? m.group(1) : Partyflow.sanitizeSlug(title);
+				if (!Objects.equal(slug, m.group(1))) {
+					try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM releases WHERE slug = ?;")) {
+						int i = 0;
+						String suffix = "";
+						while (true) {
+							if (i > 0) {
+								suffix = "-"+(i+1);
+							}
+							ps.setString(1, slug+suffix);
+							try (ResultSet rs = ps.executeQuery()) {
+								if (!rs.first()) break;
+							}
+							i++;
+						}
+						slug = slug+suffix;
+					}
+				}
+				String midfix = data.getPart("publish") != null ? ", published = true, published_at = NOW()" : "";
+				String extraCols = artPath != null ? "art = ?," : "";
+				try (PreparedStatement ps = c.prepareStatement(
+						"UPDATE releases SET title = ?, subtitle = ?, slug = ?, "+extraCols+" description = ?, last_updated = NOW()"+midfix
+						+ " WHERE slug = ? AND user_id = ?;")) {
+					int i = 1;
+					ps.setString(i++, title);
+					ps.setString(i++, subtitle);
+					ps.setString(i++, slug);
+					if (artPath != null) {
+						ps.setString(i++, artPath);
+					}
+					ps.setString(i++, description);
+					ps.setString(i++, m.group(1));
+					ps.setInt(i++, s.userId);
+					ps.executeUpdate();
+				}
+				if (data.getPart("addTrack") != null) {
+					res.sendRedirect(Partyflow.config.http.path+"releases/"+slug+"/add-track");
+				} else {
+					res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
+				}
+			} catch (SQLException e) {
+				throw new ServletException(e);
+			}
+		} else if ("/delete".equals(m.group(2))) {
+			res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
+		} else {
+			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
 		}
 	}
 

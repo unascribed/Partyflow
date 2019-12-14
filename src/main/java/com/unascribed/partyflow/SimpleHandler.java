@@ -197,6 +197,18 @@ public class SimpleHandler {
 		}
 		void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException;
 	}
+	public interface UrlEncodedOrMultipartPost extends UrlEncodedPost, MultipartPost {
+		@Override
+		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+			if (req.getContentType().equals("application/x-www-form-urlencoded")) {
+				UrlEncodedPost.super.post(path, req, res);
+			} else if (req.getContentType().startsWith("multipart/form-data;")) {
+				MultipartPost.super.post(path, req, res);
+			} else {
+				res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
+			}
+		}
+	}
 
 	// Handler has a bunch of gross and spammy lifecycle methods that we'd rather not expose to subclasses
 

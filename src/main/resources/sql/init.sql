@@ -13,7 +13,8 @@ CREATE TABLE releases (
 	art          VARCHAR(255),
 	description  CLOB NOT NULL,
 	created_at   TIMESTAMP NOT NULL,
-	last_updated TIMESTAMP NOT NULL
+	last_updated TIMESTAMP NOT NULL,
+	published_at TIMESTAMP
 );
 CREATE TABLE tracks (
 	track_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
