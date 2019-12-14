@@ -185,6 +185,7 @@ button:not([class^='ql-']) img {
 .md-wrapper {
 	position: relative;
 	width: calc(100% - 208px);
+	overflow: hidden;
 }
 .md-wrapper textarea.description {
 	width: 100% !important;
