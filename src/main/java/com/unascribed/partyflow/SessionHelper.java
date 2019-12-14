@@ -1,3 +1,22 @@
+/*
+ * This file is part of Partyflow.
+ *
+ * Partyflow is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * Partyflow is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public
+ * License along with Partyflow.
+ *
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package com.unascribed.partyflow;
 
 import java.security.InvalidKeyException;
@@ -28,11 +47,13 @@ public class SessionHelper {
 		public final int userId;
 		public final String username;
 		public final String displayName;
-		private Session(UUID sessionId, int userId, String username, String displayName) {
+		public final boolean admin;
+		private Session(UUID sessionId, int userId, String username, String displayName, boolean admin) {
 			this.sessionId = sessionId;
 			this.userId = userId;
 			this.username = username;
 			this.displayName = displayName;
+			this.admin = admin;
 		}
 	}
 
@@ -67,13 +88,13 @@ public class SessionHelper {
 								if (MessageDigest.isEqual(hmac, theirHmac)) {
 									try (Connection c = Partyflow.sql.getConnection()) {
 										try (PreparedStatement ps = c.prepareStatement(
-												"SELECT sessions.user_id, users.display_name, users.username FROM sessions JOIN users ON users.user_id = sessions.user_id "
+												"SELECT sessions.user_id, users.display_name, users.username, users.admin FROM sessions JOIN users ON users.user_id = sessions.user_id "
 												+ "WHERE session_id = ? AND expires > NOW();")) {
 											ps.setString(1, sessionId.toString());
 											try (ResultSet rs = ps.executeQuery()) {
 												if (rs.first()) {
 													int uid = rs.getInt("user_id");
-													Session s = new Session(sessionId, uid, rs.getString("users.username"), rs.getString("users.display_name"));
+													Session s = new Session(sessionId, uid, rs.getString("users.username"), rs.getString("users.display_name"), rs.getBoolean("users.admin"));
 													req.setAttribute(SessionHelper.class.getName()+".cache", s);
 													return s;
 												} else {

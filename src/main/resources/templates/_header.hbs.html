@@ -1,12 +1,13 @@
 <div class="header">
-	<a href="{{root}}">Partyflow!</a>
-	<a href="{{root}}releases">All releases</a>
-	{{#loggedIn}}
-		Logged in as {{displayName}}
-		<form class="inline" action="{{root}}logout" method="POST">
-			<input type="hidden" name="csrf" value="{{csrf}}"/>
-			<button class="link">Log out</button>
-		</form>
-	{{/loggedIn}}
-	{{^loggedIn}}<a href="{{root}}login">Log in</a>{{/loggedIn}}
+	<a href="{{root}}"><img class="logo" src="{{root}}static/partyflow-horrible.svg" alt="Partyflow!"/></a>
+	<div class="pull-right">
+		{{#loggedIn}}
+			Logged in as {{displayName}} {{#admin}}<img class="badge" title="Administrator" src="{{root}}static/admin.svg"/>{{/admin}}<br/>
+			<form class="inline" action="{{root}}logout" method="POST">
+				<input type="hidden" name="csrf" value="{{csrf}}"/>
+				<button class="link">Log out</button>
+			</form>
+		{{/loggedIn}}
+		{{^loggedIn}}<a href="{{root}}login">Log in</a>{{/loggedIn}}
+	</div>
 </div>

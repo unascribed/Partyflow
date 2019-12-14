@@ -19,53 +19,44 @@
 
 package com.unascribed.partyflow.handler;
 
+import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SimpleHandler;
-import com.unascribed.partyflow.Version;
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 
-import com.google.common.io.ByteStreams;
-
-public class StaticHandler extends SimpleHandler implements GetOrHead {
+public class IndexHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
-		URL u = ClassLoader.getSystemResource("static/"+path);
-		if (u != null) {
-			URLConnection conn = u.openConnection();
-			String mime;
-			if (path.endsWith(".svg")) {
-				mime = "image/svg+xml";
-			} else if (path.endsWith(".js")) {
-				mime = "application/javascript";
-			} else if (path.endsWith(".css")) {
-				mime = "text/css";
-			} else {
-				mime = conn.getContentType();
+		String def = "<div class=\"message error\">missingno.</div>";
+		String siteDescription;
+		try (Connection c = Partyflow.sql.getConnection()) {
+			try (Statement s = c.createStatement()) {
+				try (ResultSet rs = s.executeQuery("SELECT value FROM meta WHERE name = 'site_description';")) {
+					if (rs.first()) {
+						siteDescription = rs.getString("value");
+					} else {
+						siteDescription = def;
+					}
+				}
 			}
-			res.setHeader("Content-Type", mime);
-			res.setHeader("Content-Length", Long.toString(conn.getContentLengthLong()));
-			if ("quine.zip".equals(path)) {
-				res.setHeader("Content-Disposition", "attachment; filename=Partyflow-src-v"+Version.FULL+".zip");
-			}
-			res.setStatus(HTTP_200_OK);
-			if (!head) {
-				conn.connect();
-				ByteStreams.copy(conn.getInputStream(), res.getOutputStream());
-			}
-			res.getOutputStream().close();
-		} else {
-			res.sendError(HTTP_404_NOT_FOUND);
+		} catch (SQLException e) {
+			throw new ServletException(e);
 		}
+		MustacheHandler.serveTemplate(req, res, "index.hbs.html", new Object() {
+			String site_description = siteDescription;
+		});
 	}
 
 }

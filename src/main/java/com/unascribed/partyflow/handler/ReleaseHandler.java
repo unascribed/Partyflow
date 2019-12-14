@@ -34,6 +34,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Whitelist;
+
+import com.overzealous.remark.Remark;
 import com.unascribed.partyflow.MultipartData;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
@@ -43,11 +49,13 @@ import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
 
 import com.google.common.base.Objects;
-import com.google.common.base.Strings;;
+import com.google.common.base.Strings;
 
 public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
 
 	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/publish|/unpublish|/edit)?$");
+
+	private final Remark remark = new Remark(com.overzealous.remark.Options.github());
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
@@ -75,15 +83,24 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					// slug is UNIQUE, we don't need to handle more than one row
 					if (rs.first()) {
 						res.setStatus(HTTP_200_OK);
+						boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId;
+						String _descriptionMd;
+						String desc = rs.getString("description");
+						if (_editable) {
+							_descriptionMd = remark.convert(desc);
+						} else {
+							_descriptionMd = null;
+						}
 						MustacheHandler.serveTemplate(req, res, "release.hbs.html", new Object() {
 							String title = rs.getString("title");
 							String subtitle = rs.getString("subtitle");
 							String creator = rs.getString("users.display_name");
 							String slug = slugs;
-							boolean editable = s != null && rs.getInt("releases.user_id") == s.userId;
+							boolean editable = _editable;
 							boolean published = rs.getBoolean("published");
 							String art = Partyflow.resolveArt(rs.getString("art"));
-							String description = rs.getString("description");
+							String description = desc;
+							String descriptionMd = _descriptionMd;
 							String error = query.get("error");
 						});
 					} else {
@@ -108,7 +125,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				return;
 			}
 			String csrf = params.get("csrf");
-			if (!Partyflow.isCsrfTokenValid(csrf)) {
+			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
 				res.sendRedirect(Partyflow.config.http.path);
 				return;
 			}
@@ -148,7 +165,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				return;
 			}
 			String csrf = params.get("csrf");
-			if (!Partyflow.isCsrfTokenValid(csrf)) {
+			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
 				res.sendRedirect(Partyflow.config.http.path);
 				return;
 			}
@@ -188,14 +205,22 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				return;
 			}
 			String csrf = data.getPartAsString("csrf", 64);
-			if (!Partyflow.isCsrfTokenValid(csrf)) {
+			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
 				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Invalid CSRF token");
 				return;
 			}
 			Part art = data.getPart("art");
 			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
 			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
-			String description = Strings.nullToEmpty(data.getPartAsString("description", 65536));
+			String descriptionMd = data.getPartAsString("descriptionMd", 65536);
+			String description;
+			if (descriptionMd != null) {
+				Parser parser = Parser.builder().build();
+				HtmlRenderer rend = HtmlRenderer.builder().build();
+				description = sanitizeHtml(rend.render(parser.parse(descriptionMd)));
+			} else {
+				description = sanitizeHtml(Strings.nullToEmpty(data.getPartAsString("description", 65536)));
+			}
 			if (title.trim().isEmpty()) {
 				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Title is required");
 				return;
@@ -285,6 +310,10 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 		} else {
 			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
 		}
+	}
+
+	private String sanitizeHtml(String html) {
+		return Jsoup.clean(html, Whitelist.relaxed().removeTags("img"));
 	}
 
 }

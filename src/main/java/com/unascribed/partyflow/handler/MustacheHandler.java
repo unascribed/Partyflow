@@ -81,9 +81,10 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		Session session = SessionHelper.getSession(req);
 		arr[1] = new Object() {
 			boolean loggedIn = session != null;
+			boolean admin = session != null && session.admin;
 			String username = session == null ? null : session.username;
 			String displayName = session == null ? null : session.displayName;
-			String csrf = session != null ? Partyflow.allocateCsrfToken() : null;
+			String csrf = session != null ? Partyflow.allocateCsrfToken(session) : null;
 		};
 		System.arraycopy(context, 0, arr, 2, context.length);
 		(Partyflow.config.http.cacheTemplates ? mustache : new DefaultMustacheFactory("templates"))

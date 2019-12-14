@@ -2,6 +2,7 @@
 <html>
 <head>
 	{{> _head.hbs.html}}
+	<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
 </head>
 <body>
 	{{> _header.hbs.html}}
@@ -11,7 +12,7 @@
 			<div class="message">
 				You have JavaScript disabled. This page does not have load-bearing JavaScript, so things
 				will more or less work correctly. Changing the album art will not be immediately visible,
-				however.
+				however, and the description editor uses Markdown and doesn't auto-resize.
 			</div>
 		</noscript>
 		{{#error}}
@@ -25,7 +26,7 @@
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{creator}}</div>
 			<i style="display: inline-block; margin: 16px">Tracks go here</i>
-			<p class="description">{{description}}</p>
+			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}
 			<form class="inline" method="POST" enctype="multipart/form-data" action="{{root}}releases/{{slug}}/edit">
@@ -40,7 +41,10 @@
 					<img src="{{root}}static/list-add.svg"/>
 					Add track
 				</button>
-				<textarea name="description" maxlength="16384" class="ghost-input description" placeholder="Description">{{description}}</textarea>
+				<div class="md-wrapper">
+				<textarea rows="16" id="descriptionMd" name="descriptionMd" maxlength="16384" class="ghost-input description" placeholder="Description">{{descriptionMd}}</textarea>
+				</div>
+				<div id="quillTarget" class="description" style="display: none">{{{description}}}</div>
 				<div class="buttons" style="z-index: 2">
 					<button type="submit">
 						<img src="{{root}}static/save.svg"/>
@@ -74,6 +78,8 @@
 					</form>
 				{{/published}}
 			</div>
+			<script src="{{root}}static/quill.min.js"></script>
+			<script src="{{root}}assets/description-editor.js"></script>
 			<script src="{{root}}assets/edit-art.js"></script>
 			{{/editable}}
 		</div>

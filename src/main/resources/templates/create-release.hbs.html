@@ -7,23 +7,11 @@
 	{{> _header.hbs.html}}
 	<div class="inner">
 		<h1>Create a new release</h1>
-		<noscript>
-			<div class="message">
-				You have JavaScript disabled. This page does not have load-bearing JavaScript, so things
-				will more or less work correctly. Changing the album art will not be immediately visible,
-				however.
-			</div>
-		</noscript>
-		<form class="release editing unpublished" method="POST" enctype="multipart/form-data">
+		<form class="release editing" method="POST" enctype="multipart/form-data">
 			<input type="hidden" name="csrf" value="{{csrf}}"/>
-			<div class="art" style="background-image: url({{root}}static/default_art.svg)">
-				<input name="art" type="file" class="replaceArt" accept=".png,.jpeg,.jpg,.jpe,.jfif,image/png,image/jpeg"/>
-			</div>
 			<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title"/>
 			<input name="subtitle" maxlength="255" type="text" class="ghost-input subtitle" placeholder="Subtitle"/>
 			<div class="creator">By {{displayName}}</div>
-			<i style="display: inline-block; margin: 16px">Tracks can be added later.</i>
-			<textarea name="description" maxlength="16384" class="ghost-input description" placeholder="Description"></textarea>
 			<button style="margin-top: 8px" class="good" type="submit">
 				<img src="{{root}}static/plus.svg"/>
 				Create

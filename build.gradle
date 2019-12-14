@@ -19,6 +19,8 @@ dependencies {
 	implementation 'com.github.spullara.mustache.java:compiler:0.9.6'
 	implementation 'org.slf4j:slf4j-api:1.7.9'
 	implementation 'org.mariadb.jdbc:mariadb-java-client:2.4.4'
+	implementation 'org.jsoup:jsoup:1.12.1'
+	implementation 'com.atlassian.commonmark:commonmark:0.13.1'
 }
 
 license {
@@ -33,6 +35,9 @@ license {
 	}
 	matching('**/com/lambdaworks/**') {
 		header = file('headers/scrypt.txt')
+	}
+	matching('**/com/overzealous/**') {
+		header = file('headers/remark.txt')
 	}
 	header = file('headers/partyflow.txt')
 	

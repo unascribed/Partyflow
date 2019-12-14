@@ -1,8 +1,27 @@
 CREATE TABLE meta (
 	name VARCHAR(255) PRIMARY KEY,
-	value VARCHAR(255)
+	value CLOB NOT NULL
 );
 INSERT INTO meta (name, value) VALUES ('data_version', '0');
+INSERT INTO meta (name, value) VALUES ('site_description', '
+<h1>Welcome to Partyflow!</h1>
+<p>
+	Partyflow is a self-hostable media transcoding service and release manager, styled after
+	Bandcamp. It&apos;s free and open source. If you&apos;re reading this, congratulations! Your
+	Partyflow installation is working.
+</p>
+<p>
+	Partyflow handles the nitty-gritty of transcoding audio files for you with a fast glossy
+	JavaScript-optional interface, and only encodes media to a given format when someone
+	requests it for the first time. It will even delete media transcodes that haven&apos;t been
+	downloaded in a while to save storage. (This actively wastes money on Wasabi, so, there
+	is a config flag to turn this off if you&apos;re using Wasabi.)
+</p>
+<p>
+	You can change what this homepage says in the admin panel.
+</p>
+');
+
 CREATE TABLE releases (
 	release_id   BIGINT AUTO_INCREMENT PRIMARY KEY,
 	user_id      BIGINT NOT NULL,
@@ -17,14 +36,14 @@ CREATE TABLE releases (
 	published_at TIMESTAMP
 );
 CREATE TABLE tracks (
-	track_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
-	release_id  BIGINT NOT NULL,
-	title       VARCHAR(255) NOT NULL,
-	subtitle    VARCHAR(255) NOT NULL,
-	slug        VARCHAR(255) NOT NULL UNIQUE,
-	art         VARCHAR(255),
-	master      VARCHAR(255) NOT NULL,
-	description CLOB NOT NULL,
+	track_id     BIGINT AUTO_INCREMENT PRIMARY KEY,
+	release_id   BIGINT NOT NULL,
+	title        VARCHAR(255) NOT NULL,
+	subtitle     VARCHAR(255) NOT NULL,
+	slug         VARCHAR(255) NOT NULL UNIQUE,
+	art          VARCHAR(255),
+	master       VARCHAR(255) NOT NULL,
+	description  CLOB NOT NULL,
 	created_at   TIMESTAMP NOT NULL,
 	last_updated TIMESTAMP NOT NULL
 );

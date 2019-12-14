@@ -67,8 +67,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.asyncsimplelog.AsyncSimpleLog;
+import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.handler.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.FilesHandler;
+import com.unascribed.partyflow.handler.IndexHandler;
 import com.unascribed.partyflow.handler.LoginHandler;
 import com.unascribed.partyflow.handler.LogoutHandler;
 import com.unascribed.partyflow.handler.MustacheHandler;
@@ -257,10 +259,11 @@ public class Partyflow {
 				setHeader("Server", "Partyflow v"+Version.FULL),
 				setHeader("Powered-By", poweredBy),
 				new SetupHandler().asJettyHandler(),
-				handler("", new MustacheHandler("index.hbs.html")),
+				handler("", new IndexHandler()),
 				handler("assets/partyflow.css", new MustacheHandler("partyflow.hbs.css")),
 				handler("assets/password-hasher.js", new MustacheHandler("password-hasher.hbs.js")),
 				handler("assets/edit-art.js", new MustacheHandler("edit-art.hbs.js")),
+				handler("assets/description-editor.js", new MustacheHandler("description-editor.hbs.js")),
 				handler("create-release", new CreateReleaseHandler()),
 				handler("login", new LoginHandler()),
 				handler("logout", new LogoutHandler()),
@@ -340,18 +343,20 @@ public class Partyflow {
 
 	// misc utilities
 
-	public static String allocateCsrfToken() {
+	public static String allocateCsrfToken(Session s) {
+		if (s == null) throw new IllegalArgumentException("Cannot allocate a CSRF token for a null session");
 		String token;
 		synchronized (secureRand) {
 			token = randomString(secureRand, 32);
 		}
-		csrfTokens.put(token, System.currentTimeMillis()+(30*60*1000));
+		csrfTokens.put(s.sessionId+":"+token, System.currentTimeMillis()+(30*60*1000));
 		return token;
 	}
 
-	public static boolean isCsrfTokenValid(String token) {
+	public static boolean isCsrfTokenValid(Session s, String token) {
 		if (token == null) return false;
-		Long l = csrfTokens.get(token);
+		if (s == null) return false;
+		Long l = csrfTokens.get(s.sessionId+":"+token);
 		return l != null && l > System.currentTimeMillis();
 	}
 

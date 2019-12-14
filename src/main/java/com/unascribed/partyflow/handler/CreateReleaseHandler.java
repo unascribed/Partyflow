@@ -74,14 +74,13 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		Session session = SessionHelper.getSession(req);
 		if (session != null) {
 			String csrf = data.getPartAsString("csrf", 64);
-			if (!Partyflow.isCsrfTokenValid(csrf)) {
+			if (!Partyflow.isCsrfTokenValid(session, csrf)) {
 				res.sendRedirect(Partyflow.config.http.path);
 				return;
 			}
 			Part art = data.getPart("art");
 			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
 			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
-			String description = Strings.nullToEmpty(data.getPartAsString("description", 65536));
 			if (title.trim().isEmpty()) {
 				res.setStatus(HTTP_400_BAD_REQUEST);
 				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
@@ -103,25 +102,6 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 				});
 				return;
 			}
-			if (description.length() > 16384) {
-				res.setStatus(HTTP_400_BAD_REQUEST);
-				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-					String error = "Description is too long";
-				});
-				return;
-			}
-			String artPath = null;
-			if (art != null && art.getSize() > 4) {
-				try {
-					artPath = processArt(art);
-				} catch (IllegalArgumentException e) {
-					res.setStatus(HTTP_400_BAD_REQUEST);
-					MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-						String error = e.getMessage();
-					});
-					return;
-				}
-			}
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String slug = Partyflow.sanitizeSlug(title);
 				try (PreparedStatement s = c.prepareStatement("SELECT 1 FROM releases WHERE slug = ?;")) {
@@ -140,14 +120,13 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 					slug = slug+suffix;
 				}
 				try (PreparedStatement s = c.prepareStatement(
-						"INSERT INTO releases (user_id, title, subtitle, slug, published, art, description, created_at, last_updated) "
-						+ "VALUES (?, ?, ?, ?, FALSE, ?, ?, NOW(), NOW());")) {
+						"INSERT INTO releases (user_id, title, subtitle, slug, description, published, created_at, last_updated) "
+						+ "VALUES (?, ?, ?, ?, ?, FALSE, NOW(), NOW());")) {
 					s.setInt(1, session.userId);
 					s.setString(2, title);
 					s.setString(3, subtitle);
 					s.setString(4, slug);
-					s.setString(5, artPath);
-					s.setString(6, description);
+					s.setString(5, "");
 					s.executeUpdate();
 				}
 				res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);

@@ -6,9 +6,20 @@
 <body>
 	{{> _header.hbs.html}}
 	<div class="inner">
-		<h1>Home page</h1>
-		<p>I'll make this better later.</p>
-		<a href="{{root}}create-release">Create a new release</a>
+		{{#admin}}
+			
+		{{/admin}}
+		{{{site_description}}}
+		<h2>Things you can do</h2>
+		<ul>
+			{{#admin}}
+			<li><a href="{{root}}admin">Administrate Partyflow</a> <img class="badge" title="Because you're logged in as an admin" src="{{root}}static/admin.svg"/></li>
+			{{/admin}}
+			{{#loggedIn}}
+			<li><a href="{{root}}create-release">Create a new release</a> <img class="badge" title="Because you're logged in" src="{{root}}static/user.svg"/></li>
+			{{/loggedIn}}
+			<li><a href="{{root}}releases">Browse releases</a></li>
+		</ul>
 	</div>
 	{{> _footer.hbs.html}}
 </body>
