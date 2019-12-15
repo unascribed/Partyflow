@@ -200,6 +200,13 @@ button:not([class^='ql-']) img {
 	opacity: 0.5;
 }
 
+code {
+	background: rgba(192, 0, 255, 0.2);
+	padding: 4px;
+	border-radius: 2px;
+	border: 1px #9C27B0 solid;
+}
+
 .releases .release {
 	margin-bottom: 8px;
 }

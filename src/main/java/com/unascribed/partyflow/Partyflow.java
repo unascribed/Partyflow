@@ -273,6 +273,7 @@ public class Partyflow {
 				handler("files/", new FilesHandler())
 			);
 		server.setHandler(hc);
+		server.setErrorHandler(new PartyflowErrorHandler());
 		if (!"/dev/null".equals(config.http.accessLog)) {
 			server.setRequestLog(new CustomRequestLog(new AsyncRequestLogWriter(config.http.accessLog), CustomRequestLog.EXTENDED_NCSA_FORMAT));
 		}
@@ -319,10 +320,15 @@ public class Partyflow {
 		sched.scheduleWithFixedDelay(() -> {
 			Iterator<Long> i = csrfTokens.values().iterator();
 			long now = System.currentTimeMillis();
+			int removed = 0;
 			while (i.hasNext()) {
 				if (i.next() < now) {
 					i.remove();
+					removed++;
 				}
+			}
+			if (removed > 0) {
+				log.debug("Pruned {} expired CSRF tokens", removed);
 			}
 		}, 15, 15, TimeUnit.MINUTES);
 	}

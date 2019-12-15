@@ -2,7 +2,10 @@
 <html>
 <head>
 	{{> _head.hbs.html}}
-	<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
+	<title>{{title}} - Partyflow</title>
+	{{#editable}}
+		<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
+	{{/editable}}
 </head>
 <body>
 	{{> _header.hbs.html}}

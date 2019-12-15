@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+	{{> _head.hbs.html}}
+	<title>{{code}} {{msg}} - Partyflow</title>
+</head>
+<body>
+	{{> _header.hbs.html}}
+	<div class="inner">
+		<h2>{{code}} &mdash; {{msg}}</h2>
+		<p>
+			Whoops. Something bad happened; this page should never appear.
+		</p>
+		{{#exception}}
+		{{#admin}}
+		<p>
+			Check the Partyflow log for more details. This error's magic string is <code>{{magic_string}}</code>.
+		</p>
+		{{/admin}}
+		{{^admin}}
+		<p>
+			Contact an admin of this instance and give them this magic string: <code>{{magic_string}}</code>.
+		</p>
+		{{/admin}}
+		{{/exception}}
+	</div>
+	{{> _footer.hbs.html}}
+</body>
+</html>

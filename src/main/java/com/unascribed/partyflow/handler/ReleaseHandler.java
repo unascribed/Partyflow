@@ -53,7 +53,7 @@ import com.google.common.base.Strings;
 
 public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
 
-	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/publish|/unpublish|/edit)?$");
+	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/publish|/unpublish|/edit|/add-track)?$");
 
 	private final Remark remark = new Remark(com.overzealous.remark.Options.github());
 
