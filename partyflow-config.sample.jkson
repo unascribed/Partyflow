@@ -6,6 +6,8 @@ http: {
 	accessLog: "./access.log"
 	// Should be left to true unless you're doing development and are changing templates
 	cacheTemplates: true
+	// The absolute public URL this instance is accessible at, excluding the root path
+	publicUrl: "http://localhost:3000"
 }
 logger: {
 	// TRACE, DEBUG, INFO, WARN, or ERROR
@@ -47,19 +49,19 @@ storage: {
 	publicUrlPattern: "files/{}"
 }
 programs: {
-	// Shell syntax. Using some form of sandboxing (e.g. firejail) is recommended in production.
-	// An example firejail config file is available in the Partyflow repository.
-	// All IO with FFmpeg is done via stdin and stdout; it does not need access to media files.
-	ffmpeg: "ffmpeg"
+	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
+	// firejail) is recommended in production. An example firejail config file is available in the
+	// Partyflow repository.
+	ffmpeg: ["ffmpeg"]
 	// Example secured ffmpeg execution (requires a user with NOPASSWD sudo permission for user nobody):
-	//ffmpeg: "/usr/bin/sudo -u nobody /usr/bin/env -i /usr/bin/firejail --profile=/opt/partyflow/firejail-restrictive.profile /usr/bin/ffmpeg"
+	//ffmpeg: ["/usr/bin/sudo" "-u" "nobody" "/usr/bin/env" "-i" "/usr/bin/firejail" "--profile=/opt/partyflow/firejail-restrictive.profile" "/usr/bin/ffmpeg"]
 	
 	// Shell syntax. Using some form of sandboxing (e.g. firejail) is recommended in production.
 	// An example firejail config file is available in the Partyflow repository.
 	// All IO with ImageMagick is done via stdin and stdout; it does not need access to image files.
-	magickConvert: "convert"
+	magickConvert: ["convert"]
 	// For newer versions of ImageMagick:
-	//magickConvert: "magick convert"
+	//magickConvert: ["magick" "convert"]
 	// Example secured magick execution (requires a user with NOPASSWD sudo permission for user nobody):
-	//magickConvert: "/usr/bin/sudo -u nobody /usr/bin/env -i /usr/bin/firejail --profile=/opt/partyflow/firejail-restrictive.profile /usr/bin/magick convert"
+	//magickConvert: ["/usr/bin/sudo" "-u" "nobody" "/usr/bin/env" "-i" "/usr/bin/firejail" "--profile=/opt/partyflow/firejail-restrictive.profile" "/usr/bin/magick" "convert"]
 }

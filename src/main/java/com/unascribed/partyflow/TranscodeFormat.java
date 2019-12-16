@@ -21,6 +21,8 @@ package com.unascribed.partyflow;
 
 import static com.unascribed.partyflow.TranscodeFormat.Usage.*;
 
+import com.google.common.base.Splitter;
+
 public enum TranscodeFormat {
 	// download formats - exposed to user
 	          FLAC( 0,      "FLAC", DOWNLOAD,   0, "flac",  "audio/flac"               , "-f flac -codec:a flac"                ),
@@ -37,6 +39,8 @@ public enum TranscodeFormat {
 	 OGG_VORBIS_72( 9,        null,   STREAM,  72,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg  -codec:a libvorbis  -b:a 72k" ),
 	       MP3_128(10,        null,   STREAM, 128,  "mp3",  "audio/mpeg"               , "-f mp3  -codec:a libmp3lame -b:a 128k"),
 	;
+
+	private static final Splitter SPACE_SPLITTER = Splitter.on(' ').omitEmptyStrings().trimResults();
 
 	public enum Usage {
 		DOWNLOAD,
@@ -69,6 +73,7 @@ public enum TranscodeFormat {
 	private final String fileExt;
 	private final String mimeType;
 	private final String ffmpegOptions;
+	private String[] ffmpegArguments;
 
 
 	private TranscodeFormat(int databaseId, String name, Usage usage, int bitrateInK, String fileExt, String mimeType, String ffmpegOptions) {
@@ -107,5 +112,16 @@ public enum TranscodeFormat {
 
 	public String getFFmpegOptions() {
 		return ffmpegOptions;
+	}
+
+	public String[] getFFmpegArguments() {
+		if (ffmpegArguments == null) {
+			synchronized (this) {
+				if (ffmpegArguments == null) {
+					ffmpegArguments = SPACE_SPLITTER.splitToList(ffmpegOptions).toArray(new String[0]);
+				}
+			}
+		}
+		return ffmpegArguments;
 	}
 }

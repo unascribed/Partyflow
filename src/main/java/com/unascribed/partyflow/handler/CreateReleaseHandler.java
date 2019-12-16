@@ -78,7 +78,6 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 				res.sendRedirect(Partyflow.config.http.path);
 				return;
 			}
-			Part art = data.getPart("art");
 			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
 			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
 			if (title.trim().isEmpty()) {
@@ -154,7 +153,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		} else {
 			throw new IllegalArgumentException("Invalid file format for art; only PNG and JPEG are accepted");
 		}
-		Process magick = Partyflow.magick_convert("- -strip -resize x576> -quality 80 "+format+":-");
+		Process magick = Partyflow.magick_convert("-", "-strip", "-resize", "x576>", "-quality", "80", format+":-");
 		ByteStreams.copy(art.getInputStream(), magick.getOutputStream());
 		magick.getOutputStream().close();
 		byte[] imgData = ByteStreams.toByteArray(magick.getInputStream());

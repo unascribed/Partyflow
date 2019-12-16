@@ -1,7 +1,7 @@
-# Firejail config file that prevents pretty much everything
-# Works fine for using FFmpeg and ImageMagick via stdin/stdout
+# Firejail config file for sandboxing FFmpeg and ImageMagick
+# (WIP, mostly untested. Will get this working "for sure" soon.)
 
-# quiet
+quiet
 
 caps.drop all
 net none
@@ -18,9 +18,13 @@ shell none
 seccomp
 protocol unix
 
+nice 15
+
 private
 private-bin ffmpeg convert convert-im6.q16 magick
 private-dev
 private-tmp
+
+whitelist /tmp/partyflow/work
 
 memory-deny-write-execute

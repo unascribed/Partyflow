@@ -112,8 +112,8 @@ public class SimpleHandler {
     public static final int HTTP_511_NETWORK_AUTHENTICATION_REQUIRED = 511;
 
 	private static final Joiner COMMA_JOINER = Joiner.on(", ");
-	private static final File TEMP_DIR = Files.createTempDir();
-	private static final MultipartConfigElement MP_CFG = new MultipartConfigElement(TEMP_DIR.getAbsolutePath(), 32L*1024L*1024L, 34L*1024L*1024L, 2*1024*1024);;
+	protected static final File TEMP_DIR = Files.createTempDir();
+	private static final MultipartConfigElement MP_CFG = new MultipartConfigElement(TEMP_DIR.getAbsolutePath(), 128L*1024L*1024L, 132L*1024L*1024L, 2*1024*1024);
 
 	private static final MapSplitter URLENCODED_SPLITTER = Splitter.on('&').withKeyValueSeparator('=');
 

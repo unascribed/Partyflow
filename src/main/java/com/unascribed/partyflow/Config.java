@@ -30,6 +30,7 @@ public final class Config {
 		public String path;
 		public String accessLog;
 		public boolean cacheTemplates;
+		public String publicUrl;
 	}
 
 	public LoggerSection logger;
@@ -68,8 +69,8 @@ public final class Config {
 
 	public ProgramsSection programs;
 	public static final class ProgramsSection {
-		public String ffmpeg;
-		public String magickConvert;
+		public String[] ffmpeg;
+		public String[] magickConvert;
 	}
 
 }

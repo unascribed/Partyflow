@@ -8,6 +8,13 @@
 	{{> _header.hbs.html}}
 	<div class="inner">
 		<h2>{{code}} &mdash; {{msg}}</h2>
+		<p>
+			Something bad happened. The fact this isn't a 5XX class error means it <i>maybe</i>
+			wasn't on our end? Try your action again, and if you keep getting this page and think
+			you shouldn't,
+			{{#admin}}file a <a href="https://github.com/unascribed/Partyflow/issues">bug report</a>.{{/admin}}
+			{{^admin}}contact an admin.{{/admin}}
+		</p>
 	</div>
 	{{> _footer.hbs.html}}
 </body>

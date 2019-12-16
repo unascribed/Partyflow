@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.BindException;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.Key;
 import java.security.NoSuchAlgorithmException;
@@ -36,6 +38,7 @@ import java.sql.Statement;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
@@ -78,10 +81,13 @@ import com.unascribed.partyflow.handler.ReleaseHandler;
 import com.unascribed.partyflow.handler.ReleasesHandler;
 import com.unascribed.partyflow.handler.SetupHandler;
 import com.unascribed.partyflow.handler.StaticHandler;
+import com.unascribed.partyflow.handler.TrackHandler;
+import com.unascribed.partyflow.handler.TranscodeHandler;
 import com.unascribed.random.RandomXoshiro256StarStar;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
@@ -104,6 +110,8 @@ public class Partyflow {
 	public static String storageContainer;
 	public static String setupToken;
 	public static Key sessionSecret;
+
+	public static URI publicUri;
 
 	public static ConcurrentMap<String, Long> csrfTokens = Maps.newConcurrentMap();
 
@@ -151,6 +159,12 @@ public class Partyflow {
 		AsyncSimpleLog.setAnsi(config.logger.color);
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.eclipse\\.jetty"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
+		try {
+			publicUri = new URI(config.http.publicUrl);
+		} catch (URISyntaxException e1) {
+			log.error("{} does not appear to be a valid URI", config.http.publicUrl);
+			return;
+		}
 
 		byte[] sessionSecretBytes = config.security.sessionSecret.getBytes(Charsets.UTF_8);
 		sessionSecret = new SecretKey() {
@@ -269,6 +283,8 @@ public class Partyflow {
 				handler("logout", new LogoutHandler()),
 				handler("releases", new ReleasesHandler()),
 				handler("releases/", new ReleaseHandler()),
+				handler("track/", new TrackHandler()),
+				handler("download/", new TranscodeHandler()),
 				handler("static/", new StaticHandler()),
 				handler("files/", new FilesHandler())
 			);
@@ -400,16 +416,41 @@ public class Partyflow {
 		if (art == null) {
 			return config.http.path+"static/default_art.svg";
 		} else {
-			if (config.storage.publicUrlPattern.startsWith("/")) {
-				return config.storage.publicUrlPattern.replace("{}", art);
-			} else {
-				return config.http.path+config.storage.publicUrlPattern.replace("{}", art);
-			}
+			return resolveBlob(art);
 		}
 	}
 
-	public static Process magick_convert(String commandLine) throws IOException {
-		return Runtime.getRuntime().exec(config.programs.magickConvert+" "+commandLine);
+	public static String resolveBlob(String blob) {
+		if (config.storage.publicUrlPattern.startsWith("/")) {
+			return config.storage.publicUrlPattern.replace("{}", blob);
+		} else {
+			return config.http.path+config.storage.publicUrlPattern.replace("{}", blob);
+		}
+	}
+
+	private static String[] combine(String[] a, Object[] b) {
+		List<String> out = Lists.newArrayListWithExpectedSize(a.length+b.length);
+		for (String s : a) {
+			out.add(s);
+		}
+		for (Object o : b) {
+			if (o instanceof String[]) {
+				for (String s : (String[])o) {
+					out.add(s);
+				}
+			} else {
+				out.add(String.valueOf(o));
+			}
+		}
+		return out.toArray(new String[out.size()]);
+	}
+
+	public static Process magick_convert(Object... arguments) throws IOException {
+		return Runtime.getRuntime().exec(combine(config.programs.magickConvert, arguments));
+	}
+
+	public static Process ffmpeg(Object... arguments) throws IOException {
+		return Runtime.getRuntime().exec(combine(config.programs.ffmpeg, arguments));
 	}
 
 }

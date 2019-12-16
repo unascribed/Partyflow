@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.handler.MustacheHandler;
+import com.unascribed.partyflow.handler.UserVisibleException;
 
 public class PartyflowErrorHandler extends ErrorHandler {
 
@@ -31,7 +32,25 @@ public class PartyflowErrorHandler extends ErrorHandler {
 		String magic = Partyflow.randomString(16);
 		Throwable cause = (Throwable)req.getAttribute(Dispatcher.ERROR_EXCEPTION);
 		if (cause != null) {
-			log.warn("An error occurred while handling a request to {}\nMagic string, for log searching: {}", baseRequest.getRequestURI(), magic, cause);
+			UserVisibleException uve;
+			if (cause instanceof UserVisibleException) {
+				uve = (UserVisibleException)cause;
+			} else if (cause.getCause() instanceof UserVisibleException) {
+				uve = (UserVisibleException)cause.getCause();
+			} else {
+				uve = null;
+			}
+			if (uve != null) {
+				res.setStatus(uve.getCode());
+				MustacheHandler.serveTemplate(req, res, "user-error.hbs.html", new Object() {
+					int code = uve.getCode();
+					String codeMsg = HttpStatus.getMessage(uve.getCode());
+					String msg = uve.getMessage();
+				});
+				return;
+			} else {
+				log.warn("An error occurred while handling a request to {}\nMagic string, for log searching: {}", baseRequest.getRequestURI(), magic, cause);
+			}
 		}
 		MustacheHandler.serveTemplate(req, res, template, new Object() {
 			int code = res.getStatus();

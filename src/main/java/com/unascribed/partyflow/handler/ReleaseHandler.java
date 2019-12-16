@@ -36,6 +36,9 @@ import javax.servlet.http.Part;
 
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
+import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobAccess;
+import org.jclouds.blobstore.options.PutOptions;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
 
@@ -50,6 +53,7 @@ import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Strings;
+import com.google.common.net.UrlEscapers;
 
 public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
 
@@ -62,55 +66,86 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 			throws IOException, ServletException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
-		if (m.group(2) != null) {
-			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
-			return;
-		}
 		Map<String, String> query = parseQuery(req);
 		Session s = SessionHelper.getSession(req);
-		try (Connection c = Partyflow.sql.getConnection()) {
-			String slugs = m.group(1);
-			String suffix = s == null ? "" : " OR releases.user_id = ?";
-			try (PreparedStatement ps = c.prepareStatement(
-					"SELECT title, subtitle, published, art, description, releases.user_id, users.display_name FROM releases "
-					+ "JOIN users ON releases.user_id = users.user_id "
-					+ "WHERE slug = ? AND (published = true"+suffix+");")) {
-				ps.setString(1, slugs);
-				if (s != null) {
-					ps.setInt(2, s.userId);
-				}
-				try (ResultSet rs = ps.executeQuery()) {
-					// slug is UNIQUE, we don't need to handle more than one row
-					if (rs.first()) {
-						res.setStatus(HTTP_200_OK);
-						boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId;
-						String _descriptionMd;
-						String desc = rs.getString("description");
-						if (_editable) {
-							_descriptionMd = remark.convert(desc);
+		if (m.group(2) == null) {
+			try (Connection c = Partyflow.sql.getConnection()) {
+				String slugs = m.group(1);
+				String suffix = s == null ? "" : " OR releases.user_id = ?";
+				try (PreparedStatement ps = c.prepareStatement(
+						"SELECT title, subtitle, published, art, description, releases.user_id, users.display_name FROM releases "
+						+ "JOIN users ON releases.user_id = users.user_id "
+						+ "WHERE slug = ? AND (published = true"+suffix+");")) {
+					ps.setString(1, slugs);
+					if (s != null) {
+						ps.setInt(2, s.userId);
+					}
+					try (ResultSet rs = ps.executeQuery()) {
+						// slug is UNIQUE, we don't need to handle more than one row
+						if (rs.first()) {
+							res.setStatus(HTTP_200_OK);
+							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId;
+							String _descriptionMd;
+							String desc = rs.getString("description");
+							if (_editable) {
+								_descriptionMd = remark.convert(desc);
+							} else {
+								_descriptionMd = null;
+							}
+							MustacheHandler.serveTemplate(req, res, "release.hbs.html", new Object() {
+								String title = rs.getString("title");
+								String subtitle = rs.getString("subtitle");
+								String creator = rs.getString("users.display_name");
+								String slug = slugs;
+								boolean editable = _editable;
+								boolean published = rs.getBoolean("published");
+								String art = Partyflow.resolveArt(rs.getString("art"));
+								String description = desc;
+								String descriptionMd = _descriptionMd;
+								String error = query.get("error");
+							});
 						} else {
-							_descriptionMd = null;
+							res.sendError(HTTP_404_NOT_FOUND);
+							return;
 						}
-						MustacheHandler.serveTemplate(req, res, "release.hbs.html", new Object() {
-							String title = rs.getString("title");
-							String subtitle = rs.getString("subtitle");
-							String creator = rs.getString("users.display_name");
-							String slug = slugs;
-							boolean editable = _editable;
-							boolean published = rs.getBoolean("published");
-							String art = Partyflow.resolveArt(rs.getString("art"));
-							String description = desc;
-							String descriptionMd = _descriptionMd;
-							String error = query.get("error");
-						});
-					} else {
-						res.sendError(HTTP_404_NOT_FOUND);
-						return;
 					}
 				}
+			} catch (SQLException e) {
+				throw new ServletException(e);
 			}
-		} catch (SQLException e) {
-			throw new ServletException(e);
+		} else if ("/add-track".equals(m.group(2))) {
+			if (s == null) {
+				res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+				return;
+			}
+			try (Connection c = Partyflow.sql.getConnection()) {
+				try (PreparedStatement ps = c.prepareStatement(
+						"SELECT title, subtitle, published, art FROM releases "
+						+ "WHERE slug = ? AND user_id = ?;")) {
+					ps.setString(1, m.group(1));
+					ps.setInt(2, s.userId);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.first()) {
+							MustacheHandler.serveTemplate(req, res, "add-track.hbs.html", new Object() {
+								Object release = new Object() {
+									String slug = m.group(1);
+									String title = rs.getString("title");
+									String subtitle = rs.getString("subtitle");
+									boolean published = rs.getBoolean("published");
+									String art = Partyflow.resolveArt(rs.getString("art"));
+									String error = query.get("error");
+								};
+							});
+						} else {
+							res.sendError(HTTP_404_NOT_FOUND);
+						}
+					}
+				}
+			} catch (SQLException e) {
+				throw new ServletException(e);
+			}
+		} else {
+			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
 		}
 	}
 
@@ -149,6 +184,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						}
 					}
 				}
+				// TODO delete transcodes and masters
 				try (PreparedStatement ps = c.prepareStatement("DELETE FROM releases WHERE release_id = ?; DELETE FROM tracks WHERE release_id = ?;")) {
 					ps.setInt(1, releaseId);
 					ps.setInt(2, releaseId);
@@ -178,15 +214,15 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					ps.setString(2, slug);
 					ps.setInt(3, s.userId);
 					if (ps.executeUpdate() >= 1) {
-						res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
+						res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug));
 					} else {
-						res.sendRedirect(Partyflow.config.http.path+"releases/"+slug+"?error=You're not allowed to do that");
+						res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+"?error=You're not allowed to do that");
 					}
 				}
 			} catch (SQLException e) {
 				throw new ServletException(e);
 			}
-		} else if ("/edit".equals(m.group(2))) {
+		} else if ("/edit".equals(m.group(2)) || "/add-track".equals(m.group(2))) {
 			res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
 		} else {
 			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
@@ -206,7 +242,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 			}
 			String csrf = data.getPartAsString("csrf", 64);
 			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Invalid CSRF token");
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"?error=Invalid CSRF token");
 				return;
 			}
 			Part art = data.getPart("art");
@@ -222,19 +258,19 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				description = sanitizeHtml(Strings.nullToEmpty(data.getPartAsString("description", 65536)));
 			}
 			if (title.trim().isEmpty()) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Title is required");
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"?error=Title is required");
 				return;
 			}
 			if (title.length() > 255) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Title is too long");
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"?error=Title is too long");
 				return;
 			}
 			if (subtitle.length() > 255) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Subtitle is too long");
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"?error=Subtitle is too long");
 				return;
 			}
 			if (description.length() > 16384) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=Description is too long");
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"?error=Description is too long");
 				return;
 			}
 			String artPath = null;
@@ -242,7 +278,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				try {
 					artPath = CreateReleaseHandler.processArt(art);
 				} catch (IllegalArgumentException e) {
-					res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8"));
+					res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8"));
 					return;
 				}
 			}
@@ -257,7 +293,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						if (rs.first()) {
 							published = rs.getBoolean("published");
 						} else {
-							res.sendRedirect(Partyflow.config.http.path+"releases/"+m.group(1)+"?error=You're not allowed to do that");
+							res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"?error=You're not allowed to do that");
 							return;
 						}
 					}
@@ -298,9 +334,106 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					ps.executeUpdate();
 				}
 				if (data.getPart("addTrack") != null) {
-					res.sendRedirect(Partyflow.config.http.path+"releases/"+slug+"/add-track");
+					res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+"/add-track");
 				} else {
-					res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
+					res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug));
+				}
+			} catch (SQLException e) {
+				throw new ServletException(e);
+			}
+		} else if ("/add-track".equals(m.group(2))) {
+			Session s = SessionHelper.getSession(req);
+			if (s == null) {
+				res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+				return;
+			}
+			String csrf = data.getPartAsString("csrf", 64);
+			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Invalid CSRF token");
+				return;
+			}
+			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
+			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
+			if (title.trim().isEmpty()) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Title is required");
+				return;
+			}
+			if (title.length() > 255) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Title is too long");
+				return;
+			}
+			if (subtitle.length() > 255) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Subtitle is too long");
+				return;
+			}
+			Part master = data.getPart("master");
+			if (master == null) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Master is required");
+				return;
+			}
+			String format = "dat";
+			if (master.getSubmittedFileName() != null) {
+				String sfm = master.getSubmittedFileName();
+				int dotIdx = sfm.lastIndexOf('.');
+				if (dotIdx != -1) {
+					format = sfm.substring(dotIdx+1);
+				}
+			}
+			String blobName;
+			do {
+				String rand = Partyflow.randomString(16);
+				blobName = "masters/"+rand.substring(0, 3)+"/"+rand+"."+format;
+			} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
+			Blob blob = Partyflow.storage.blobBuilder(blobName)
+					.payload(master.getInputStream())
+					.cacheControl("private")
+					.contentLength(master.getSize())
+					.contentType("application/octet-stream") // ffmpeg will detect it and masters aren't downloadable
+					.build();
+			Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
+			try (Connection c = Partyflow.sql.getConnection()) {
+				int releaseId;
+				try (PreparedStatement ps = c.prepareStatement("SELECT release_id FROM releases WHERE slug = ? AND user_id = ?;")) {
+					ps.setString(1, m.group(1));
+					ps.setInt(2, s.userId);
+					try (ResultSet rs = ps.executeQuery()) {
+						// slug is UNIQUE, we don't need to handle more than one row
+						if (rs.first()) {
+							releaseId = rs.getInt("release_id");
+						} else {
+							res.sendError(HTTP_404_NOT_FOUND);
+							return;
+						}
+					}
+				}
+				String slug = Partyflow.sanitizeSlug(title);
+				try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM tracks WHERE slug = ? AND release_id = ?;")) {
+					ps.setInt(2, releaseId);
+					int i = 0;
+					String suffix = "";
+					while (true) {
+						if (i > 0) {
+							suffix = "-"+(i+1);
+						}
+						ps.setString(1, slug+suffix);
+						try (ResultSet rs = ps.executeQuery()) {
+							if (!rs.first()) break;
+						}
+						i++;
+					}
+					slug = slug+suffix;
+				}
+				try (PreparedStatement ps = c.prepareStatement(
+						"INSERT INTO tracks (release_id, title, subtitle, slug, master, description, created_at, last_updated) "
+						+ "VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW());")) {
+					ps.setInt(1, releaseId);
+					ps.setString(2, title);
+					ps.setString(3, subtitle);
+					ps.setString(4, slug);
+					ps.setString(5, blobName);
+					ps.setString(6, "");
+					ps.execute();
+					res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(slug));
 				}
 			} catch (SQLException e) {
 				throw new ServletException(e);
@@ -310,6 +443,10 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 		} else {
 			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
 		}
+	}
+
+	private String escPathSeg(String str) {
+		return UrlEscapers.urlPathSegmentEscaper().escape(str);
 	}
 
 	private String sanitizeHtml(String html) {

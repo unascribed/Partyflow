@@ -50,8 +50,8 @@ CREATE TABLE tracks (
 CREATE TABLE transcodes (
 	transcode_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
 	track_id        BIGINT NOT NULL,
-	master          VARCHAR(255),
-	file            VARCHAR(255),
+	format          INT NOT NULL,
+	file            VARCHAR(255) NOT NULL,
 	created_at      TIMESTAMP NOT NULL,
 	last_downloaded TIMESTAMP NOT NULL
 );
@@ -77,9 +77,19 @@ CREATE INDEX releases_user_index
 CREATE INDEX transcodes_track_index
 	ON transcodes (track_id);
 
+CREATE INDEX transcodes_format_index
+	ON transcodes (format);
+CREATE INDEX transcodes_last_downloaded_index
+	ON transcodes (last_downloaded);
+
+CREATE INDEX sessions_expires_index
+	ON sessions (expires);
+
 ALTER TABLE tracks ADD CONSTRAINT tracks_releases
 	FOREIGN KEY (release_id) REFERENCES releases;
 ALTER TABLE releases ADD CONSTRAINT releases_users
 	FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE transcodes ADD CONSTRAINT transcodes_tracks
+	FOREIGN KEY (track_id) REFERENCES tracks;
 ALTER TABLE sessions ADD CONSTRAINT sessions_users
 	FOREIGN KEY (user_id) REFERENCES users;

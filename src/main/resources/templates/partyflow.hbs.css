@@ -4,11 +4,13 @@
 body {
 	background: #263238;
 	color: #ECEFF1;
+	position: relative;
 	line-height: 1.4;
 	min-height: 100vh;
 	margin: 0;
 	font-size: 16px;
 	padding-top: 80px;
+	padding-bottom: 112px;
 	font-family: sans-serif;
 }
 a:link, a:link:visited {
@@ -52,8 +54,11 @@ button {
 footer {
 	border-top: 1px #FFF solid;
 	text-align: right;
-	margin-top: 32px;
+	position: absolute;
+	bottom: 0;
+	left: 0; right: 0;
 	padding: 16px;
+	height: 96px;
 	opacity: 0.7;
 }
 
@@ -75,6 +80,11 @@ a.release {
 	content: "";
 	display: table;
 	clear: both;
+}
+
+.release audio {
+	width: calc(100% - 208px);
+	margin: 16px 0;
 }
 
 .release .art {

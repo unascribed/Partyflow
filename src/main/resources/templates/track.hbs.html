@@ -2,7 +2,7 @@
 <html>
 <head>
 	{{> _head.hbs.html}}
-	<title>{{title}} by {{creator}} - Partyflow</title>
+	<title>{{title}} by {{release.creator}} from {{release.title}} - Partyflow</title>
 	{{#editable}}
 		<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
 	{{/editable}}
@@ -22,13 +22,18 @@
 			<div class="message error">{{error}}</div>
 		{{/error}}
 		{{/editable}}
-		<div class="release solo{{^published}} unpublished{{/published}}{{#editable}} editing{{/editable}}">
+		<div class="release track solo{{^release.published}} unpublished{{/release.published}}{{#editable}} editing{{/editable}}">
 			{{^editable}}
 			<div class="art" style="background-image: url({{art}})"></div>
 			<div class="title">{{title}}</div>
 			<div class="subtitle">{{subtitle}}</div>
-			<div class="creator">By {{creator}}</div>
-			<i style="display: inline-block; margin: 16px">Tracks go here</i>
+			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
+			<audio controls>
+				<source src="{{root}}download/{{slug}}?format=ogg-opus-72" type="audio/ogg; codecs=opus"/>
+				<source src="{{root}}download/{{slug}}?format=caf-opus-72" type="audio/x-caf; codecs=opus"/>
+				<source src="{{root}}download/{{slug}}?format=ogg-vorbis-72" type="audio/ogg; codecs=vorbis"/>
+				<source src="{{root}}download/{{slug}}?format=mp3-128" type="audio/mpeg"/>
+			</audio>
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}
@@ -39,11 +44,13 @@
 				</div>
 				<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title" value="{{title}}"/>
 				<input name="subtitle" maxlength="255" type="text" class="ghost-input subtitle" placeholder="Subtitle" value="{{subtitle}}"/>
-				<div class="creator">By {{creator}}</div>
-				<button class="subdued" style="margin: 8px 0" name="addTrack" type="submit">
-					<img src="{{root}}static/list-add.svg"/>
-					Add track
-				</button>
+				<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
+				<audio controls>
+					<source src="{{root}}download/{{slug}}?format=ogg-opus-72" type="audio/ogg; codecs=opus"/>
+					<source src="{{root}}download/{{slug}}?format=caf-opus-72" type="audio/x-caf; codecs=opus"/>
+					<source src="{{root}}download/{{slug}}?format=ogg-vorbis-72" type="audio/ogg; codecs=vorbis"/>
+					<source src="{{root}}download/{{slug}}?format=mp3-128" type="audio/mpeg"/>
+				</audio>
 				<div class="md-wrapper">
 				<textarea rows="16" id="descriptionMd" name="descriptionMd" maxlength="16384" class="ghost-input description" placeholder="Description">{{descriptionMd}}</textarea>
 				</div>
@@ -53,33 +60,16 @@
 						<img src="{{root}}static/save.svg"/>
 						Save
 					</button>
-					{{^published}}
-						<button class="good" name="publish">
-							<img src="{{root}}static/eye.svg"/>
-							Save & Publish
-						</button>
-					{{/published}}
 				</div>
 			</form>
 			<div class="buttons" style="text-align: right; width: 100%; padding-right: 16px;">
-				{{^published}}
-					<form class="inline" action="{{root}}releases/{{slug}}/delete" method="POST">
-						<input type="hidden" name="csrf" value="{{csrf}}"/>
-						<button class="danger">
-							<img src="{{root}}static/trash.svg"/>
-							Delete
-						</button>
-					</form>
-				{{/published}}
-				{{#published}}
-					<form class="inline" action="{{root}}releases/{{slug}}/unpublish" method="POST">
-						<input type="hidden" name="csrf" value="{{csrf}}"/>
-						<button class="danger">
-							<img src="{{root}}static/eye-off.svg"/>
-							Unpublish
-						</button>
-					</form>
-				{{/published}}
+				<form class="inline" action="{{root}}releases/{{release.slug}}/track/{{slug}}/delete" method="POST">
+					<input type="hidden" name="csrf" value="{{csrf}}"/>
+					<button class="danger">
+						<img src="{{root}}static/trash.svg"/>
+						Delete
+					</button>
+				</form>
 			</div>
 			<script src="{{root}}static/quill.min.js"></script>
 			<script src="{{root}}assets/description-editor.js"></script>
