@@ -36,12 +36,11 @@ public class TrackHandler extends SimpleHandler implements GetOrHead {
 		if (m.group(2) == null) {
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String trackSlug = m.group(1);
-				System.out.println(trackSlug);
 				String suffix = s == null ? "" : " OR releases.user_id = ?";
 				try (PreparedStatement ps = c.prepareStatement(
 						"SELECT tracks.title, tracks.subtitle, releases.published, releases.art, releases.title, releases.slug, "
 								+ "tracks.art, tracks.description, releases.user_id, users.display_name FROM tracks "
-						+ "JOIN releases ON releases.release_id = tracks.track_id "
+						+ "JOIN releases ON releases.release_id = tracks.release_id "
 						+ "JOIN users ON releases.user_id = users.user_id "
 						+ "WHERE tracks.slug = ? AND (releases.published = true"+suffix+");")) {
 					ps.setString(1, trackSlug);
