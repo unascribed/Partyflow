@@ -44,6 +44,7 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Splitter.MapSplitter;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
+import com.google.common.net.UrlEscapers;
 
 public class SimpleHandler {
 
@@ -113,7 +114,7 @@ public class SimpleHandler {
 
 	private static final Joiner COMMA_JOINER = Joiner.on(", ");
 	protected static final File TEMP_DIR = Files.createTempDir();
-	private static final MultipartConfigElement MP_CFG = new MultipartConfigElement(TEMP_DIR.getAbsolutePath(), 128L*1024L*1024L, 132L*1024L*1024L, 2*1024*1024);
+	private static final MultipartConfigElement MP_CFG = new MultipartConfigElement(TEMP_DIR.getAbsolutePath(), 512L*1024L*1024L, 524L*1024L*1024L, 2*1024*1024);
 
 	private static final MapSplitter URLENCODED_SPLITTER = Splitter.on('&').withKeyValueSeparator('=');
 
@@ -293,6 +294,10 @@ public class SimpleHandler {
 		} catch (UnsupportedEncodingException e) {
 			throw new AssertionError(e);
 		}
+	}
+
+	protected static String escPathSeg(String str) {
+		return UrlEscapers.urlPathSegmentEscaper().escape(str);
 	}
 
 }

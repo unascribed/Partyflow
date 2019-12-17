@@ -7,21 +7,18 @@
 <body>
 	{{> _header.hbs.html}}
 	<div class="inner">
-		<h1>Add a track to {{release.title}}</h1>
+		<h1>Add tracks to {{release.title}}</h1>
 		<a href="{{root}}releases/{{release.slug}}">&laquo; Back to {{release.title}}</a>
 		<form class="release editing" method="POST" enctype="multipart/form-data">
 			<input type="hidden" name="csrf" value="{{csrf}}"/>
-			<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title"/>
-			<input name="subtitle" maxlength="255" type="text" class="ghost-input subtitle" placeholder="Subtitle"/>
-			<div class="creator">By {{displayName}} from {{release.title}}</div>
-			<br/>
 			<label for="master">
-				Master
+				Masters
 			</label><br/>
-			<input required id="master" type="file" name="master" accept=".mp3,.ogg,.oga,.mka,.m4a,.aac,.opus,.mp2,.wav,.aiff,.alac,.flac,.webm"/><br/>
+			<input multiple required id="master" type="file" name="master" accept=".mp3,.ogg,.oga,.mka,.m4a,.aac,.opus,.mp2,.wav,.aiff,.alac,.flac,.webm"/><br/>
 			<small>
-				Will be used as the source file for all downloads. Lossless formats preferred, but
-				anything will do.
+				Will be used as the source files for all downloads. Lossless formats preferred, but
+				anything will do. We'll try to figure out track titles and such from metadata or
+				filenames; you can edit all of it after-the-fact.
 			</small><br/>
 			<button style="margin-top: 8px" class="good" type="submit">
 				<img src="{{root}}static/plus.svg"/>

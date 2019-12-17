@@ -159,7 +159,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 					String rand = Partyflow.randomString(16);
 					blobName = "transcodes/"+rand.substring(0, 3)+"/"+rand+"."+fmt.getFileExtension();
 				} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
-				String filename = UrlEscapers.urlFragmentEscaper().escape(title+"."+fmt.getFileExtension()).replace(";", "%3B");
+				String filename = encodeFilename(title+"."+fmt.getFileExtension());
 				Blob transBlob = Partyflow.storage.blobBuilder(blobName)
 						.payload(tmpFile)
 						.contentType(fmt.getMimeType())
@@ -182,6 +182,10 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 		} catch (SQLException e) {
 			throw new ServletException(e);
 		}
+	}
+
+	public static String encodeFilename(String str) {
+		return UrlEscapers.urlFragmentEscaper().escape(str).replace(";", "%3B");
 	}
 
 }

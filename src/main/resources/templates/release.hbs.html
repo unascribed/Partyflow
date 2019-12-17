@@ -40,9 +40,16 @@
 				<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title" value="{{title}}"/>
 				<input name="subtitle" maxlength="255" type="text" class="ghost-input subtitle" placeholder="Subtitle" value="{{subtitle}}"/>
 				<div class="creator">By {{creator}}</div>
+				{{#tracks}}
+					<a href="{{root}}track/{{slug}}" class="track">
+						<span class="trackNumber">{{track_number}}.</span>
+						<span class="title">{{title}}</span>
+						<span class="subtitle">{{subtitle}}</span>
+					</a>
+				{{/tracks}}
 				<button class="subdued" style="margin: 8px 0" name="addTrack" type="submit">
 					<img src="{{root}}static/list-add.svg"/>
-					Add track
+					Add {{#has_tracks}}more {{/has_tracks}}tracks
 				</button>
 				<div class="md-wrapper">
 				<textarea rows="16" id="descriptionMd" name="descriptionMd" maxlength="16384" class="ghost-input description" placeholder="Description">{{descriptionMd}}</textarea>

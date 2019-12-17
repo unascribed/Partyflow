@@ -1,6 +1,8 @@
 package com.unascribed.partyflow.handler;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -14,17 +16,25 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.io.ContentMetadata;
+
 import com.overzealous.remark.Remark;
+import com.unascribed.partyflow.MultipartData;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
 import com.unascribed.partyflow.TranscodeFormat.Usage;
 
-public class TrackHandler extends SimpleHandler implements GetOrHead {
+import com.google.common.base.Strings;
+import com.google.common.io.ByteStreams;
 
-	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/edit)?$");
+public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
+
+	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/edit|/master)?$");
 
 	private final Remark remark = new Remark(com.overzealous.remark.Options.github());
 
@@ -95,9 +105,119 @@ public class TrackHandler extends SimpleHandler implements GetOrHead {
 			} catch (SQLException e) {
 				throw new ServletException(e);
 			}
+		} else if ("/master".equals(m.group(2))) {
+			try (Connection c = Partyflow.sql.getConnection()) {
+				String trackSlug = m.group(1);
+				String suffix = s == null ? "" : " OR releases.user_id = ?";
+				try (PreparedStatement ps = c.prepareStatement(
+						"SELECT master FROM tracks "
+						+ "JOIN releases ON releases.release_id = tracks.release_id "
+						+ "WHERE tracks.slug = ? AND (releases.published = true"+suffix+");")) {
+					ps.setString(1, trackSlug);
+					if (s != null) {
+						ps.setInt(2, s.userId);
+					}
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.first()) {
+							res.setStatus(HTTP_200_OK);
+							// masters have private access, so we can't just redirect
+							Blob blob = Partyflow.storage.getBlob(Partyflow.storageContainer, rs.getString("master"));
+							Long l = blob.getMetadata().getSize();
+							ContentMetadata cm = blob.getMetadata().getContentMetadata();
+							if (l != null) {
+								res.setHeader("Content-Length", Long.toString(l));
+							}
+							res.setHeader("Content-Type", cm.getContentType());
+							res.setHeader("Content-Disposition", cm.getContentDisposition());
+							res.setHeader("Cache-Control", cm.getCacheControl());
+							try (InputStream in = blob.getPayload().openStream(); OutputStream out = res.getOutputStream()) {
+								if (!head) {
+									ByteStreams.copy(in, out);
+								}
+							}
+						} else {
+							res.sendError(HTTP_404_NOT_FOUND);
+							return;
+						}
+					}
+				}
+			} catch (SQLException e) {
+				throw new ServletException(e);
+			}
 		} else {
 			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
 		}
+	}
+
+	@Override
+	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException {
+		Matcher m = PATH_PATTERN.matcher(path);
+		if (!m.matches()) return;
+		if ("/delete".equals(m.group(2))) {
+			Session s = SessionHelper.getSession(req);
+			if (s == null) {
+				res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+				return;
+			}
+			String csrf = params.get("csrf");
+			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
+				res.sendRedirect(Partyflow.config.http.path);
+				return;
+			}
+			try (Connection c = Partyflow.sql.getConnection()) {
+				String slugs = m.group(1);
+				String releaseSlug;
+				int trackId;
+				try (PreparedStatement ps = c.prepareStatement("SELECT track_id, tracks.art, master, releases.slug FROM tracks "
+						+ "JOIN releases ON releases.release_id = tracks.release_id "
+						+ "WHERE tracks.slug = ? AND releases.user_id = ?;")) {
+					ps.setString(1, slugs);
+					ps.setInt(2, s.userId);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.first()) {
+							trackId = rs.getInt("track_id");
+							String art = Strings.emptyToNull(rs.getString("tracks.art"));
+							if (art != null) {
+								Partyflow.storage.removeBlob(Partyflow.storageContainer, art);
+							}
+							Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("master"));
+							releaseSlug = rs.getString("releases.slug");
+						} else {
+							res.sendError(HTTP_404_NOT_FOUND);
+							return;
+						}
+					}
+				}
+				try (PreparedStatement ps = c.prepareStatement("SELECT file FROM transcodes WHERE track_id = ?;")) {
+					ps.setInt(1, trackId);
+					try (ResultSet rs = ps.executeQuery()) {
+						while (rs.next()) {
+							Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("file"));
+						}
+					}
+				}
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM transcodes WHERE track_id = ?; DELETE FROM tracks WHERE track_id = ?;")) {
+					ps.setInt(1, trackId);
+					ps.setInt(2, trackId);
+					ps.executeUpdate();
+					res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(releaseSlug));
+				}
+			} catch (SQLException e) {
+				throw new ServletException(e);
+			}
+		} else if ("/edit".equals(m.group(2))) {
+			res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
+		} else {
+			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
+		}
+	}
+
+	@Override
+	public void multipartPost(String path, HttpServletRequest req,
+			HttpServletResponse res, MultipartData data)
+			throws IOException, ServletException {
+		// TODO Auto-generated method stub
+
 	}
 
 }

@@ -286,7 +286,7 @@ public class Partyflow {
 				handler("releases", new ReleasesHandler()),
 				handler("releases/", new ReleaseHandler()),
 				handler("track/", new TrackHandler()),
-				handler("download/", new TranscodeHandler()),
+				handler("transcode/", new TranscodeHandler()),
 				handler("static/", new StaticHandler()),
 				handler("files/", new FilesHandler())
 			);
@@ -447,12 +447,26 @@ public class Partyflow {
 		return out.toArray(new String[out.size()]);
 	}
 
+	private static String[] sub(String[] haystack, String replacement) {
+		String[] nw = haystack.clone();
+		for (int i = 0; i < nw.length; i++) {
+			if (nw[i].contains("{}")) {
+				nw[i] = nw[i].replace("{}", replacement);
+			}
+		}
+		return nw;
+	}
+
 	public static Process magick_convert(Object... arguments) throws IOException {
 		return Runtime.getRuntime().exec(combine(config.programs.magickConvert, arguments));
 	}
 
 	public static Process ffmpeg(Object... arguments) throws IOException {
-		return Runtime.getRuntime().exec(combine(config.programs.ffmpeg, arguments));
+		return Runtime.getRuntime().exec(sub(combine(config.programs.ffmpeg, arguments), "mpeg"));
+	}
+
+	public static Process ffprobe(Object... arguments) throws IOException {
+		return Runtime.getRuntime().exec(sub(combine(config.programs.ffmpeg, arguments), "probe"));
 	}
 
 	public static boolean isFormatLegal(TranscodeFormat fmt) {

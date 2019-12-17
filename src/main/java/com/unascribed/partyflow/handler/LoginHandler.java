@@ -105,7 +105,7 @@ public class LoginHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 			}
 		}
 		// TODO this sucks - should we have a separate login id or maybe email?
-		String name = Partyflow.sanitizeSlug(URLDecoder.decode(params.get("name"), "UTF-8"));
+		String name = Partyflow.sanitizeSlug(params.get("name"));
 		try (Connection c = Partyflow.sql.getConnection()) {
 			boolean success = false;
 			int userId = -1;

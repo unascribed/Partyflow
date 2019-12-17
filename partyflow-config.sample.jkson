@@ -51,8 +51,9 @@ storage: {
 programs: {
 	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
 	// firejail) is recommended in production. An example firejail config file is available in the
-	// Partyflow repository.
-	ffmpeg: ["ffmpeg"]
+	// Partyflow repository. {} will be replaced with "mpeg" or "probe" depending on which program
+	// is needed.
+	ffmpeg: ["ff{}"]
 	// Example secured ffmpeg execution (requires a user with NOPASSWD sudo permission for user nobody):
 	//ffmpeg: ["/usr/bin/sudo" "-u" "nobody" "/usr/bin/env" "-i" "/usr/bin/firejail" "--profile=/opt/partyflow/firejail-restrictive.profile" "/usr/bin/ffmpeg"]
 	

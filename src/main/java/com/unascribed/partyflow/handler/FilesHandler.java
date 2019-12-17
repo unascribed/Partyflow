@@ -21,6 +21,7 @@ package com.unascribed.partyflow.handler;
 
 
 import java.io.IOException;
+import java.io.InputStream;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -62,7 +63,9 @@ public class FilesHandler extends SimpleHandler implements GetOrHead {
 			}
 			res.setStatus(HTTP_200_OK);
 			if (!head) {
-				ByteStreams.copy(b.getPayload().openStream(), res.getOutputStream());
+				try (InputStream in = b.getPayload().openStream()) {
+					ByteStreams.copy(in, res.getOutputStream());
+				}
 			}
 			res.getOutputStream().close();
 		} else {

@@ -20,11 +20,14 @@
 package com.unascribed.partyflow.handler;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,6 +44,8 @@ import org.jclouds.blobstore.domain.BlobAccess;
 import org.jclouds.blobstore.options.PutOptions;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Whitelist;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.overzealous.remark.Remark;
 import com.unascribed.partyflow.MultipartData;
@@ -51,13 +56,22 @@ import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Objects;
 import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.google.common.io.ByteStreams;
 import com.google.common.net.UrlEscapers;
+import com.google.common.primitives.Ints;
 
 public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
 
+	private static final Logger log = LoggerFactory
+			.getLogger(ReleaseHandler.class);
+
 	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/publish|/unpublish|/edit|/add-track)?$");
+	private static final Pattern TITLE_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:title|TITLE)=\"?(.*?)\"?$", Pattern.MULTILINE);
+	private static final Pattern TRACK_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:track|TRACK)=\"?(.*?)\"?$", Pattern.MULTILINE);
 
 	private final Remark remark = new Remark(com.overzealous.remark.Options.github());
 
@@ -83,10 +97,22 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					try (ResultSet rs = ps.executeQuery()) {
 						// slug is UNIQUE, we don't need to handle more than one row
 						if (rs.first()) {
+							List<Object> _tracks = Lists.newArrayList();
 							try (PreparedStatement ps2 = c.prepareStatement(
-									"SELECT title, subtitle, slug, art FROM tracks "
-									+ "WHERE release_id = ?;")) {
+									"SELECT title, subtitle, slug, art, track_number FROM tracks "
+									+ "WHERE release_id = ? ORDER BY track_number ASC;")) {
 								ps2.setInt(1, rs.getInt("release_id"));
+								try (ResultSet rs2 = ps2.executeQuery()) {
+									while (rs2.next()) {
+										_tracks.add(new Object() {
+											String title = rs2.getString("title");
+											String subtitle = rs2.getString("subtitle");
+											String slug = rs2.getString("slug");
+											String art = rs2.getString("art") == null ? null : Partyflow.resolveArt(rs2.getString("art"));
+											int track_number = rs2.getInt("track_number");
+										});
+									}
+								}
 							}
 							res.setStatus(HTTP_200_OK);
 							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId;
@@ -108,6 +134,8 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 								String description = desc;
 								String descriptionMd = _descriptionMd;
 								String error = query.get("error");
+								List<Object> tracks = _tracks;
+								boolean has_tracks = !_tracks.isEmpty();
 							});
 						} else {
 							res.sendError(HTTP_404_NOT_FOUND);
@@ -357,46 +385,17 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Invalid CSRF token");
 				return;
 			}
-			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
-			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
-			if (title.trim().isEmpty()) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Title is required");
+			List<Part> masters = data.getAllParts("master");
+			if (masters.isEmpty()) {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=At least one master is required");
 				return;
 			}
-			if (title.length() > 255) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Title is too long");
-				return;
-			}
-			if (subtitle.length() > 255) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Subtitle is too long");
-				return;
-			}
-			Part master = data.getPart("master");
-			if (master == null) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1))+"/add-track?error=Master is required");
-				return;
-			}
-			String format = "dat";
-			if (master.getSubmittedFileName() != null) {
-				String sfm = master.getSubmittedFileName();
-				int dotIdx = sfm.lastIndexOf('.');
-				if (dotIdx != -1) {
-					format = sfm.substring(dotIdx+1);
-				}
-			}
-			String blobName;
-			do {
-				String rand = Partyflow.randomString(16);
-				blobName = "masters/"+rand.substring(0, 3)+"/"+rand+"."+format;
-			} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
-			Blob blob = Partyflow.storage.blobBuilder(blobName)
-					.payload(master.getInputStream())
-					.cacheControl("private")
-					.contentLength(master.getSize())
-					.contentType("application/octet-stream") // ffmpeg will detect it and masters aren't downloadable
-					.build();
-			Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
+			String lastSlug = null;
+			boolean committed = false;
 			try (Connection c = Partyflow.sql.getConnection()) {
+				try (Statement st = c.createStatement()) {
+					st.execute("BEGIN TRANSACTION;");
+				}
 				int releaseId;
 				try (PreparedStatement ps = c.prepareStatement("SELECT release_id FROM releases WHERE slug = ? AND user_id = ?;")) {
 					ps.setString(1, m.group(1));
@@ -411,47 +410,133 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						}
 					}
 				}
-				String slug = Partyflow.sanitizeSlug(title);
-				try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM tracks WHERE slug = ? AND release_id = ?;")) {
-					ps.setInt(2, releaseId);
-					int i = 0;
-					String suffix = "";
-					while (true) {
-						if (i > 0) {
-							suffix = "-"+(i+1);
+				for (Part master : masters) {
+					String blobName;
+					do {
+						String rand = Partyflow.randomString(16);
+						blobName = "masters/"+rand.substring(0, 3)+"/"+rand;
+					} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
+					String sfm = master.getSubmittedFileName();
+					String filename = TranscodeHandler.encodeFilename(sfm);
+					Blob blob = Partyflow.storage.blobBuilder(blobName)
+							.payload(master.getInputStream())
+							.cacheControl("private")
+							.contentLength(master.getSize())
+							.contentDisposition("attachment; filename="+filename+"; filename*=utf-8''"+filename)
+							.contentType("application/octet-stream") // ffmpeg will detect it
+							.build();
+					Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
+					String titleFromFilename = sfm.contains(".") ? sfm.substring(0, sfm.lastIndexOf('.')) : sfm;
+					Process probe = Partyflow.ffprobe("-v", "error", "-print_format", "flat", "-show_format", "-");
+					try (InputStream in = master.getInputStream()) {
+						ByteStreams.copy(in, probe.getOutputStream());
+						probe.getOutputStream().close();
+					} catch (IOException e) {
+						if (!"Broken pipe".equals(e.getMessage())) {
+							throw e;
 						}
-						ps.setString(1, slug+suffix);
-						try (ResultSet rs = ps.executeQuery()) {
-							if (!rs.first()) break;
-						}
-						i++;
 					}
-					slug = slug+suffix;
+					while (probe.isAlive()) {
+						try {
+							probe.waitFor();
+						} catch (InterruptedException e) {
+						}
+					}
+					String title;
+					int trackNumber = -1;
+					if (probe.exitValue() != 0) {
+						String str = new String(ByteStreams.toByteArray(probe.getErrorStream()), Charsets.UTF_8);
+						log.warn("Failed to probe master with FFprobe:\n{}", str);
+						title = titleFromFilename;
+					} else {
+						String probeOut = new String(ByteStreams.toByteArray(probe.getInputStream()), Charsets.UTF_8);
+						Matcher probeTitleM = TITLE_FFPROBE_PATTERN.matcher(probeOut);
+						if (probeTitleM.find()) {
+							title = probeTitleM.group(1);
+						} else {
+							title = titleFromFilename;
+						}
+						Matcher probeTrackM = TRACK_FFPROBE_PATTERN.matcher(probeOut);
+						if (probeTrackM.find()) {
+							String trackStr = probeTrackM.group(1);
+							Integer trackI = Ints.tryParse(trackStr);
+							if (trackI != null && trackI >= 1) {
+								trackNumber = trackI;
+							}
+						}
+					}
+					if (trackNumber == -1) {
+						try (PreparedStatement ps = c.prepareStatement("SELECT MAX(track_number)+1 AS next FROM tracks WHERE release_id = ?;")) {
+							ps.setInt(1, releaseId);
+							try (ResultSet rs = ps.executeQuery()) {
+								if (rs.first()) {
+									if (rs.getObject("next") == null) {
+										trackNumber = 1;
+									} else {
+										trackNumber = rs.getInt("next");
+									}
+								} else {
+									trackNumber = 1;
+								}
+							}
+						}
+					}
+					String slug = Partyflow.sanitizeSlug(title);
+					try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM tracks WHERE slug = ? AND release_id = ?;")) {
+						ps.setInt(2, releaseId);
+						int i = 0;
+						String suffix = "";
+						while (true) {
+							if (i > 0) {
+								suffix = "-"+(i+1);
+							}
+							ps.setString(1, slug+suffix);
+							try (ResultSet rs = ps.executeQuery()) {
+								if (!rs.first()) break;
+							}
+							i++;
+						}
+						slug = slug+suffix;
+					}
+					lastSlug = slug;
+					try (PreparedStatement ps = c.prepareStatement(
+							"INSERT INTO tracks (release_id, title, subtitle, slug, master, description, track_number, created_at, last_updated) "
+							+ "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW());")) {
+						ps.setInt(1, releaseId);
+						ps.setString(2, title);
+						ps.setString(3, "");
+						ps.setString(4, slug);
+						ps.setString(5, blobName);
+						ps.setString(6, "");
+						ps.setInt(7, trackNumber);
+						ps.execute();
+					}
 				}
-				try (PreparedStatement ps = c.prepareStatement(
-						"INSERT INTO tracks (release_id, title, subtitle, slug, master, description, created_at, last_updated) "
-						+ "VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW());")) {
-					ps.setInt(1, releaseId);
-					ps.setString(2, title);
-					ps.setString(3, subtitle);
-					ps.setString(4, slug);
-					ps.setString(5, blobName);
-					ps.setString(6, "");
-					ps.execute();
-					res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(slug));
+				try (Statement st = c.createStatement()) {
+					st.execute("COMMIT;");
+					committed = true;
 				}
 			} catch (SQLException e) {
 				throw new ServletException(e);
+			} finally {
+				if (!committed) {
+					try (Connection c = Partyflow.sql.getConnection()) {
+						try (Statement st = c.createStatement()) {
+							st.execute("ROLLBACK;");
+						}
+					} catch (SQLException ignore) {}
+				}
+			}
+			if (masters.size() == 1) {
+				res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(lastSlug));
+			} else {
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(m.group(1)));
 			}
 		} else if ("/delete".equals(m.group(2))) {
 			res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
 		} else {
 			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
 		}
-	}
-
-	private String escPathSeg(String str) {
-		return UrlEscapers.urlPathSegmentEscaper().escape(str);
 	}
 
 	private String sanitizeHtml(String html) {

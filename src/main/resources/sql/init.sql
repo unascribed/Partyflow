@@ -45,7 +45,8 @@ CREATE TABLE tracks (
 	master       VARCHAR(255) NOT NULL,
 	description  CLOB NOT NULL,
 	created_at   TIMESTAMP NOT NULL,
-	last_updated TIMESTAMP NOT NULL
+	last_updated TIMESTAMP NOT NULL,
+	track_number INT NOT NULL
 );
 CREATE TABLE transcodes (
 	transcode_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -76,6 +77,9 @@ CREATE INDEX releases_user_index
 	ON releases (user_id);
 CREATE INDEX transcodes_track_index
 	ON transcodes (track_id);
+
+CREATE INDEX tracks_number_index
+	ON tracks (track_number);
 
 CREATE INDEX transcodes_format_index
 	ON transcodes (format);

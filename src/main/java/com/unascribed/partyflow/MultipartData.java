@@ -20,12 +20,14 @@
 package com.unascribed.partyflow;
 
 import java.io.IOException;
+import java.util.List;
 
 import javax.servlet.http.Part;
 
 import org.eclipse.jetty.http.MultiPartFormInputStream;
 
 import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
 
 public class MultipartData {
 
@@ -37,6 +39,16 @@ public class MultipartData {
 
 	public Part getPart(String name) throws IOException {
 		return delegate.getPart(name);
+	}
+
+	public List<Part> getAllParts(String name) throws IOException {
+		List<Part> li = Lists.newArrayList();
+		for (Part p : delegate.getParts()) {
+			if (p.getName().equals(name)) {
+				li.add(p);
+			}
+		}
+		return li;
 	}
 
 	public String getPartAsString(String name, int limit) throws IOException {

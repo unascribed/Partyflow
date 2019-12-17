@@ -26,16 +26,16 @@ import com.google.common.collect.ImmutableSet;
 
 public enum TranscodeFormat {
 	// download formats - exposed to user
-	          FLAC( 0,      "FLAC", DOWNLOAD, 999999, "flac",  "audio/flac"               , "-f flac -codec:a flac"),
-	          ALAC( 1,      "ALAC", DOWNLOAD,  99999,  "m4a", "audio/x-m4a; codecs=alac"  , "-f ipod -codec:a alac -movflags +faststart"),
-	  OGG_OPUS_128( 2,      "Opus", DOWNLOAD,   1280, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 128k"),
-	  CAF_OPUS_128( 3,"Apple Opus", DOWNLOAD,    128,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 128k"),
-	OGG_VORBIS_192( 4,"Ogg Vorbis", DOWNLOAD,    192,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -q:a 6"),
-	        MP3_V0( 5,    "MP3 V0", DOWNLOAD,   9999,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -q:a 0"),
-	       MP3_320( 6,   "MP3 320", DOWNLOAD,    320,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 320k"),
-	           WAV(11,       "WAV", DOWNLOAD,    999,  "wav",  "audio/wav"                , "-f wav"),
-	          AIFF(12,      "AIFF", DOWNLOAD,    998, "aiff",  "audio/aiff"               , "-f aiff"),
-	        AAC_96(13,       "AAC", DOWNLOAD,     96,  "aac", "audio/x-m4a; codecs=aac"   , "-f ipod -codec:a libfdk_aac -vbr:a 4 -movflags +faststart"),
+	          FLAC( 0,      "FLAC", DOWNLOAD, 99999, "flac",  "audio/flac"               , "-f flac -codec:a flac"),
+	          ALAC( 1,      "ALAC", DOWNLOAD, 99998,  "m4a", "audio/x-m4a; codecs=alac"  , "-f ipod -codec:a alac -movflags +faststart"),
+	  OGG_OPUS_128( 2,      "Opus", DOWNLOAD,  1280, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 128k"),
+	  CAF_OPUS_128( 3,"Apple Opus", DOWNLOAD,   128,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 128k"),
+	OGG_VORBIS_192( 4,"Ogg Vorbis", DOWNLOAD,   192,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -q:a 6"),
+	        MP3_V0( 5,    "MP3 V0", DOWNLOAD,   321,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -q:a 0"),
+	       MP3_320( 6,   "MP3 320", DOWNLOAD,   320,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 320k"),
+	           WAV(11,       "WAV", DOWNLOAD,   999,  "wav",  "audio/wav"                , "-f wav"),
+	          AIFF(12,      "AIFF", DOWNLOAD,   998, "aiff",  "audio/aiff"               , "-f aiff"),
+	        AAC_96(13,       "AAC", DOWNLOAD,    96,  "aac", "audio/x-m4a; codecs=aac"   , "-f ipod -codec:a libfdk_aac -vbr:a 4 -movflags +faststart"),
 
 	// streaming formats, in order of preference; mostly invisible to user
 	   OGG_OPUS_72( 7,        null,   STREAM,  4, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 72k" ),

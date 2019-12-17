@@ -23,8 +23,8 @@
 	<title>{{release.creator}} - {{release.title}} - {{title}}</title>
 	<audio>
 		{{#download_formats}}
-			<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>
-			<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+			<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>
+			<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 		{{/download_formats}}
 	-->
 	<title>{{title}} by {{release.creator}} from {{release.title}} - Partyflow</title>
@@ -52,14 +52,14 @@
 			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
 			<audio controls>
 				{{#stream_formats}}
-					<!--<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
-					<source src="{{root}}download/{{slug}}?format={{format_name}}" type="{{mimetype}}" title="{{name}}"/>
+					<!--<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
+					<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 				{{/stream_formats}}
 			</audio>
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}
-			<form class="inline" method="POST" enctype="multipart/form-data" action="{{root}}releases/{{slug}}/edit">
+			<form class="inline" method="POST" enctype="multipart/form-data" action="{{root}}track/{{slug}}/edit">
 				<input type="hidden" name="csrf" value="{{csrf}}"/>
 				<div class="art" style="background-image: url({{art}})">
 					<input name="art" type="file" class="replaceArt" accept=".png,.jpeg,.jpg,.jpe,.jfif,image/png,image/jpeg"/>
@@ -69,8 +69,8 @@
 				<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
 				<audio controls>
 					{{#stream_formats}}
-						<!--<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
-						<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+						<!--<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
+						<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 					{{/stream_formats}}
 				</audio>
 				<div class="md-wrapper">
@@ -84,8 +84,20 @@
 					</button>
 				</div>
 			</form>
+			<div class="buttons" style="z-index: 1">
+				<button type="submit" style="opacity: 0">
+					<img src="{{root}}static/save.svg"/>
+					Save
+				</button>
+				<a href="{{root}}track/{{slug}}/master">
+					<button class="good">
+						<img src="{{root}}static/download.svg"/>
+						Download Master
+					</button>
+				</a>
+			</div>
 			<div class="buttons" style="text-align: right; width: 100%; padding-right: 16px;">
-				<form class="inline" action="{{root}}releases/{{release.slug}}/track/{{slug}}/delete" method="POST">
+				<form class="inline" action="{{root}}track/{{slug}}/delete" method="POST">
 					<input type="hidden" name="csrf" value="{{csrf}}"/>
 					<button class="danger">
 						<img src="{{root}}static/trash.svg"/>
