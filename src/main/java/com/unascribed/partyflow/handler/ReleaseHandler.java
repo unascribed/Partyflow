@@ -73,7 +73,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				String slugs = m.group(1);
 				String suffix = s == null ? "" : " OR releases.user_id = ?";
 				try (PreparedStatement ps = c.prepareStatement(
-						"SELECT title, subtitle, published, art, description, releases.user_id, users.display_name FROM releases "
+						"SELECT release_id, title, subtitle, published, art, description, releases.user_id, users.display_name FROM releases "
 						+ "JOIN users ON releases.user_id = users.user_id "
 						+ "WHERE slug = ? AND (published = true"+suffix+");")) {
 					ps.setString(1, slugs);
@@ -83,6 +83,11 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					try (ResultSet rs = ps.executeQuery()) {
 						// slug is UNIQUE, we don't need to handle more than one row
 						if (rs.first()) {
+							try (PreparedStatement ps2 = c.prepareStatement(
+									"SELECT title, subtitle, slug, art FROM tracks "
+									+ "WHERE release_id = ?;")) {
+								ps2.setInt(1, rs.getInt("release_id"));
+							}
 							res.setStatus(HTTP_200_OK);
 							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId;
 							String _descriptionMd;

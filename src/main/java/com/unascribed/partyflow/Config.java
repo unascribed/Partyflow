@@ -73,4 +73,13 @@ public final class Config {
 		public String[] magickConvert;
 	}
 
+	public FormatsSection formats;
+	public static final class FormatsSection {
+		public boolean preferOpusEverywhere;
+		public boolean allowUncompressedFormats;
+		public boolean allowLosslessFormats;
+		public boolean allowMP3;
+		public boolean allowEncumberedFormats;
+	}
+
 }

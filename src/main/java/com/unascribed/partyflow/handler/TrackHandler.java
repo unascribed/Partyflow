@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,6 +20,7 @@ import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.TranscodeFormat.Usage;
 
 public class TrackHandler extends SimpleHandler implements GetOrHead {
 
@@ -73,6 +75,8 @@ public class TrackHandler extends SimpleHandler implements GetOrHead {
 									String slug = rs.getString("releases.slug");
 									boolean published = rs.getBoolean("releases.published");
 								};
+								List<Object> download_formats = Partyflow.enumerateFormats(Usage.DOWNLOAD);
+								List<Object> stream_formats = Partyflow.enumerateFormats(Usage.STREAM);
 								String title = rs.getString("tracks.title");
 								String subtitle = rs.getString("tracks.subtitle");
 								String slug = trackSlug;

@@ -65,3 +65,20 @@ programs: {
 	// Example secured magick execution (requires a user with NOPASSWD sudo permission for user nobody):
 	//magickConvert: ["/usr/bin/sudo" "-u" "nobody" "/usr/bin/env" "-i" "/usr/bin/firejail" "--profile=/opt/partyflow/firejail-restrictive.profile" "/usr/bin/magick" "convert"]
 }
+formats: {
+	// Push the Opus agenda, even to users on macOS/iOS, offering them CAF files.
+	// Does not affect streaming formats; 72kbps CAF Opus will always be offered.
+	preferOpusEverywhere: true
+	// If true, uncompressed formats such as WAV and AIFF will be offered.
+	allowUncompressedFormats: true
+	// If true, lossless formats such as ALAC and FLAC will be offered.
+	allowLosslessFormats: true
+	// If true, MP3 downloads will be offered.
+	// Does not affect streaming formats; 128kbps MP3 will always be offered.
+	allowMP3: true
+	// If true, proprietary patent-encumbered formats such as AAC will be offered.
+	// This option can be DANGEROUS and if you're sufficiently large may result in the MPEG-LA trying
+	// to seek rent from you for daring to use their shitty formats. Only turn on if you really need
+	// it and are willing to accept this risk.
+	allowEncumberedFormats: false
+}

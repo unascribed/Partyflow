@@ -164,6 +164,13 @@ public class SimpleHandler {
 				MultiPartFormInputStream mpfis = new MultiPartFormInputStream(req.getInputStream(), req.getContentType(), MP_CFG, TEMP_DIR);
 				try {
 					multipartPost(path, req, res, new MultipartData(mpfis));
+				} catch (IllegalStateException e) {
+					if (e.getMessage() != null && e.getMessage().endsWith("exceeds max filesize")) {
+						req.getInputStream().close();
+						res.sendError(HTTP_413_PAYLOAD_TOO_LARGE);
+					} else {
+						throw e;
+					}
 				} finally {
 					mpfis.deleteParts();
 					req.getInputStream().close();

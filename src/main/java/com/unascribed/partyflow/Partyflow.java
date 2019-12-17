@@ -39,6 +39,7 @@ import java.text.Normalizer;
 import java.text.Normalizer.Form;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
@@ -71,6 +72,7 @@ import org.slf4j.LoggerFactory;
 
 import com.unascribed.asyncsimplelog.AsyncSimpleLog;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.TranscodeFormat.Usage;
 import com.unascribed.partyflow.handler.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.FilesHandler;
 import com.unascribed.partyflow.handler.IndexHandler;
@@ -402,13 +404,13 @@ public class Partyflow {
 		return sb.toString();
 	}
 
-	private static final Pattern ILLEGAL = Pattern.compile("[^\\p{IsLetter}\\p{IsDigit} ]");
+	private static final Pattern ILLEGAL = Pattern.compile("[?/#&;\\\\=\\^\\[\\]%]");
 	private static final Pattern SPACE = Pattern.compile("[\\p{Space}]+");
 
 	public static String sanitizeSlug(String name) {
 		String s = Normalizer.normalize(name, Form.NFC);
 		s = SPACE.matcher(s).replaceAll(" ");
-		s = ILLEGAL.matcher(s).replaceAll("");
+		s = ILLEGAL.matcher(s).replaceAll("_");
 		return s.trim();
 	}
 
@@ -451,6 +453,37 @@ public class Partyflow {
 
 	public static Process ffmpeg(Object... arguments) throws IOException {
 		return Runtime.getRuntime().exec(combine(config.programs.ffmpeg, arguments));
+	}
+
+	public static boolean isFormatLegal(TranscodeFormat fmt) {
+		if (!config.formats.allowEncumberedFormats && fmt.isEncumbered()) {
+			return false;
+		}
+		if (!config.formats.allowLosslessFormats && fmt.isLossless()) {
+			return false;
+		}
+		if (!config.formats.allowMP3 && fmt.isMP3()) {
+			return false;
+		}
+		if (!config.formats.allowUncompressedFormats && fmt.isUncompressed()) {
+			return false;
+		}
+		return true;
+	}
+
+	public static List<Object> enumerateFormats(Usage usage) {
+		List<Object> li = Lists.newArrayList();
+		for (TranscodeFormat tf : TranscodeFormat.ALL_FORMATS) {
+			if (isFormatLegal(tf) && tf.getUsage() == usage) {
+				String _name = tf.name().toLowerCase(Locale.ROOT).replace('_', '-');
+				li.add(new Object() {
+					String name = _name;
+					String mimetype = tf.getMimeType();
+					String ytdl_label = "$$ytdl-hack-"+tf.getYtdlPriority()+"kbps_"+_name;
+				});
+			}
+		}
+		return li;
 	}
 
 }

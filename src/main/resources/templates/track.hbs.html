@@ -2,10 +2,32 @@
 <html>
 <head>
 	{{> _head.hbs.html}}
-	<title>{{title}} by {{release.creator}} from {{release.title}} - Partyflow</title>
 	{{#editable}}
 		<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
 	{{/editable}}
+	<!--{{!
+		for youtube-dl. they use regex to parse HTML, so, they have no idea what a comment is.
+		the lack of a closing tag means that the streaming formats later in the page will get
+		(correctly) lumped in with the other downloads up here. the title also gets grabbed here
+		instead of below because it comes first. fun stuff.
+		
+		additionally, youtube-dl ranks formats *purely by bitrate*, by attempting to parse labels
+		or titles (whichever it finds first) that contain "kbps"; TranscodeFormat contains a
+		"ytdlPriority" that lies about bitrates to get it to prefer the right formats based on
+		most user requests. e.g. FLAC has the "highest bitrate", so yt-dl will default to it.
+		
+		we write our hack string *and then* the real format string, so ytdl will show them both; the
+		hack string is prefixed with $$ to make it annoying to use from a shell, and to make it
+		obvious you're intended to use the better format strings if you're bothering to check.
+	}}
+	<title>{{release.creator}} - {{release.title}} - {{title}}</title>
+	<audio>
+		{{#download_formats}}
+			<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>
+			<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+		{{/download_formats}}
+	-->
+	<title>{{title}} by {{release.creator}} from {{release.title}} - Partyflow</title>
 </head>
 <body>
 	{{> _header.hbs.html}}
@@ -29,10 +51,10 @@
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
 			<audio controls>
-				<source src="{{root}}download/{{slug}}?format=ogg-opus-72" type="audio/ogg; codecs=opus"/>
-				<source src="{{root}}download/{{slug}}?format=caf-opus-72" type="audio/x-caf; codecs=opus"/>
-				<source src="{{root}}download/{{slug}}?format=ogg-vorbis-72" type="audio/ogg; codecs=vorbis"/>
-				<source src="{{root}}download/{{slug}}?format=mp3-128" type="audio/mpeg"/>
+				{{#stream_formats}}
+					<!--<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
+					<source src="{{root}}download/{{slug}}?format={{format_name}}" type="{{mimetype}}" title="{{name}}"/>
+				{{/stream_formats}}
 			</audio>
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
@@ -46,10 +68,10 @@
 				<input name="subtitle" maxlength="255" type="text" class="ghost-input subtitle" placeholder="Subtitle" value="{{subtitle}}"/>
 				<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
 				<audio controls>
-					<source src="{{root}}download/{{slug}}?format=ogg-opus-72" type="audio/ogg; codecs=opus"/>
-					<source src="{{root}}download/{{slug}}?format=caf-opus-72" type="audio/x-caf; codecs=opus"/>
-					<source src="{{root}}download/{{slug}}?format=ogg-vorbis-72" type="audio/ogg; codecs=vorbis"/>
-					<source src="{{root}}download/{{slug}}?format=mp3-128" type="audio/mpeg"/>
+					{{#stream_formats}}
+						<!--<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
+						<source src="{{root}}download/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+					{{/stream_formats}}
 				</audio>
 				<div class="md-wrapper">
 				<textarea rows="16" id="descriptionMd" name="descriptionMd" maxlength="16384" class="ghost-input description" placeholder="Description">{{descriptionMd}}</textarea>

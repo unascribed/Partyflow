@@ -26,9 +26,11 @@ import com.unascribed.partyflow.TranscodeFormat;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.TranscodeFormat.Usage;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
+import com.google.common.net.UrlEscapers;
 
 public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 
@@ -40,6 +42,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
+		System.out.println(path);
 		Map<String, String> query = parseQuery(req);
 		String trackSlug = path;
 		if (!query.containsKey("format")) {
@@ -50,6 +53,9 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 		try {
 			fmt = TranscodeFormat.valueOf(cleanedFormat);
 		} catch (IllegalArgumentException e) {
+			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+cleanedFormat);
+		}
+		if (!Partyflow.isFormatLegal(fmt)) {
 			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+cleanedFormat);
 		}
 		Session s = SessionHelper.getSession(req);
@@ -66,14 +72,24 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 				}
 				try (ResultSet rs = ps.executeQuery()) {
 					if (rs.first()) {
-						try (PreparedStatement ps2 = c.prepareStatement("UPDATE transcodes SET last_downloaded = NOW() WHERE transcode_id = ?;")) {
-							ps2.setInt(1, rs.getInt("transcode_id"));
-							ps2.execute();
+						if (!head) {
+							try (PreparedStatement ps2 = c.prepareStatement("UPDATE transcodes SET last_downloaded = NOW() WHERE transcode_id = ?;")) {
+								ps2.setInt(1, rs.getInt("transcode_id"));
+								ps2.execute();
+							}
 						}
+						res.setHeader("Transcode-Status", "CACHED");
 						res.sendRedirect(Partyflow.resolveBlob(rs.getString("transcodes.file")));
 						return;
 					}
 				}
+			}
+			if (head) {
+				res.setStatus(HTTP_204_NO_CONTENT);
+				res.setHeader("Transcode-Status", "UNAVAILABLE");
+				res.setHeader("Comment", "Transcodes are not performed in response to HEAD requests");
+				res.getOutputStream().close();
+				return;
 			}
 			int trackId;
 			String master;
@@ -143,10 +159,11 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 					String rand = Partyflow.randomString(16);
 					blobName = "transcodes/"+rand.substring(0, 3)+"/"+rand+"."+fmt.getFileExtension();
 				} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
+				String filename = UrlEscapers.urlFragmentEscaper().escape(title+"."+fmt.getFileExtension()).replace(";", "%3B");
 				Blob transBlob = Partyflow.storage.blobBuilder(blobName)
 						.payload(tmpFile)
 						.contentType(fmt.getMimeType())
-						.contentDisposition("attachment; filename="+title.replace(";", "%3B")+"."+fmt.getFileExtension())
+						.contentDisposition(fmt.getUsage() == Usage.DOWNLOAD ? "attachment; filename="+filename+"; filename*=utf-8''"+filename : "inline")
 						.cacheControl(published ? "public, immutable" : "private")
 						.build();
 				Partyflow.storage.putBlob(Partyflow.storageContainer, transBlob, new PutOptions().multipart().setBlobAccess(BlobAccess.PUBLIC_READ));
@@ -157,6 +174,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 					ps.setString(3, blobName);
 					ps.execute();
 				}
+				res.setHeader("Transcode-Status", "FRESH");
 				res.sendRedirect(Partyflow.resolveBlob(blobName));
 			} finally {
 				tmpFile.delete();
