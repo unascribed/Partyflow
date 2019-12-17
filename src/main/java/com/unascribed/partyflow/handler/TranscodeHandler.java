@@ -42,7 +42,6 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
-		System.out.println(path);
 		Map<String, String> query = parseQuery(req);
 		String trackSlug = path;
 		if (!query.containsKey("format")) {

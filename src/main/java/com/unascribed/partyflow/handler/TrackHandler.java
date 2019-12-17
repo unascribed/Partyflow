@@ -18,6 +18,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.io.ContentMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.overzealous.remark.Remark;
 import com.unascribed.partyflow.MultipartData;
@@ -33,6 +35,8 @@ import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 
 public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
+
+	private static final Logger log = LoggerFactory.getLogger(TrackHandler.class);
 
 	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/edit|/master)?$");
 
@@ -178,8 +182,10 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 							trackId = rs.getInt("track_id");
 							String art = Strings.emptyToNull(rs.getString("tracks.art"));
 							if (art != null) {
+								log.trace("Deleting {}", art);
 								Partyflow.storage.removeBlob(Partyflow.storageContainer, art);
 							}
+							log.trace("Deleting {}", rs.getString("master"));
 							Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("master"));
 							releaseSlug = rs.getString("releases.slug");
 						} else {
@@ -192,6 +198,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					ps.setInt(1, trackId);
 					try (ResultSet rs = ps.executeQuery()) {
 						while (rs.next()) {
+							log.trace("Deleting {}", rs.getString("file"));
 							Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("file"));
 						}
 					}
