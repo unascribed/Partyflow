@@ -79,6 +79,7 @@ formats: {
 	// If true, proprietary patent-encumbered formats such as AAC will be offered.
 	// This option can be DANGEROUS and if you're sufficiently large may result in the MPEG-LA trying
 	// to seek rent from you for daring to use their shitty formats. Only turn on if you really need
-	// it and are willing to accept this risk.
+	// it and are willing to accept this risk. Note that your FFmpeg must be built with libfdk_aac
+	// support; the native aac encoder is very low quality and therefore unsupported by Partyflow.
 	allowEncumberedFormats: false
 }
