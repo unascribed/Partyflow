@@ -173,7 +173,9 @@ public class SimpleHandler {
 						throw e;
 					}
 				} finally {
-					mpfis.deleteParts();
+					if (mpfis.getParts() != null) {
+						mpfis.deleteParts();
+					}
 					req.getInputStream().close();
 				}
 			} else {

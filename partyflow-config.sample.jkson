@@ -52,14 +52,16 @@ programs: {
 	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
 	// firejail) is recommended in production. An example firejail config file is available in the
 	// Partyflow repository. {} will be replaced with "mpeg" or "probe" depending on which program
-	// is needed.
+	// is needed. All files will be in /tmp/partyflow/work (or whatever your platform's
+	// default temp directory is)
 	ffmpeg: ["ff{}"]
 	// Example secured ffmpeg execution (requires a user with NOPASSWD sudo permission for user nobody):
 	//ffmpeg: ["/usr/bin/sudo" "-u" "nobody" "/usr/bin/env" "-i" "/usr/bin/firejail" "--profile=/opt/partyflow/firejail-restrictive.profile" "/usr/bin/ffmpeg"]
 	
-	// Shell syntax. Using some form of sandboxing (e.g. firejail) is recommended in production.
-	// An example firejail config file is available in the Partyflow repository.
-	// All IO with ImageMagick is done via stdin and stdout; it does not need access to image files.
+	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
+	// firejail) is recommended in production. An example firejail config file is available in the
+	// Partyflow repository. All files will be in /tmp/partyflow/work (or whatever your platform's
+	// default temp directory is)
 	magickConvert: ["convert"]
 	// For newer versions of ImageMagick:
 	//magickConvert: ["magick" "convert"]

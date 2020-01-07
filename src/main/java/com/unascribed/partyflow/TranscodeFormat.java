@@ -22,6 +22,7 @@ package com.unascribed.partyflow;
 import static com.unascribed.partyflow.TranscodeFormat.Usage.*;
 
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 public enum TranscodeFormat {
@@ -38,13 +39,11 @@ public enum TranscodeFormat {
 	        AAC_96(13,       "AAC", DOWNLOAD,    96,  "aac", "audio/x-m4a; codecs=aac"   , "-f ipod -codec:a libfdk_aac -vbr:a 4 -movflags +faststart"),
 
 	// streaming formats, in order of preference; mostly invisible to user
-	   OGG_OPUS_72( 7,        null,   STREAM,  4, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 72k" ),
-	   CAF_OPUS_72( 8,        null,   STREAM,  3,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 72k" ),
+	   OGG_OPUS_72( 7,        null,   STREAM,  4, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 72k"),
+	   CAF_OPUS_72( 8,        null,   STREAM,  3,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 72k"),
 	 OGG_VORBIS_96( 9,        null,   STREAM,  2,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -b:a 96k" ),
 	       MP3_128(10,        null,   STREAM,  1,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 128k"),
 	;
-
-	private static final Splitter SPACE_SPLITTER = Splitter.on(' ').omitEmptyStrings().trimResults();
 
 	public static final ImmutableSet<TranscodeFormat> ENCUMBERED_FORMATS = ImmutableSet.of(AAC_96);
 	public static final ImmutableSet<TranscodeFormat> MP3_FORMATS = ImmutableSet.of(MP3_V0, MP3_320);
@@ -76,6 +75,28 @@ public enum TranscodeFormat {
 		}
 	}
 
+	public static class Shortcut {
+		private final String sourceStr;
+		private TranscodeFormat source;
+		private final String ffmpegOptions;
+		private final String[] ffmpegArguments;
+		private Shortcut(String sourceStr, String ffmpegOptions) {
+			this.sourceStr = sourceStr;
+			this.ffmpegOptions = ffmpegOptions;
+			this.ffmpegArguments = optToArg(ffmpegOptions);
+		}
+		public TranscodeFormat getSource() {
+			if (source == null) source = TranscodeFormat.valueOf(sourceStr);
+			return source;
+		}
+		public String getFFmpegOptions() {
+			return ffmpegOptions;
+		}
+		public String[] getFFmpegArguments() {
+			return ffmpegArguments;
+		}
+	}
+
 	private final int databaseId;
 	private final String name;
 	private final int ytdlPriority;
@@ -83,10 +104,11 @@ public enum TranscodeFormat {
 	private final String fileExt;
 	private final String mimeType;
 	private final String ffmpegOptions;
-	private String[] ffmpegArguments;
+	private final String[] ffmpegArguments;
+	private final ImmutableList<Shortcut> shortcuts;
 
 
-	private TranscodeFormat(int databaseId, String name, Usage usage, int ytdlPriority, String fileExt, String mimeType, String ffmpegOptions) {
+	private TranscodeFormat(int databaseId, String name, Usage usage, int ytdlPriority, String fileExt, String mimeType, String ffmpegOptions, Shortcut... shortcuts) {
 		this.databaseId = databaseId;
 		this.name = name;
 		this.usage = usage;
@@ -94,6 +116,8 @@ public enum TranscodeFormat {
 		this.fileExt = fileExt;
 		this.mimeType = mimeType;
 		this.ffmpegOptions = ffmpegOptions;
+		this.ffmpegArguments = optToArg(ffmpegOptions);
+		this.shortcuts = ImmutableList.copyOf(shortcuts);
 	}
 
 	public int getDatabaseId() {
@@ -125,13 +149,6 @@ public enum TranscodeFormat {
 	}
 
 	public String[] getFFmpegArguments() {
-		if (ffmpegArguments == null) {
-			synchronized (this) {
-				if (ffmpegArguments == null) {
-					ffmpegArguments = SPACE_SPLITTER.splitToList(ffmpegOptions).toArray(new String[0]);
-				}
-			}
-		}
 		return ffmpegArguments;
 	}
 
@@ -149,5 +166,13 @@ public enum TranscodeFormat {
 
 	public boolean isUncompressed() {
 		return UNCOMPRESSED_FORMATS.contains(this);
+	}
+
+	public ImmutableList<Shortcut> getShortcuts() {
+		return shortcuts;
+	}
+
+	private static String[] optToArg(String opt) {
+		return Splitter.on(' ').omitEmptyStrings().trimResults().splitToList(opt).toArray(new String[0]);
 	}
 }
