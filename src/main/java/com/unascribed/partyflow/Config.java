@@ -71,11 +71,11 @@ public final class Config {
 	public static final class ProgramsSection {
 		public String[] ffmpeg;
 		public String[] magickConvert;
+		public int maxTranscodes;
 	}
 
 	public FormatsSection formats;
 	public static final class FormatsSection {
-		public boolean preferOpusEverywhere;
 		public boolean allowUncompressedFormats;
 		public boolean allowLosslessFormats;
 		public boolean allowMP3;

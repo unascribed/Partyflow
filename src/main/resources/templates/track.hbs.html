@@ -16,9 +16,13 @@
 		"ytdlPriority" that lies about bitrates to get it to prefer the right formats based on
 		most user requests. e.g. FLAC has the "highest bitrate", so yt-dl will default to it.
 		
-		we write our hack string *and then* the real format string, so ytdl will show them both; the
+		we write our hack string *and then* the real format string, so yt-dl will show them both; the
 		hack string is prefixed with $$ to make it annoying to use from a shell, and to make it
 		obvious you're intended to use the better format strings if you're bothering to check.
+		
+		TODO: this doesn't quite work with yt-dlp as their format selection is much smarter than
+		yt-dl's was, and it isn't designed for lossless codecs - it ends up preferring the high
+		quality Opus download. `-f flac` works, so I don't know if this is strictly a problem...
 	}}
 	<title>{{release.creator}} - {{release.title}} - {{title}}</title>
 	<audio>

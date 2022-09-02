@@ -119,7 +119,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 					slug = slug+suffix;
 				}
 				try (PreparedStatement s = c.prepareStatement(
-						"INSERT INTO releases (user_id, title, subtitle, slug, description, published, created_at, last_updated) "
+						"INSERT INTO `releases` (`user_id`, `title`, `subtitle`, `slug`, `description`, `published`, `created_at`, `last_updated`) "
 						+ "VALUES (?, ?, ?, ?, ?, FALSE, NOW(), NOW());")) {
 					s.setInt(1, session.userId);
 					s.setString(2, title);

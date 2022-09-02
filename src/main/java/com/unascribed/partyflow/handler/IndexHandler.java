@@ -43,7 +43,7 @@ public class IndexHandler extends SimpleHandler implements GetOrHead {
 		String siteDescription;
 		try (Connection c = Partyflow.sql.getConnection()) {
 			try (Statement s = c.createStatement()) {
-				try (ResultSet rs = s.executeQuery("SELECT value FROM meta WHERE name = 'site_description';")) {
+				try (ResultSet rs = s.executeQuery("SELECT `value` FROM `meta` WHERE `name` = 'site_description';")) {
 					if (rs.first()) {
 						siteDescription = rs.getString("value");
 					} else {

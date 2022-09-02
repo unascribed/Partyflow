@@ -28,7 +28,21 @@
 			<div class="title">{{title}}</div>
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{creator}}</div>
-			<i style="display: inline-block; margin: 16px">Tracks go here</i>
+			<noscript>
+			<i>Enable JavaScript to play the entire album with gapless playback.</i>
+			{{#tracks}}
+				<a href="{{root}}track/{{slug}}" class="track">
+					<span class="trackNumber">{{track_number}}.</span>
+					<span class="title">{{title}}</span>
+					<span class="subtitle">{{subtitle}}</span>
+				</a>
+			{{/tracks}}
+			</noscript>
+			<div class="yesscript">
+				<script>
+				
+				</script>
+			</div>
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}

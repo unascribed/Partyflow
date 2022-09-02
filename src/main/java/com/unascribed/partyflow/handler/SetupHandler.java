@@ -129,7 +129,7 @@ public class SetupHandler extends SimpleHandler implements Any {
 					int p = Partyflow.config.security.scryptParallelization;
 					String scrypt = SCrypt.scrypt(passwordSha512, N, r, p);
 					try (Connection c = Partyflow.sql.getConnection()) {
-						try (PreparedStatement ps = c.prepareStatement("INSERT INTO users (username, display_name, password, admin, created_at) "
+						try (PreparedStatement ps = c.prepareStatement("INSERT INTO `users` (`username`, `display_name`, `password`, `admin`, `created_at`) "
 								+ "VALUES (?, ?, ?, TRUE, NOW());")) {
 							ps.setString(1, username);
 							ps.setString(2, name);

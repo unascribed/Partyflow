@@ -23,66 +23,60 @@ import static com.unascribed.partyflow.TranscodeFormat.Usage.*;
 
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 public enum TranscodeFormat {
 	// download formats - exposed to user
-	          FLAC( 0,      "FLAC", DOWNLOAD, 99999, "flac",  "audio/flac"               , "-f flac -codec:a flac"),
-	          ALAC( 1,      "ALAC", DOWNLOAD, 99998,  "m4a", "audio/x-m4a; codecs=alac"  , "-f ipod -codec:a alac -movflags +faststart"),
-	  OGG_OPUS_128( 2,      "Opus", DOWNLOAD,  1280, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 128k"),
-	  CAF_OPUS_128( 3,"Apple Opus", DOWNLOAD,   128,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 128k",
-			   new Shortcut("OGG_OPUS_128", "-f caf -codec:a copy")),
-	OGG_VORBIS_192( 4,"Ogg Vorbis", DOWNLOAD,   192,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -q:a 6"),
-	        MP3_V0( 5,    "MP3 V0", DOWNLOAD,   321,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -q:a 0"),
-	       MP3_320( 6,   "MP3 320", DOWNLOAD,   320,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 320k"),
-	           WAV(11,       "WAV", DOWNLOAD,   999,  "wav",  "audio/wav"                , "-f wav"),
-	          AIFF(12,      "AIFF", DOWNLOAD,   998, "aiff",  "audio/aiff"               , "-f aiff"),
-	        AAC_96(13,       "AAC", DOWNLOAD,    96,  "aac", "audio/x-m4a; codecs=aac"   , "-f ipod -codec:a libfdk_aac -vbr:a 4 -movflags +faststart"),
-
+	          FLAC( 0,  DL,  99999, "flac", "audio/flac"              , "-f flac -codec:a flac"                    , "FLAC"),
+	          ALAC( 1,  DL,  99998, "m4a",  "audio/x-m4a; codecs=alac", "-f ipod -codec:a alac {MF}"               , "Apple Lossless"),
+	  OGG_OPUS_128( 2,  DL,  1280,  "opus", "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 128k"        , "Opus"),
+	OGG_VORBIS_192( 3,  DL,  192,   "ogg",  "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -q:a 6"         , "Ogg Vorbis"),
+	        MP3_V0( 4,  DL,  321,   "mp3",  "audio/mpeg"              , "-f mp3 -codec:a libmp3lame -q:a 0"        , "MP3 V0"),
+	       MP3_320( 5,  DL,  320,   "mp3",  "audio/mpeg"              , "-f mp3 -codec:a libmp3lame -b:a 320k"     , "MP3 320"),
+	           WAV( 6, DLD,  999,   "wav",  "audio/wav"               , "-f wav"                                   , "WAV"),
+	          AIFF( 7, DLD,  998,   "aiff", "audio/aiff"              , "-f aiff"                                  , "AIFF"),
+	       AAC_VBR( 8,  DL,  128,   "m4a",  "audio/x-m4a; codecs=aac" , "-f ipod -codec:a libfdk_aac -vbr:a 5 {MF}", "AAC"),
+                          
 	// streaming formats, in order of preference; mostly invisible to user
-	   OGG_OPUS_72( 7,        null,   STREAM,  4, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 72k"),
-	   CAF_OPUS_72( 8,        null,   STREAM,  3,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 72k",
-			   new Shortcut("OGG_OPUS_72", "-f caf -codec:a copy")),
-	 OGG_VORBIS_96( 9,        null,   STREAM,  2,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -b:a 96k" ),
-	       MP3_128(10,        null,   STREAM,  1,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 128k"),
+	// WebM is used for macOS/Safari support
+	  WEBM_OPUS_72(20,  ST,  4, "opus",  "audio/webm; codecs=opus" , "-f webm -codec:a libopus -b:a 72k"),
+	        AAC_72(21,  ST,  3,  "m4a",  "audio/x-m4a; codecs=aac" , "-f ipod -codec:a libfdk_aac -b:a 72k -cutoff 18k {MF}"),
+	 OGG_VORBIS_96(22,  ST,  2,  "ogg",  "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -q:a 2"),
+	       MP3_128(23,  ST,  1,  "mp3",  "audio/mpeg"              , "-f mp3 -codec:a libmp3lame -b:a 128k"),
 	
-	   OGG_OPUS_48(14,        null,   STREAM_LOW,  4, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 48k"),
-	   CAF_OPUS_48(15,        null,   STREAM_LOW,  3,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 48k",
-			   new Shortcut("OGG_OPUS_48", "-f caf -codec:a copy")),
-	 OGG_VORBIS_64(16,        null,   STREAM_LOW,  2,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -b:a 64k" ),
-	        MP3_96(17,        null,   STREAM_LOW,  1,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 96k"),
+	// low quality streaming formats for future use when payment is enabled, by admin choice
+	  WEBM_OPUS_48(30, STL,  4, "opus",  "audio/webm; codecs=opus" , "-f webm -codec:a libopus -b:a 48k"),
+	 OGG_VORBIS_64(31, STL,  2,  "ogg",  "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -q:a 0"),
+	        MP3_96(32, STL,  1,  "mp3",  "audio/mpeg"              , "-f mp3 -codec:a libmp3lame -b:a 96k"),
 	;
 
-	public static final ImmutableSet<TranscodeFormat> ENCUMBERED_FORMATS = ImmutableSet.of(AAC_96);
-	public static final ImmutableSet<TranscodeFormat> MP3_FORMATS = ImmutableSet.of(MP3_V0, MP3_320);
+	public static final ImmutableSet<TranscodeFormat> ENCUMBERED_FORMATS = ImmutableSet.of(AAC_VBR, AAC_72);
+	public static final ImmutableSet<TranscodeFormat> MP3_FORMATS = ImmutableSet.of(MP3_V0, MP3_320, MP3_96);
 	public static final ImmutableSet<TranscodeFormat> LOSSLESS_FORMATS = ImmutableSet.of(FLAC, ALAC);
 	public static final ImmutableSet<TranscodeFormat> UNCOMPRESSED_FORMATS = ImmutableSet.of(WAV, AIFF);
 	public static final ImmutableSet<TranscodeFormat> ALL_FORMATS = ImmutableSet.copyOf(values());
 
 	public enum Usage {
 		DOWNLOAD,
+		DOWNLOAD_DIRECT,
 		STREAM,
 		STREAM_LOW,
 		;
+		public static final Usage DL = DOWNLOAD;
+		public static final Usage DLD = DOWNLOAD_DIRECT;
+		public static final Usage ST = STREAM;
+		public static final Usage STL = STREAM_LOW;
 		public boolean canDownload() {
-			return this == DOWNLOAD;
+			return this == DOWNLOAD || this == DOWNLOAD_DIRECT;
 		}
 		public boolean canStream() {
 			return this == STREAM || this == STREAM_LOW;
 		}
 	}
 
-	private static final TranscodeFormat[] BY_DATABASE_ID;
-	static {
-		int max = 0;
-		for (TranscodeFormat tf : values()) {
-			max = Math.max(tf.databaseId, max);
-		}
-		BY_DATABASE_ID = new TranscodeFormat[max+1];
-		for (TranscodeFormat tf : values()) {
-			BY_DATABASE_ID[tf.databaseId] = tf;
-		}
-	}
+	private static final ImmutableMap<Integer, TranscodeFormat> BY_DATABASE_ID = ALL_FORMATS.stream()
+			.collect(ImmutableMap.toImmutableMap(TranscodeFormat::getDatabaseId, f -> f));
 
 	public static class Shortcut {
 		private final String sourceStr;
@@ -116,8 +110,11 @@ public enum TranscodeFormat {
 	private final String[] ffmpegArguments;
 	private final ImmutableList<Shortcut> shortcuts;
 
+	TranscodeFormat(int databaseId, Usage usage, int ytdlPriority, String fileExt, String mimeType, String ffmpegOptions, Shortcut... shortcuts) {
+		this(databaseId, usage, ytdlPriority, fileExt, mimeType, ffmpegOptions, null, shortcuts);
+	}
 
-	private TranscodeFormat(int databaseId, String name, Usage usage, int ytdlPriority, String fileExt, String mimeType, String ffmpegOptions, Shortcut... shortcuts) {
+	TranscodeFormat(int databaseId, Usage usage, int ytdlPriority, String fileExt, String mimeType, String ffmpegOptions, String name, Shortcut... shortcuts) {
 		this.databaseId = databaseId;
 		this.name = name;
 		this.usage = usage;
@@ -176,12 +173,17 @@ public enum TranscodeFormat {
 	public boolean isUncompressed() {
 		return UNCOMPRESSED_FORMATS.contains(this);
 	}
+	
+	public boolean canReplayGain() {
+		// there is no standard (at least, not one known to Regainer) for embedding RG info into WAV/AIFF
+		return !isUncompressed();
+	}
 
 	public ImmutableList<Shortcut> getShortcuts() {
 		return shortcuts;
 	}
 
 	private static String[] optToArg(String opt) {
-		return Splitter.on(' ').omitEmptyStrings().trimResults().splitToList(opt).toArray(new String[0]);
+		return Splitter.on(' ').omitEmptyStrings().trimResults().splitToList(opt.replace("{MF}", "-movflags +faststart")).toArray(String[]::new);
 	}
 }

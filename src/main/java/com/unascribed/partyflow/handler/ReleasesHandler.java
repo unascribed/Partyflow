@@ -45,11 +45,11 @@ public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 			throws IOException, ServletException {
 		Session s = SessionHelper.getSession(req);
 		try (Connection c = Partyflow.sql.getConnection()) {
-			String suffix = s == null ? "" : " OR releases.user_id = ?";
+			String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
 			try (PreparedStatement ps = c.prepareStatement(
-					"SELECT title, subtitle, slug, published, art, users.display_name FROM releases"
-					+ " JOIN users ON users.user_id = releases.user_id"
-					+ " WHERE published = true"+suffix+";")) {
+					"SELECT `title`, `subtitle`, `slug`, `published`, `art`, `users`.`display_name` FROM `releases`"
+					+ " JOIN `users` ON `users`.`user_id` = `releases`.`user_id`"
+					+ " WHERE `published` = true"+suffix+";")) {
 				if (s != null) {
 					ps.setInt(1, s.userId);
 				}

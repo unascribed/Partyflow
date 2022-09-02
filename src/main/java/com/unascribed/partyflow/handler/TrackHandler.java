@@ -52,13 +52,13 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 		if (m.group(2) == null) {
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String trackSlug = m.group(1);
-				String suffix = s == null ? "" : " OR releases.user_id = ?";
+				String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
 				try (PreparedStatement ps = c.prepareStatement(
-						"SELECT tracks.title, tracks.subtitle, releases.published, releases.art, releases.title, releases.slug, "
-								+ "tracks.art, tracks.description, releases.user_id, users.display_name FROM tracks "
-						+ "JOIN releases ON releases.release_id = tracks.release_id "
-						+ "JOIN users ON releases.user_id = users.user_id "
-						+ "WHERE tracks.slug = ? AND (releases.published = true"+suffix+");")) {
+						"SELECT `tracks`.`title`, `tracks`.`subtitle`, `releases`.`published`, `releases`.`art`, `releases`.`title`, `releases`.`slug`, "
+								+ "`tracks`.`art`, `tracks`.`description`, `releases`.`user_id`, `users`.`display_name` FROM `tracks` "
+						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
+						+ "JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
+						+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
 					ps.setString(1, trackSlug);
 					if (s != null) {
 						ps.setInt(2, s.userId);
@@ -112,11 +112,11 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 		} else if ("/master".equals(m.group(2))) {
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String trackSlug = m.group(1);
-				String suffix = s == null ? "" : " OR releases.user_id = ?";
+				String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
 				try (PreparedStatement ps = c.prepareStatement(
-						"SELECT master FROM tracks "
-						+ "JOIN releases ON releases.release_id = tracks.release_id "
-						+ "WHERE tracks.slug = ? AND (releases.published = true"+suffix+");")) {
+						"SELECT `master` FROM `tracks` "
+						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
+						+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
 					ps.setString(1, trackSlug);
 					if (s != null) {
 						ps.setInt(2, s.userId);
@@ -172,9 +172,9 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 				String slugs = m.group(1);
 				String releaseSlug;
 				int trackId;
-				try (PreparedStatement ps = c.prepareStatement("SELECT track_id, tracks.art, master, releases.slug FROM tracks "
-						+ "JOIN releases ON releases.release_id = tracks.release_id "
-						+ "WHERE tracks.slug = ? AND releases.user_id = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("SELECT `track_id`, `tracks`.`art`, `master`, `releases`.`slug` FROM `tracks` "
+						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
+						+ "WHERE `tracks`.`slug` = ? AND `releases`.`user_id` = ?;")) {
 					ps.setString(1, slugs);
 					ps.setInt(2, s.userId);
 					try (ResultSet rs = ps.executeQuery()) {
@@ -194,7 +194,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						}
 					}
 				}
-				try (PreparedStatement ps = c.prepareStatement("SELECT file FROM transcodes WHERE track_id = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("SELECT `file` FROM `transcodes` WHERE `track_id` = ?;")) {
 					ps.setInt(1, trackId);
 					try (ResultSet rs = ps.executeQuery()) {
 						while (rs.next()) {
@@ -203,7 +203,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						}
 					}
 				}
-				try (PreparedStatement ps = c.prepareStatement("DELETE FROM transcodes WHERE track_id = ?; DELETE FROM tracks WHERE track_id = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `transcodes` WHERE `track_id` = ?; DELETE FROM `tracks` WHERE `track_id` = ?;")) {
 					ps.setInt(1, trackId);
 					ps.setInt(2, trackId);
 					ps.executeUpdate();

@@ -49,7 +49,7 @@ public class LogoutHandler extends SimpleHandler implements UrlEncodedPost {
 			return;
 		}
 		try (Connection c = Partyflow.sql.getConnection()) {
-			try (PreparedStatement ps = c.prepareStatement("DELETE FROM sessions WHERE session_id = ?;")) {
+			try (PreparedStatement ps = c.prepareStatement("DELETE FROM `sessions` WHERE `session_id` = ?;")) {
 				ps.setString(1, session.sessionId.toString());
 				ps.executeUpdate();
 			}

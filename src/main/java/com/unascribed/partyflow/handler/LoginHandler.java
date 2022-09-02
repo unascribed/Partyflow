@@ -109,7 +109,7 @@ public class LoginHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 		try (Connection c = Partyflow.sql.getConnection()) {
 			boolean success = false;
 			int userId = -1;
-			try (PreparedStatement ps = c.prepareStatement("SELECT user_id, password FROM users WHERE username = ?;")) {
+			try (PreparedStatement ps = c.prepareStatement("SELECT `user_id`, `password` FROM `users` WHERE `username` = ?;")) {
 				ps.setString(1, name);
 				try (ResultSet rs = ps.executeQuery()) {
 					if (rs.first()) {
@@ -132,14 +132,14 @@ public class LoginHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 				}
 			}
 			if (!success) return;
-			try (PreparedStatement ps = c.prepareStatement("UPDATE users SET last_login = NOW() WHERE user_id = ?;")) {
+			try (PreparedStatement ps = c.prepareStatement("UPDATE `users` SET `last_login` = NOW() WHERE `user_id` = ?;")) {
 				ps.setInt(1, userId);
 				ps.execute();
 			}
 			boolean remember = params.containsKey("remember");
 			UUID sessionId = UUID.randomUUID();
 			int days = remember ? 365 : 7;
-			try (PreparedStatement ps = c.prepareStatement("INSERT INTO sessions (session_id, user_id, expires) VALUES (?, ?, DATEADD(DAY, ?, NOW()));")) {
+			try (PreparedStatement ps = c.prepareStatement("INSERT INTO `sessions` (`session_id`, `user_id`, `expires`) VALUES (?, ?, DATEADD(DAY, ?, NOW()));")) {
 				ps.setString(1, sessionId.toString());
 				ps.setInt(2, userId);
 				ps.setInt(3, days);

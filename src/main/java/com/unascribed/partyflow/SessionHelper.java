@@ -88,8 +88,9 @@ public class SessionHelper {
 								if (MessageDigest.isEqual(hmac, theirHmac)) {
 									try (Connection c = Partyflow.sql.getConnection()) {
 										try (PreparedStatement ps = c.prepareStatement(
-												"SELECT sessions.user_id, users.display_name, users.username, users.admin FROM sessions JOIN users ON users.user_id = sessions.user_id "
-												+ "WHERE session_id = ? AND expires > NOW();")) {
+												"SELECT `sessions`.`user_id`, `users`.`display_name`, `users`.`username`, `users`.`admin` FROM `sessions` "
+												+ "JOIN `users` ON `users`.`user_id` = `sessions`.`user_id` "
+												+ "WHERE `session_id` = ? AND `expires` > NOW();")) {
 											ps.setString(1, sessionId.toString());
 											try (ResultSet rs = ps.executeQuery()) {
 												if (rs.first()) {

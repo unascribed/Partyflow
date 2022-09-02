@@ -179,7 +179,7 @@ public class Partyflow {
 				try (Statement s = c.createStatement()) {
 					int dataVersion;
 					try {
-						try (ResultSet rs = s.executeQuery("SELECT value FROM meta WHERE name = 'data_version';")) {
+						try (ResultSet rs = s.executeQuery("SELECT `value` FROM `meta` WHERE `name` = 'data_version';")) {
 							if (rs.first()) {
 								dataVersion = Integer.parseInt(rs.getString("value"));
 							} else {
@@ -218,7 +218,7 @@ public class Partyflow {
 				log.error("Failed to open the database at {}.mv.db: The file is in use.\n"
 						+ "Close any other instances of Partyflow or database editors and try again", config.database.file);
 			} else {
-				log.error("Failed to open database at {}.m", config.database.file, e);
+				log.error("Failed to open database at {}.mv.db", config.database.file, e);
 			}
 			return;
 		}

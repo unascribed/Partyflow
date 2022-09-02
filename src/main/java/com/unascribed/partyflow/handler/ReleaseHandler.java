@@ -22,14 +22,19 @@ package com.unascribed.partyflow.handler;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,12 +62,14 @@ import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
+import com.unascribed.partyflow.ThreadPools;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
+import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 
 public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
@@ -73,8 +80,14 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 	private static final File WORK_DIR = new File(System.getProperty("java.io.tmpdir"), "partyflow/work");
 
 	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/publish|/unpublish|/edit|/add-track)?$");
+	private static final Pattern DURATION_FFPROBE_PATTERN = Pattern.compile("^format.duration=\"?(.*?)\"?$", Pattern.MULTILINE);
 	private static final Pattern TITLE_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:title|TITLE)=\"?(.*?)\"?$", Pattern.MULTILINE);
 	private static final Pattern TRACK_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:track|TRACK)=\"?(.*?)\"?$", Pattern.MULTILINE);
+	
+	private static final Pattern LOUDNESS_FFMPEG_PATTERN = Pattern.compile("^\\s+I:\\s+(-?\\d+\\.\\d+) LUFS$", Pattern.MULTILINE);
+	private static final Pattern PEAK_FFMPEG_PATTERN = Pattern.compile("^\\s+Peak:\\s+(-?(?:\\d+\\.\\d+|inf)) dBFS$", Pattern.MULTILINE);
+	
+	private static final BigDecimal TEN_THOUSAND = new BigDecimal(10000);
 
 	private final Remark remark = new Remark(com.overzealous.remark.Options.github());
 
@@ -88,11 +101,11 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 		if (m.group(2) == null) {
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String slugs = m.group(1);
-				String suffix = s == null ? "" : " OR releases.user_id = ?";
+				String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
 				try (PreparedStatement ps = c.prepareStatement(
-						"SELECT release_id, title, subtitle, published, art, description, releases.user_id, users.display_name FROM releases "
-						+ "JOIN users ON releases.user_id = users.user_id "
-						+ "WHERE slug = ? AND (published = true"+suffix+");")) {
+						"SELECT `release_id`, `title`, `subtitle`, `published`, `art`, `description`, `releases`.`user_id`, `users`.`display_name` FROM `releases` "
+						+ "JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
+						+ "WHERE `slug` = ? AND (`published` = true"+suffix+");")) {
 					ps.setString(1, slugs);
 					if (s != null) {
 						ps.setInt(2, s.userId);
@@ -102,8 +115,8 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						if (rs.first()) {
 							List<Object> _tracks = Lists.newArrayList();
 							try (PreparedStatement ps2 = c.prepareStatement(
-									"SELECT title, subtitle, slug, art, track_number FROM tracks "
-									+ "WHERE release_id = ? ORDER BY track_number ASC;")) {
+									"SELECT `title`, `subtitle`, `slug`, `art`, `track_number` FROM `tracks` "
+									+ "WHERE `release_id` = ? ORDER BY `track_number` ASC;")) {
 								ps2.setInt(1, rs.getInt("release_id"));
 								try (ResultSet rs2 = ps2.executeQuery()) {
 									while (rs2.next()) {
@@ -156,8 +169,8 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 			}
 			try (Connection c = Partyflow.sql.getConnection()) {
 				try (PreparedStatement ps = c.prepareStatement(
-						"SELECT title, subtitle, published, art FROM releases "
-						+ "WHERE slug = ? AND user_id = ?;")) {
+						"SELECT `title`, `subtitle`, `published`, `art` FROM `releases` "
+						+ "WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setString(1, m.group(1));
 					ps.setInt(2, s.userId);
 					try (ResultSet rs = ps.executeQuery()) {
@@ -203,7 +216,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String slugs = m.group(1);
 				int releaseId;
-				try (PreparedStatement ps = c.prepareStatement("SELECT release_id, art FROM releases WHERE slug = ? AND user_id = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("SELECT `release_id`, `art` FROM `releases` WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setString(1, slugs);
 					ps.setInt(2, s.userId);
 					try (ResultSet rs = ps.executeQuery()) {
@@ -221,7 +234,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					}
 				}
 				// TODO delete transcodes and masters
-				try (PreparedStatement ps = c.prepareStatement("DELETE FROM releases WHERE release_id = ?; DELETE FROM tracks WHERE release_id = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `releases` WHERE `release_id` = ?; DELETE FROM `tracks` WHERE `release_id` = ?;")) {
 					ps.setInt(1, releaseId);
 					ps.setInt(2, releaseId);
 					ps.executeUpdate();
@@ -245,7 +258,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String slug = m.group(1);
 				String midfix = published ? ", published_at = NOW()" : "";
-				try (PreparedStatement ps = c.prepareStatement("UPDATE releases SET published = ?"+midfix+" WHERE slug = ? AND user_id = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("UPDATE `releases` SET `published` = ?"+midfix+" WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setBoolean(1, published);
 					ps.setString(2, slug);
 					ps.setInt(3, s.userId);
@@ -321,8 +334,8 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 			try (Connection c = Partyflow.sql.getConnection()) {
 				boolean published;
 				try (PreparedStatement ps = c.prepareStatement(
-						"SELECT published FROM releases "
-						+ "WHERE slug = ? AND user_id = ?;")) {
+						"SELECT `published` FROM `releases` "
+						+ "WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setString(1, m.group(1));
 					ps.setInt(2, s.userId);
 					try (ResultSet rs = ps.executeQuery()) {
@@ -336,7 +349,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				}
 				String slug = published ? m.group(1) : Partyflow.sanitizeSlug(title);
 				if (!Objects.equal(slug, m.group(1))) {
-					try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM releases WHERE slug = ?;")) {
+					try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM `releases` WHERE `slug` = ?;")) {
 						int i = 0;
 						String suffix = "";
 						while (true) {
@@ -352,11 +365,11 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						slug = slug+suffix;
 					}
 				}
-				String midfix = data.getPart("publish") != null ? ", published = true, published_at = NOW()" : "";
-				String extraCols = artPath != null ? "art = ?," : "";
+				String midfix = data.getPart("publish") != null ? ", `published` = true, `published_at` = NOW()" : "";
+				String extraCols = artPath != null ? "`art` = ?," : "";
 				try (PreparedStatement ps = c.prepareStatement(
-						"UPDATE releases SET title = ?, subtitle = ?, slug = ?, "+extraCols+" description = ?, last_updated = NOW()"+midfix
-						+ " WHERE slug = ? AND user_id = ?;")) {
+						"UPDATE `releases` SET `title` = ?, `subtitle` = ?, `slug` = ?, "+extraCols+" `description` = ?, `last_updated` = NOW()"+midfix
+						+ " WHERE `slug` = ? AND `user_id` = ?;")) {
 					int i = 1;
 					ps.setString(i++, title);
 					ps.setString(i++, subtitle);
@@ -400,7 +413,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					st.execute("BEGIN TRANSACTION;");
 				}
 				int releaseId;
-				try (PreparedStatement ps = c.prepareStatement("SELECT release_id FROM releases WHERE slug = ? AND user_id = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("SELECT `release_id` FROM `releases` WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setString(1, m.group(1));
 					ps.setInt(2, s.userId);
 					try (ResultSet rs = ps.executeQuery()) {
@@ -414,144 +427,161 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					}
 				}
 				WORK_DIR.mkdirs();
+				record TrackData(String title, int trackNumber, String blobName, long duration, double loudness, double peak) {}
+				List<Future<TrackData>> futures = new ArrayList<>();
 				for (Part master : masters) {
-					File tmpFile = File.createTempFile("transcode-", ".flac", WORK_DIR);
-					try {
-						log.debug("Transcoding master to 16-bit 48kHz FLAC\n"
-								+ "(more than enough for anybody: https://people.xiph.org/~xiphmont/demo/neil-young.html)");
-						Process p = Partyflow.ffmpeg("-v", "error",
-								"-i", "-",
-								"-map", "a",
-								"-af", "aresample=osf=s16:osr=48000:dither_method=improved_e_weighted:filter_type=kaiser",
-								"-map_metadata", "-1",
-								"-metadata", "comment=Generated by Partyflow v"+Version.FULL+" hosted at "+Partyflow.publicUri.getHost(),
-								"-f", "flac",
-								"-y", tmpFile.getAbsolutePath());
-						try (InputStream in = master.getInputStream()) {
-							ByteStreams.copy(in, p.getOutputStream());
-							p.getOutputStream().close();
-						} catch (IOException e) {
-							if (!"Broken pipe".equals(e.getMessage())) {
-								throw e;
+					ThreadPools.TRANSCODE.submit(() -> {
+						File tmpFile = File.createTempFile("transcode-", ".flac", WORK_DIR);
+						try {
+							log.debug("Processing master...");
+							Process p = Partyflow.ffmpeg("-v", "info", "-nostats",
+									"-i", "-", "-map", "a",
+									"-filter_complex", "[0:a]aresample=osf=s16:osr=48000:dither_method=improved_e_weighted:filter_type=kaiser[a];"
+											+ "[a]ebur128=framelog=verbose:peak=true,anullsink",
+									"-map_metadata", "-1",
+									"-metadata", "comment=Generated by Partyflow v"+Version.FULL+" hosted at "+Partyflow.publicUri.getHost(),
+									"-f", "flac",
+									"-y", tmpFile.getAbsolutePath());
+							try (InputStream in = master.getInputStream()) {
+								ByteStreams.copy(in, p.getOutputStream());
+								p.getOutputStream().close();
+							} catch (IOException e) {
+								if (!"Broken pipe".equals(e.getMessage())) {
+									throw e;
+								}
 							}
-						}
-						while (p.isAlive()) {
-							try {
-								p.waitFor();
-							} catch (InterruptedException e) {
+							while (p.isAlive()) {
+								try {
+									p.waitFor();
+								} catch (InterruptedException e) {
+								}
 							}
-						}
-						if (p.exitValue() != 0) {
-							String str = new String(ByteStreams.toByteArray(p.getErrorStream()), Charsets.UTF_8);
-							log.warn("Failed to process audio with FFmpeg:\n{}", str);
-							throw new ServletException("Failed to transcode; FFmpeg exited with code "+p.exitValue());
-						}
-						log.debug("Transcode complete");
-						String blobName;
-						do {
-							String rand = Partyflow.randomString(16);
-							blobName = "masters/"+rand.substring(0, 3)+"/"+rand+".flac";
-						} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
-						String sfm = master.getSubmittedFileName();
-						if (sfm.contains(".")) {
-							sfm = sfm.substring(0, sfm.lastIndexOf('.'))+".flac";
-						}
-						String filename = TranscodeHandler.encodeFilename(sfm);
-						Blob blob = Partyflow.storage.blobBuilder(blobName)
-								.payload(tmpFile)
-								.cacheControl("private")
-								.contentLength(tmpFile.length())
-								.contentDisposition("attachment; filename="+filename+"; filename*=utf-8''"+filename)
-								.contentType("audio/flac")
-								.build();
-						Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
-						String titleFromFilename = sfm.contains(".") ? sfm.substring(0, sfm.lastIndexOf('.')) : sfm;
-						Process probe = Partyflow.ffprobe("-v", "error", "-print_format", "flat", "-show_format", "-");
-						try (InputStream in = master.getInputStream()) {
-							ByteStreams.copy(in, probe.getOutputStream());
-							probe.getOutputStream().close();
-						} catch (IOException e) {
-							if (!"Broken pipe".equals(e.getMessage())) {
-								throw e;
+							String mpegErr = new String(ByteStreams.toByteArray(p.getErrorStream()), Charsets.UTF_8);
+							if (p.exitValue() != 0) {
+								log.warn("Failed to process audio with FFmpeg, output:\n{}", mpegErr);
+								throw new ServletException("Failed to transcode; FFmpeg exited with code "+p.exitValue());
 							}
-						}
-						while (probe.isAlive()) {
-							try {
-								probe.waitFor();
-							} catch (InterruptedException e) {
+							log.debug("Processing complete");
+							double loudness = find(LOUDNESS_FFMPEG_PATTERN, mpegErr)
+									.map(Doubles::tryParse)
+									.orElse(0D);
+							double peak = find(PEAK_FFMPEG_PATTERN, mpegErr)
+									.map(Doubles::tryParse)
+									.orElse(0D);
+							String blobName;
+							do {
+								String rand = Partyflow.randomString(16);
+								blobName = "masters/"+rand.substring(0, 3)+"/"+rand+".flac";
+							} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
+							String sfm = master.getSubmittedFileName();
+							if (sfm.contains(".")) {
+								sfm = sfm.substring(0, sfm.lastIndexOf('.'))+".flac";
 							}
-						}
-						String title;
-						int trackNumber = -1;
-						if (probe.exitValue() != 0) {
-							String str = new String(ByteStreams.toByteArray(probe.getErrorStream()), Charsets.UTF_8);
-							log.warn("Failed to probe master with FFprobe:\n{}", str);
-							title = titleFromFilename;
-						} else {
-							String probeOut = new String(ByteStreams.toByteArray(probe.getInputStream()), Charsets.UTF_8);
-							Matcher probeTitleM = TITLE_FFPROBE_PATTERN.matcher(probeOut);
-							if (probeTitleM.find()) {
-								title = probeTitleM.group(1);
-							} else {
+							String filename = TranscodeHandler.encodeFilename(sfm);
+							Blob blob = Partyflow.storage.blobBuilder(blobName)
+									.payload(tmpFile)
+									.cacheControl("private")
+									.contentLength(tmpFile.length())
+									.contentDisposition("attachment; filename="+filename+"; filename*=utf-8''"+filename)
+									.contentType("audio/flac")
+									.build();
+							Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
+							String titleFromFilename = sfm.contains(".") ? sfm.substring(0, sfm.lastIndexOf('.')) : sfm;
+							Process probe = Partyflow.ffprobe("-v", "error", "-print_format", "flat", "-show_format", "-");
+							try (InputStream in = master.getInputStream()) {
+								ByteStreams.copy(in, probe.getOutputStream());
+								probe.getOutputStream().close();
+							} catch (IOException e) {
+								if (!"Broken pipe".equals(e.getMessage())) {
+									throw e;
+								}
+							}
+							while (probe.isAlive()) {
+								try {
+									probe.waitFor();
+								} catch (InterruptedException e) {
+								}
+							}
+							String title;
+							int trackNumber = -1;
+							long duration;
+							if (probe.exitValue() != 0) {
+								String str = new String(ByteStreams.toByteArray(probe.getErrorStream()), Charsets.UTF_8);
+								log.warn("Failed to probe master with FFprobe:\n{}", str);
 								title = titleFromFilename;
+								duration = 0;
+							} else {
+								String probeOut = new String(ByteStreams.toByteArray(probe.getInputStream()), Charsets.UTF_8);
+								title = find(TITLE_FFPROBE_PATTERN, probeOut).orElse(titleFromFilename);
+								trackNumber = find(TRACK_FFPROBE_PATTERN, probeOut)
+										.map(Ints::tryParse)
+										.filter(i -> i >= 1)
+										.orElse(-1);
+								duration = find(DURATION_FFPROBE_PATTERN, probeOut)
+										.map(BigDecimal::new)
+										.map(bd -> bd.multiply(TEN_THOUSAND))
+										.map(BigDecimal::longValue)
+										.orElse(0L);
 							}
-							Matcher probeTrackM = TRACK_FFPROBE_PATTERN.matcher(probeOut);
-							if (probeTrackM.find()) {
-								String trackStr = probeTrackM.group(1);
-								Integer trackI = Ints.tryParse(trackStr);
-								if (trackI != null && trackI >= 1) {
-									trackNumber = trackI;
-								}
-							}
+							return new TrackData(title, trackNumber, blobName, duration, loudness, peak);
+						} finally {
+							tmpFile.delete();
 						}
-						if (trackNumber == -1) {
-							try (PreparedStatement ps = c.prepareStatement("SELECT MAX(track_number)+1 AS next FROM tracks WHERE release_id = ?;")) {
-								ps.setInt(1, releaseId);
-								try (ResultSet rs = ps.executeQuery()) {
-									if (rs.first()) {
-										if (rs.getObject("next") == null) {
-											trackNumber = 1;
-										} else {
-											trackNumber = rs.getInt("next");
-										}
-									} else {
-										trackNumber = 1;
-									}
-								}
-							}
-						}
-						String slug = Partyflow.sanitizeSlug(title);
-						try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM tracks WHERE slug = ? AND release_id = ?;")) {
-							ps.setInt(2, releaseId);
-							int i = 0;
-							String suffix = "";
-							while (true) {
-								if (i > 0) {
-									suffix = "-"+(i+1);
-								}
-								ps.setString(1, slug+suffix);
-								try (ResultSet rs = ps.executeQuery()) {
-									if (!rs.first()) break;
-								}
-								i++;
-							}
-							slug = slug+suffix;
-						}
-						lastSlug = slug;
-						try (PreparedStatement ps = c.prepareStatement(
-								"INSERT INTO tracks (release_id, title, subtitle, slug, master, description, track_number, created_at, last_updated) "
-								+ "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW());")) {
+					});
+				}
+				for (var f : futures) {
+					TrackData td;
+					try {
+						td = f.get();
+					} catch (InterruptedException | ExecutionException e) {
+						throw new ServletException(e);
+					}
+					int trackNumber = td.trackNumber;
+					if (trackNumber == -1) {
+						try (PreparedStatement ps = c.prepareStatement("SELECT MAX(`track_number`)+1 AS `next` FROM `tracks` WHERE `release_id` = ?;")) {
 							ps.setInt(1, releaseId);
-							ps.setString(2, title);
-							ps.setString(3, "");
-							ps.setString(4, slug);
-							ps.setString(5, blobName);
-							ps.setString(6, "");
-							ps.setInt(7, trackNumber);
-							ps.execute();
+							try (ResultSet rs = ps.executeQuery()) {
+								if (rs.first()) {
+									if (rs.getObject("next") == null) {
+										trackNumber = 1;
+									} else {
+										trackNumber = rs.getInt("next");
+									}
+								} else {
+									trackNumber = 1;
+								}
+							}
 						}
-					} finally {
-						tmpFile.delete();
+					}
+					String slug = Partyflow.sanitizeSlug(td.title);
+					try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM `tracks` WHERE `slug` = ? AND `release_id` = ?;")) {
+						ps.setInt(2, releaseId);
+						int i = 0;
+						String suffix = "";
+						while (true) {
+							if (i > 0) {
+								suffix = "-"+(i+1);
+							}
+							ps.setString(1, slug+suffix);
+							try (ResultSet rs = ps.executeQuery()) {
+								if (!rs.first()) break;
+							}
+							i++;
+						}
+						slug = slug+suffix;
+					}
+					lastSlug = slug;
+					try (PreparedStatement ps = c.prepareStatement(
+							"INSERT INTO `tracks` (`release_id`, `title`, `subtitle`, `slug`, `master`, `description`, `track_number`, `created_at`, `last_updated`) "
+							+ "VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW());")) {
+						ps.setInt(1, releaseId);
+						ps.setString(2, td.title);
+						ps.setString(3, "");
+						ps.setString(4, slug);
+						ps.setString(5, td.blobName);
+						ps.setString(6, "");
+						ps.setInt(7, trackNumber);
+						ps.execute();
 					}
 				}
 				try (Statement st = c.createStatement()) {
@@ -578,6 +608,15 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 			res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
 		} else {
 			res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
+		}
+	}
+
+	private Optional<String> find(Pattern pattern, String haystack) {
+		Matcher m = TITLE_FFPROBE_PATTERN.matcher(haystack);
+		if (m.find()) {
+			return Optional.of(m.group(1));
+		} else {
+			return Optional.empty();
 		}
 	}
 

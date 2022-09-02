@@ -51,24 +51,23 @@ storage: {
 }
 programs: {
 	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
-	// firejail) is recommended in production. An example firejail config file is available in the
-	// Partyflow repository. {} will be replaced with "mpeg" or "probe" depending on which program
-	// is needed. All files will be in /tmp/partyflow/work (or whatever your platform's
-	// default temp directory is)
-	ffmpeg: ["ff{}"]
+	// unshare) is recommended in production. All files will be in /tmp/partyflow/work (or whatever
+	// your platform's default temp directory is)
 	
-	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
-	// firejail) is recommended in production. An example firejail config file is available in the
-	// Partyflow repository. All files will be in /tmp/partyflow/work (or whatever your platform's
-	// default temp directory is)
+	// Used to process audio.
+	// {} will be replaced with "mpeg" or "probe" depending on which program is needed.
+	ffmpeg: ["ff{}", "-hide_banner"]
+	
+	// Used to process images.
 	magickConvert: ["convert"]
 	// For newer versions of ImageMagick:
 	//magickConvert: ["magick" "convert"]
+	
+	// The maximum number of FFmpeg processes that will be run simultaneously. If set to 0, uses
+	// the number of CPU threads.
+	maxTranscodes: 0
 }
 formats: {
-	// Push the Opus agenda, even to users on macOS/iOS, offering them CAF files.
-	// Does not affect streaming formats; 72kbps CAF Opus will always be offered.
-	preferOpusEverywhere: false
 	// If true, uncompressed formats such as WAV and AIFF will be offered. These are a waste of
 	// space and bandwidth - FLAC is a better choice, but people often expect WAV to be an option.
 	allowUncompressedFormats: false
@@ -79,7 +78,7 @@ formats: {
 	allowMP3: true
 	// If true, proprietary patent-encumbered formats such as AAC will be offered.
 	// This option can be DANGEROUS and if you're sufficiently large may result in the MPEG-LA trying
-	// to seek rent from you for daring to use their shitty formats. Only turn on if you really need
+	// to seek rent from you for daring to use their bad formats. Only turn on if you really need
 	// it and are willing to accept this risk. Note that your FFmpeg must be built with libfdk_aac
 	// support; the native aac encoder is very low quality and therefore unsupported by Partyflow.
 	allowEncumberedFormats: false
