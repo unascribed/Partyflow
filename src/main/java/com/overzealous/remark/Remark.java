@@ -20,7 +20,7 @@ import com.overzealous.remark.convert.DocumentConverter;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.safety.Cleaner;
-import org.jsoup.safety.Whitelist;
+import org.jsoup.safety.Safelist;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,11 +43,11 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>Examples:</p>
  * 
  * <pre>
- * // Create a generic remark that converts to pure-Markdown spec. 
+ * // Create a generic remark that converts to pure-Markdown spec.
  * Remark remark = new Remark();
  * String cleanedUp = remark.convertFragment(inputString);
  * 
- * // Create a remark that converts to pegdown with all extensions enabled. 
+ * // Create a remark that converts to pegdown with all extensions enabled.
  * Remark pegdownAll = new Remark(Options.pegdownAllExtensions());
  * cleanedUp = pegdownAll.convert(new URL("http://www.example.com"), 15000);
  * 
@@ -80,7 +80,7 @@ public class Remark {
 	 */
 	public Remark(Options options) {
 		this.options = options.getCopy();
-		Whitelist whitelist = Whitelist.basicWithImages()
+		Safelist whitelist = Safelist.basicWithImages()
 									  .addTags("div",
                                               "h1", "h2", "h3", "h4", "h5", "h6",
                                               "table", "tbody", "td", "tfoot", "th", "thead", "tr",
@@ -129,7 +129,7 @@ public class Remark {
 
 	/**
 	 * Returns true if the cleaned HTML document is echoed to {@code System.out}.
-	 * @return true if the cleaned HTML document is echoed 
+	 * @return true if the cleaned HTML document is echoed
 	 */
 	@SuppressWarnings({"UnusedDeclaration"})
 	public boolean isCleanedHtmlEchoed() {

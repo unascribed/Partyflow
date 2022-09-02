@@ -22,9 +22,9 @@ package com.unascribed.partyflow;
 import java.io.IOException;
 import java.util.List;
 
-import javax.servlet.http.Part;
+import org.eclipse.jetty.server.MultiPartFormInputStream;
 
-import org.eclipse.jetty.http.MultiPartFormInputStream;
+import jakarta.servlet.http.Part;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;

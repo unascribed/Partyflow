@@ -1,6 +1,6 @@
 package com.unascribed.partyflow.handler;
 
-import javax.servlet.ServletException;
+import jakarta.servlet.ServletException;
 
 import org.eclipse.jetty.http.HttpStatus;
 

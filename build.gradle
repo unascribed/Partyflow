@@ -1,32 +1,37 @@
 plugins {
 	id 'java'
 	id 'eclipse'
-	id 'net.minecrell.licenser' version '0.4.1'
+	id 'org.cadixdev.licenser' version '0.6.1'
+	id 'com.github.ben-manes.versions' version '0.42.0'
 }
 
 repositories {
 	mavenCentral()
+	maven {
+		url 'https://repo.unascribed.com'
+	}
 }
 
+sourceCompatibility = 17
+targetCompatibility = 17
+
 dependencies {
-	implementation 'org.eclipse.jetty:jetty-server:9.4.24.v20191120'
-	implementation 'org.apache.jclouds:jclouds-blobstore:2.2.0'
-	implementation 'org.apache.jclouds.driver:jclouds-slf4j:2.2.0'
-	implementation 'org.apache.jclouds.api:filesystem:2.2.0'
-	implementation 'blue.endless:jankson:1.2.0'
-	implementation 'com.google.guava:guava:28.1-jre'
-	implementation 'com.h2database:h2:1.4.200'
-	implementation 'com.github.spullara.mustache.java:compiler:0.9.6'
+	implementation 'org.eclipse.jetty:jetty-server:11.0.11'
+	implementation 'org.apache.jclouds:jclouds-blobstore:2.5.0'
+	implementation 'org.apache.jclouds.driver:jclouds-slf4j:2.5.0'
+	implementation 'org.apache.jclouds.api:filesystem:2.5.0'
+	implementation 'blue.endless:jankson:1.2.1'
+	implementation 'com.google.guava:guava:31.1-jre'
+	implementation 'com.h2database:h2:2.1.214'
+	implementation 'com.github.spullara.mustache.java:compiler:0.9.10'
 	implementation 'org.slf4j:slf4j-api:1.7.9'
-	implementation 'org.mariadb.jdbc:mariadb-java-client:2.4.4'
-	implementation 'org.jsoup:jsoup:1.12.1'
-	implementation 'com.atlassian.commonmark:commonmark:0.13.1'
+	implementation 'com.unascribed:asyncsimplelog:4.6.1'
+	implementation 'org.mariadb.jdbc:mariadb-java-client:3.0.7'
+	implementation 'org.jsoup:jsoup:1.15.3'
+	implementation 'org.commonmark:commonmark:0.19.0'
 }
 
 license {
-	matching('**/com/unascribed/asyncsimplelog/**') {
-		header = file('headers/asyncsimplelog.txt')
-	}
 	matching('**/org/slf4j/impl/**') {
 		header = file('headers/asyncsimplelog.txt')
 	}

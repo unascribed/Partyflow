@@ -28,6 +28,7 @@ public class Version {
 	public static final String APPENDIX = "";
 	public static final String BUILD = "";
 
+	@SuppressWarnings("unused")
 	public static final String FULL = MAJOR+"."+MINOR+(PATCH > 0 ? "."+PATCH : "")+(APPENDIX.isEmpty() ? "" : "-"+APPENDIX)+(BUILD.isEmpty() ? "" : "+"+BUILD);
 
 }

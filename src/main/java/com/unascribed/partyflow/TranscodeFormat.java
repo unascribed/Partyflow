@@ -30,7 +30,8 @@ public enum TranscodeFormat {
 	          FLAC( 0,      "FLAC", DOWNLOAD, 99999, "flac",  "audio/flac"               , "-f flac -codec:a flac"),
 	          ALAC( 1,      "ALAC", DOWNLOAD, 99998,  "m4a", "audio/x-m4a; codecs=alac"  , "-f ipod -codec:a alac -movflags +faststart"),
 	  OGG_OPUS_128( 2,      "Opus", DOWNLOAD,  1280, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 128k"),
-	  CAF_OPUS_128( 3,"Apple Opus", DOWNLOAD,   128,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 128k"),
+	  CAF_OPUS_128( 3,"Apple Opus", DOWNLOAD,   128,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 128k",
+			   new Shortcut("OGG_OPUS_128", "-f caf -codec:a copy")),
 	OGG_VORBIS_192( 4,"Ogg Vorbis", DOWNLOAD,   192,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -q:a 6"),
 	        MP3_V0( 5,    "MP3 V0", DOWNLOAD,   321,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -q:a 0"),
 	       MP3_320( 6,   "MP3 320", DOWNLOAD,   320,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 320k"),
@@ -40,9 +41,16 @@ public enum TranscodeFormat {
 
 	// streaming formats, in order of preference; mostly invisible to user
 	   OGG_OPUS_72( 7,        null,   STREAM,  4, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 72k"),
-	   CAF_OPUS_72( 8,        null,   STREAM,  3,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 72k"),
+	   CAF_OPUS_72( 8,        null,   STREAM,  3,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 72k",
+			   new Shortcut("OGG_OPUS_72", "-f caf -codec:a copy")),
 	 OGG_VORBIS_96( 9,        null,   STREAM,  2,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -b:a 96k" ),
 	       MP3_128(10,        null,   STREAM,  1,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 128k"),
+	
+	   OGG_OPUS_48(14,        null,   STREAM_LOW,  4, "opus",   "audio/ogg; codecs=opus"  , "-f ogg -codec:a libopus -b:a 48k"),
+	   CAF_OPUS_48(15,        null,   STREAM_LOW,  3,  "caf", "audio/x-caf; codecs=opus"  , "-f caf -codec:a libopus -b:a 48k",
+			   new Shortcut("OGG_OPUS_48", "-f caf -codec:a copy")),
+	 OGG_VORBIS_64(16,        null,   STREAM_LOW,  2,  "ogg",   "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -b:a 64k" ),
+	        MP3_96(17,        null,   STREAM_LOW,  1,  "mp3",  "audio/mpeg"               , "-f mp3 -codec:a libmp3lame -b:a 96k"),
 	;
 
 	public static final ImmutableSet<TranscodeFormat> ENCUMBERED_FORMATS = ImmutableSet.of(AAC_96);
@@ -54,12 +62,13 @@ public enum TranscodeFormat {
 	public enum Usage {
 		DOWNLOAD,
 		STREAM,
+		STREAM_LOW,
 		;
 		public boolean canDownload() {
 			return this == DOWNLOAD;
 		}
 		public boolean canStream() {
-			return this == STREAM;
+			return this == STREAM || this == STREAM_LOW;
 		}
 	}
 

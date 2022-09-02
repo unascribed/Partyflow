@@ -30,9 +30,9 @@ import java.util.UUID;
 
 import javax.annotation.Nullable;
 import javax.crypto.Mac;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;

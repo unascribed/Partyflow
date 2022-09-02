@@ -1,3 +1,4 @@
+// Many of these settings can also be changed in the admin panel.
 http: {
 	bind: "0.0.0.0"
 	port: 3000
@@ -55,8 +56,6 @@ programs: {
 	// is needed. All files will be in /tmp/partyflow/work (or whatever your platform's
 	// default temp directory is)
 	ffmpeg: ["ff{}"]
-	// Example secured ffmpeg execution (requires a user with NOPASSWD sudo permission for user nobody):
-	//ffmpeg: ["/usr/bin/sudo" "-u" "nobody" "/usr/bin/env" "-i" "/usr/bin/firejail" "--profile=/opt/partyflow/firejail-restrictive.profile" "/usr/bin/ffmpeg"]
 	
 	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
 	// firejail) is recommended in production. An example firejail config file is available in the
@@ -65,15 +64,14 @@ programs: {
 	magickConvert: ["convert"]
 	// For newer versions of ImageMagick:
 	//magickConvert: ["magick" "convert"]
-	// Example secured magick execution (requires a user with NOPASSWD sudo permission for user nobody):
-	//magickConvert: ["/usr/bin/sudo" "-u" "nobody" "/usr/bin/env" "-i" "/usr/bin/firejail" "--profile=/opt/partyflow/firejail-restrictive.profile" "/usr/bin/magick" "convert"]
 }
 formats: {
 	// Push the Opus agenda, even to users on macOS/iOS, offering them CAF files.
 	// Does not affect streaming formats; 72kbps CAF Opus will always be offered.
-	preferOpusEverywhere: true
-	// If true, uncompressed formats such as WAV and AIFF will be offered.
-	allowUncompressedFormats: true
+	preferOpusEverywhere: false
+	// If true, uncompressed formats such as WAV and AIFF will be offered. These are a waste of
+	// space and bandwidth - FLAC is a better choice, but people often expect WAV to be an option.
+	allowUncompressedFormats: false
 	// If true, lossless formats such as ALAC and FLAC will be offered.
 	allowLosslessFormats: true
 	// If true, MP3 downloads will be offered.

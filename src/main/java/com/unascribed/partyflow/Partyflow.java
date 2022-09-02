@@ -48,10 +48,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import javax.crypto.SecretKey;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import javax.crypto.spec.SecretKeySpec;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import javax.sql.DataSource;
 
 import org.eclipse.jetty.server.AsyncRequestLogWriter;
@@ -132,8 +133,8 @@ public class Partyflow {
 		try {
 			File file = new File("partyflow-config.jkson");
 			String configStr = Files.asCharSource(file, Charsets.UTF_8).read();
-			Jankson jkson = Jankson.builder().build();
-			JsonObject obj = jkson.load("{\n"+configStr+"\n}");
+			Jankson jkson = Jankson.builder().allowBareRootObject().build();
+			JsonObject obj = jkson.load(configStr);
 			config = jkson.fromJsonCarefully(obj, Config.class);
 			if (config.security.sessionSecret == null) {
 				String secret;
@@ -169,23 +170,7 @@ public class Partyflow {
 		}
 
 		byte[] sessionSecretBytes = config.security.sessionSecret.getBytes(Charsets.UTF_8);
-		sessionSecret = new SecretKey() {
-
-			@Override
-			public String getFormat() {
-				return "RAW";
-			}
-
-			@Override
-			public byte[] getEncoded() {
-				return sessionSecretBytes.clone();
-			}
-
-			@Override
-			public String getAlgorithm() {
-				return "RAW";
-			}
-		};
+		sessionSecret = new SecretKeySpec(sessionSecretBytes, "RAW");
 
 		try {
 			String url = "jdbc:h2:"+UrlEscapers.urlPathSegmentEscaper().escape(config.database.file).replace("%2F", "/");
@@ -271,7 +256,7 @@ public class Partyflow {
 		}
 		Server server = new Server(new InetSocketAddress(config.http.bind, config.http.port));
 		HandlerCollection hc = new HandlerCollection(
-				setHeader("Clacks-Overhead", "GNU Natalie Nguyen, Shiina Mota"),
+				setHeader("Clacks-Overhead", "GNU Natalie Nguyen, Shiina Mota, Near"),
 				setHeader("Server", "Partyflow v"+Version.FULL),
 				setHeader("Powered-By", poweredBy),
 				new SetupHandler().asJettyHandler(),

@@ -9,9 +9,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.Map;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobAccess;
@@ -200,7 +200,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 					ps.setString(3, blobName);
 					ps.execute();
 				}
-				res.setHeader("Transcode-Status", shortcut == null ? "SHORTCUT" : "FRESH");
+				res.setHeader("Transcode-Status", shortcut != null ? "SHORTCUT" : "FRESH");
 				res.sendRedirect(Partyflow.resolveBlob(blobName));
 			} finally {
 				tmpFile.delete();
