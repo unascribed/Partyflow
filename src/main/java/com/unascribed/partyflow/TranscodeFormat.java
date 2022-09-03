@@ -41,9 +41,9 @@ public enum TranscodeFormat {
 	// streaming formats, in order of preference; mostly invisible to user
 	// WebM is used for macOS/Safari support
 	  WEBM_OPUS_72(20,  ST,  4, "opus",  "audio/webm; codecs=opus"    , "-f webm -codec:a libopus -b:a 72k"),
-	    MP4_AAC_72(21,  ST,  3,  "mp4",  "audio/mp4; codecs=mp4a.40.2", "-f mp4 -codec:a libfdk_aac -b:a 72k -cutoff 18k {MF}"),
+	    MP4_AAC_88(21,  ST,  3,  "mp4",  "audio/mp4; codecs=mp4a.40.2", "-f mp4 -codec:a libfdk_aac -b:a 88k -cutoff 18k {MF}"),
 	 OGG_VORBIS_96(22,  ST,  2,  "ogg",  "audio/ogg; codecs=vorbis"   , "-f ogg -codec:a libvorbis -q:a 2"),
-	       MP3_128(23,  ST,  1,  "mp3",  "audio/mpeg; codecs=mp3"     , "-f mp3 -codec:a libmp3lame -b:a 128k"),
+	       MP3_112(23,  ST,  1,  "mp3",  "audio/mpeg; codecs=mp3"     , "-f mp3 -codec:a libmp3lame -b:a 112k"),
 	
 	// low quality streaming formats for future use when payment is enabled, by admin choice
 	  WEBM_OPUS_48(30, STL,  4, "opus",  "audio/webm; codecs=opus" , "-f webm -codec:a libopus -b:a 48k"),
@@ -54,7 +54,7 @@ public enum TranscodeFormat {
 	// specifying "codecs=mp3" is technically redundant, but browsers won't confidently claim
 	// playback support without it
 
-	public static final ImmutableSet<TranscodeFormat> ENCUMBERED_FORMATS = ImmutableSet.of(AAC_VBR, MP4_AAC_72);
+	public static final ImmutableSet<TranscodeFormat> ENCUMBERED_FORMATS = ImmutableSet.of(AAC_VBR, MP4_AAC_88);
 	public static final ImmutableSet<TranscodeFormat> MP3_FORMATS = ImmutableSet.of(MP3_V0, MP3_320, MP3_96);
 	public static final ImmutableSet<TranscodeFormat> LOSSLESS_FORMATS = ImmutableSet.of(FLAC, ALAC);
 	public static final ImmutableSet<TranscodeFormat> UNCOMPRESSED_FORMATS = ImmutableSet.of(WAV, AIFF);

@@ -108,7 +108,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				String slugs = m.group(1);
 				String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
 				try (PreparedStatement ps = c.prepareStatement(
-						"SELECT `release_id`, `title`, `subtitle`, `published`, `art`, `description`, `loudness`, `releases`.`user_id`, `users`.`display_name` FROM `releases` "
+						"SELECT `release_id`, `title`, `subtitle`, `published`, `art`, `description`, `loudness`, `releases`.`user_id`, `users`.`display_name`, `concat_master` FROM `releases` "
 						+ "JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
 						+ "WHERE `slug` = ? AND (`published` = true"+suffix+");")) {
 					ps.setString(1, slugs);
@@ -180,6 +180,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 											return obj;
 										}));
 								String tracks_json = gson.toJson(_tracksJson);
+								boolean doneProcessing = rs.getString("concat_master") != null;
 							});
 						} else {
 							res.sendError(HTTP_404_NOT_FOUND);

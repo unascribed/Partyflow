@@ -105,6 +105,10 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 					}
 				}
 			}
+			if (master == null) {
+				res.sendError(HTTP_409_CONFLICT);
+				return;
+			}
 			String addnFormats = Strings.repeat(", ?", fmt.getShortcuts().size());
 			try (PreparedStatement ps = c.prepareStatement("SELECT `transcode_id`, `file`, `format` FROM `transcodes` "
 					+ "WHERE `master` = ? AND `transcodes`.`format` IN (?"+addnFormats+");")) {

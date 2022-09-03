@@ -1,4 +1,25 @@
 (async function() {
+	function pad(n) {
+		return (n+100).toString().substring(1);
+	}
+	function formatTime(time, template) {
+		time = Math.floor(time);
+		template = Math.floor(template) || time;
+		let tseconds = template%60;
+		let tminutes = Math.floor((template/60)%60);
+		let thours = Math.floor((template/60/60));
+
+		let seconds = time%60;
+		let minutes = Math.floor((time/60)%60);
+		let hours = Math.floor((time/60/60));
+		if (thours > 0) {
+			return hours+":"+pad(minutes)+":"+pad(seconds);
+		} else if (tminutes > 0) {
+			return minutes+":"+pad(seconds);
+		} else {
+			return seconds.toString();
+		}
+	}
 	document.body.classList.add("yesscript");
 	const data = document.currentScript.dataset;
 	const loudness = Number(data.loudness);
@@ -13,6 +34,7 @@
 		track.button = ele.querySelector(".player-control");
 		track.length = track.end-track.start;
 		track.index = i;
+		ele.querySelector(".track-duration").textContent = formatTime(track.length);
 	});
 	const audio = new Audio();
 	let selectedFormat = null;
@@ -61,6 +83,8 @@
 	const globalPlayPause = widget.querySelector(".play-toggle");
 	const skipPrev = widget.querySelector(".skip-prev");
 	const skipNext = widget.querySelector(".skip-next");
+	const playPositionNow = widget.querySelector(".play-position .current");
+	const playPositionTotal = widget.querySelector(".play-position .total");
 	let currentTrack = firstTrack;
 	let mouseDownInSeekbar = false;
 	let mouseDownInVolbar = false;
@@ -155,7 +179,7 @@
 		set(skipNext, "disabled", currentTrack.index === tracks.length-1);
 	}
 	function updateTime() {
-		let track = tracks.find((track) => track.start < audio.currentTime && track.end > audio.currentTime);
+		let track = tracks.find((track) => track.start <= audio.currentTime && track.end > audio.currentTime);
 		if (!track) return; // ????
 		if (!currentTrack || track.slug !== currentTrack.slug) {
 			if (currentTrack) {
@@ -167,6 +191,8 @@
 		}
 		let progress = (audio.currentTime-track.start)/track.length;
 		seekbarPosition.style.width = (progress*100)+"%";
+		playPositionTotal.textContent = formatTime(track.length);
+		playPositionNow.textContent = formatTime(audio.currentTime-track.start, track.length);
 		updateBuffered();
 	}
 	function updateVolume() {
@@ -206,5 +232,6 @@
 		if (currentTrack) trans(currentTrack.button, "play", "pause");
 	});
 	updateVolume();
+	updateTime();
 	audio.load();
 })();

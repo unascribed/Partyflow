@@ -28,6 +28,7 @@
 			<div class="title">{{title}}</div>
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{creator}}</div>
+			{{#doneProcessing}}
 			<noscript>
 			<i>Enable JavaScript to play the entire album with gapless playback.</i>
 			</noscript>
@@ -40,6 +41,7 @@
 					<div class="buffered" style="width: 0%"></div>
 					<div class="position" style="width: 0%"></div>
 				</div>
+				<span class="play-position"><b class="current">0:00</b> / <span class="total">0:00</span></span>
 				<div class="flex-break"></div>
 				<svg class="volicon high" viewBox="0 0 24 24">
 					<path d="m 3,9 v 6 h 4 l 5,5 V 4 L 7,9 Z" class="speaker" fill="#FFF"/>
@@ -52,6 +54,10 @@
 					<div class="position" style="width: 100%"></div>
 				</div>
 			</div>
+			{{/doneProcessing}}
+			{{^doneProcessing}}
+			<i>This release is still processing.</i> Check back in a few moments.
+			{{/doneProcessing}}
 			<div id="tracks">
 			{{#tracks}}
 				<a href="{{root}}track/{{slug}}" class="track" data-track-slug="{{slug}}">
@@ -59,12 +65,15 @@
 					<span class="trackNumber">{{track_number}}.</span>
 					<span class="title">{{title}}</span>
 					<span class="subtitle">{{subtitle}}</span>
+					<span class="track-duration"></span>
 				</a>
 			{{/tracks}}
 			</div>
+			{{#doneProcessing}}
 			<script data-loudness="{{albumLoudness}}" data-release-slug="{{slug}}"
 				data-formats="{{stream_formats_json}}" data-tracks="{{tracks_json}}"
 				src="{{root}}assets/gapless-player.js"></script>
+			{{/doneProcessing}}
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}
