@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -33,54 +34,85 @@ import com.unascribed.partyflow.TranscodeFormat.Shortcut;
 import com.unascribed.partyflow.TranscodeFormat.Usage;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Enums;
+import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.ByteStreams;
 import com.google.common.net.UrlEscapers;
 
 public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 
 	private static final File WORK_DIR = new File(System.getProperty("java.io.tmpdir"), "partyflow/work");
+	private static final Splitter SLASH_SPLITTER = Splitter.on('/').limit(2);
+	
+	private static final ImmutableMap<String, String> QUERIES_BY_KIND = ImmutableMap.of(
+			"release", "SELECT `concat_master` AS `master`, `title`, NULL as `release_title`, `users`.`display_name` AS `creator`, `releases`.`published` AS `published` FROM `releases` "
+					+ "JOIN `users` ON `users`.`user_id` = `releases`.`user_id` "
+					+ "WHERE `slug` = ? AND (`published` = true OR {});",
+			
+			"track", "SELECT `tracks`.`master` AS `master`, `tracks`.`title` AS `title`, `releases`.`title` AS `release_title`, `users`.`display_name` AS `creator`, `releases`.`published` AS `published` FROM `tracks` "
+						+ "JOIN `releases` ON `tracks`.`release_id` = `releases`.`release_id` "
+						+ "JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
+					+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true OR {});"
+		);
 
-	private static final Logger log = LoggerFactory
-			.getLogger(TranscodeHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(TranscodeHandler.class);
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
 		Map<String, String> query = parseQuery(req);
-		String trackSlug = path;
+		Iterator<String> split = SLASH_SPLITTER.split(path).iterator();
+		String kind = split.next();
+		String slug = split.next();
 		if (!query.containsKey("format")) {
 			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Format is required");
 		}
+		String masterQuery = QUERIES_BY_KIND.get(kind);
+		if (masterQuery == null) {
+			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Kind must be one of "+Joiner.on(", ").join(QUERIES_BY_KIND.keySet()));
+		}
 		String cleanedFormat = query.get("format").toUpperCase(Locale.ROOT).replace('-', '_');
-		TranscodeFormat fmt;
-		try {
-			fmt = TranscodeFormat.valueOf(cleanedFormat);
-		} catch (IllegalArgumentException e) {
-			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+cleanedFormat);
-		}
-		if (!Partyflow.isFormatLegal(fmt)) {
-			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+cleanedFormat);
-		}
+		TranscodeFormat fmt = Enums.getIfPresent(TranscodeFormat.class, cleanedFormat).toJavaUtil()
+				.filter(Partyflow::isFormatLegal)
+				.orElseThrow(() -> new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+cleanedFormat));
 		String shortcutSource = null;
 		Shortcut shortcut = null;
 		Session s = SessionHelper.getSession(req);
 		try (Connection c = Partyflow.sql.getConnection()) {
-			String suffix = (s != null ? " OR `releases`.`user_id` = ?" : "");
+			String master;
+			String title;
+			String releaseTitle;
+			String creator;
+			boolean published;
+			String permissionQuery = (s == null ? "false" : "`releases`.`user_id` = ?");
+			try (PreparedStatement ps = c.prepareStatement(masterQuery.replace("{}", permissionQuery))) {
+				ps.setString(1, slug);
+				if (s != null) ps.setInt(2, s.userId);
+				try (ResultSet rs = ps.executeQuery()) {
+					if (rs.first()) {
+						master = rs.getString("master");
+						title = rs.getString("title");
+						releaseTitle = rs.getString("release_title");
+						creator = rs.getString("creator");
+						published = rs.getBoolean("published");
+					} else {
+						res.sendError(HTTP_404_NOT_FOUND);
+						return;
+					}
+				}
+			}
 			String addnFormats = Strings.repeat(", ?", fmt.getShortcuts().size());
-			try (PreparedStatement ps = c.prepareStatement("SELECT `transcode_id`, `transcodes`.`file`, `transcodes`.`format` FROM `tracks` "
-					+ "JOIN `transcodes` ON `transcodes`.`track_id` = `tracks`.`track_id` "
-					+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
-					+ "WHERE `tracks`.`slug` = ? AND `transcodes`.`format` IN (?"+addnFormats+") AND (`releases`.`published` = true"+suffix+");")) {
+			try (PreparedStatement ps = c.prepareStatement("SELECT `transcode_id`, `file`, `format` FROM `transcodes` "
+					+ "WHERE `master` = ? AND `transcodes`.`format` IN (?"+addnFormats+");")) {
 				int i = 1;
-				ps.setString(i++, trackSlug);
+				ps.setString(i++, master);
 				ps.setInt(i++, fmt.getDatabaseId());
 				for (Shortcut sc : fmt.getShortcuts()) {
 					ps.setInt(i++, sc.getSource().getDatabaseId());
-				}
-				if (s != null) {
-					ps.setInt(i++, s.userId);
 				}
 				try (ResultSet rs = ps.executeQuery()) {
 					if (rs.first()) {
@@ -113,34 +145,6 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 				res.setHeader("Comment", "Transcodes are not performed in response to HEAD requests");
 				res.getOutputStream().close();
 				return;
-			}
-			int trackId;
-			String master;
-			boolean published;
-			String title;
-			String releaseTitle;
-			String creator;
-			try (PreparedStatement ps = c.prepareStatement("SELECT `track_id`, `master`, `published`, `tracks`.`title`, `releases`.`title`, `users`.`display_name` FROM `tracks` "
-					+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
-					+ "JOIN `users` ON `users`.`user_id` = `releases`.`user_id` "
-					+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
-				ps.setString(1, trackSlug);
-				if (s != null) {
-					ps.setInt(2, s.userId);
-				}
-				try (ResultSet rs = ps.executeQuery()) {
-					if (rs.first()) {
-						trackId = rs.getInt("track_id");
-						master = rs.getString("master");
-						published = rs.getBoolean("published");
-						title = rs.getString("tracks.title");
-						releaseTitle = rs.getString("releases.title");
-						creator = rs.getString("users.display_name");
-					} else {
-						res.sendError(HTTP_404_NOT_FOUND);
-						return;
-					}
-				}
 			}
 			boolean direct = fmt.getUsage() == Usage.DOWNLOAD_DIRECT;
 			if (direct) {
@@ -237,9 +241,9 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			}
 			
 			String blobNameRes = ThreadPools.TRANSCODE.submit(transcoder).get();
-			try (PreparedStatement ps = c.prepareStatement("INSERT INTO `transcodes` (`track_id`, `format`, `file`, `created_at`, `last_downloaded`) "
+			try (PreparedStatement ps = c.prepareStatement("INSERT INTO `transcodes` (`master`, `format`, `file`, `created_at`, `last_downloaded`) "
 					+ "VALUES (?, ?, ?, NOW(), NOW());")) {
-				ps.setInt(1, trackId);
+				ps.setString(1, master);
 				ps.setInt(2, fmt.getDatabaseId());
 				ps.setString(3, blobNameRes);
 				ps.execute();

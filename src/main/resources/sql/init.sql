@@ -23,17 +23,20 @@ INSERT INTO `meta` (`name`, `value`) VALUES ('site_description', '
 ');
 
 CREATE TABLE `releases` (
-	`release_id`   BIGINT AUTO_INCREMENT PRIMARY KEY,
-	`user_id`      BIGINT NOT NULL,
-	`title`        VARCHAR(255) NOT NULL,
-	`subtitle`     VARCHAR(255) NOT NULL,
-	`slug`         VARCHAR(255) NOT NULL UNIQUE,
-	`published`    BOOLEAN NOT NULL,
-	`art`          VARCHAR(255),
-	`description`  CLOB NOT NULL,
-	`created_at`   TIMESTAMP NOT NULL,
-	`last_updated` TIMESTAMP NOT NULL,
-	`published_at` TIMESTAMP
+	`release_id`    BIGINT AUTO_INCREMENT PRIMARY KEY,
+	`user_id`       BIGINT NOT NULL,
+	`title`         VARCHAR(255) NOT NULL,
+	`subtitle`      VARCHAR(255) NOT NULL,
+	`slug`          VARCHAR(255) NOT NULL UNIQUE,
+	`published`     BOOLEAN NOT NULL,
+	`art`           VARCHAR(255),
+	`description`   CLOB NOT NULL,
+	`created_at`    TIMESTAMP NOT NULL,
+	`last_updated`  TIMESTAMP NOT NULL,
+	`published_at`  TIMESTAMP,
+	`concat_master` VARCHAR(255),
+	`loudness`      INT,
+	`peak`          INT
 );
 CREATE TABLE `tracks` (
 	`track_id`     BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -47,11 +50,13 @@ CREATE TABLE `tracks` (
 	`created_at`   TIMESTAMP NOT NULL,
 	`last_updated` TIMESTAMP NOT NULL,
 	`track_number` INT NOT NULL,
-	`duration`     BIGINT NOT NULL
+	`duration`     BIGINT NOT NULL,
+	`loudness`     INT NOT NULL,
+	`peak`         INT NOT NULL
 );
 CREATE TABLE `transcodes` (
 	`transcode_id`    BIGINT AUTO_INCREMENT PRIMARY KEY,
-	`track_id`        BIGINT NOT NULL,
+	`master`          VARCHAR(255) NOT NULL,
 	`format`          INT NOT NULL,
 	`file`            VARCHAR(255) NOT NULL,
 	`created_at`      TIMESTAMP NOT NULL,
@@ -76,8 +81,8 @@ CREATE INDEX `tracks_release_index`
 	ON `tracks` (`release_id`);
 CREATE INDEX `releases_user_index`
 	ON `releases` (`user_id`);
-CREATE INDEX `transcodes_track_index`
-	ON `transcodes` (`track_id`);
+CREATE INDEX `transcodes_master_index`
+	ON `transcodes` (`master`);
 
 CREATE INDEX `tracks_number_index`
 	ON `tracks` (`track_number`);
@@ -91,10 +96,11 @@ CREATE INDEX `sessions_expires_index`
 	ON `sessions` (`expires`);
 
 ALTER TABLE `tracks` ADD CONSTRAINT `tracks_releases`
-	FOREIGN KEY (`release_id`) REFERENCES `releases`;
+	FOREIGN KEY (`release_id`) REFERENCES `releases`
+	ON DELETE CASCADE;
 ALTER TABLE `releases` ADD CONSTRAINT `releases_users`
-	FOREIGN KEY (`user_id`) REFERENCES `users`;
-ALTER TABLE `transcodes` ADD CONSTRAINT `transcodes_tracks`
-	FOREIGN KEY (`track_id`) REFERENCES `tracks`;
+	FOREIGN KEY (`user_id`) REFERENCES `users`
+	ON DELETE CASCADE;
 ALTER TABLE `sessions` ADD CONSTRAINT `sessions_users`
-	FOREIGN KEY (`user_id`) REFERENCES `users`;
+	FOREIGN KEY (`user_id`) REFERENCES `users`
+	ON DELETE CASCADE;

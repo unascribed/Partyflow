@@ -27,8 +27,8 @@
 	<title>{{release.creator}} - {{release.title}} - {{title}}</title>
 	<audio>
 		{{#download_formats}}
-			<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>
-			<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+			<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>
+			<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 		{{/download_formats}}
 	-->
 	<title>{{title}} by {{release.creator}} from {{release.title}} - Partyflow</title>
@@ -56,8 +56,8 @@
 			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
 			<audio controls>
 				{{#stream_formats}}
-					<!--<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
-					<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+					<!--<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
+					<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 				{{/stream_formats}}
 			</audio>
 			<div class="description">{{{description}}}</div>
@@ -73,8 +73,8 @@
 				<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
 				<audio controls>
 					{{#stream_formats}}
-						<!--<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
-						<source src="{{root}}transcode/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+						<!--<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
+						<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 					{{/stream_formats}}
 				</audio>
 				<div class="md-wrapper">

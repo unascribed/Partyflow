@@ -29,8 +29,6 @@ import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
-import com.unascribed.partyflow.TranscodeFormat.Usage;
-
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 
@@ -89,8 +87,8 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 									String slug = rs.getString("releases.slug");
 									boolean published = rs.getBoolean("releases.published");
 								};
-								List<Object> download_formats = Partyflow.enumerateFormats(Usage.DOWNLOAD);
-								List<Object> stream_formats = Partyflow.enumerateFormats(Usage.STREAM);
+								List<Object> download_formats = Partyflow.enumerateFormats(tf -> tf.getUsage().canDownload());
+								List<Object> stream_formats = Partyflow.enumerateFormats(tf -> tf.getUsage().canStream());
 								String title = rs.getString("tracks.title");
 								String subtitle = rs.getString("tracks.subtitle");
 								String slug = trackSlug;
@@ -172,7 +170,8 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 				String slugs = m.group(1);
 				String releaseSlug;
 				int trackId;
-				try (PreparedStatement ps = c.prepareStatement("SELECT `track_id`, `tracks`.`art`, `master`, `releases`.`slug` FROM `tracks` "
+				int releaseId;
+				try (PreparedStatement ps = c.prepareStatement("SELECT `track_id`, `tracks`.`art`, `master`, `releases`.`slug`, `releases`.`release_id` FROM `tracks` "
 						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
 						+ "WHERE `tracks`.`slug` = ? AND `releases`.`user_id` = ?;")) {
 					ps.setString(1, slugs);
@@ -180,6 +179,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
 							trackId = rs.getInt("track_id");
+							releaseId = rs.getInt("releases.release_id");
 							String art = Strings.emptyToNull(rs.getString("tracks.art"));
 							if (art != null) {
 								log.trace("Deleting {}", art);
@@ -207,8 +207,9 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					ps.setInt(1, trackId);
 					ps.setInt(2, trackId);
 					ps.executeUpdate();
-					res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(releaseSlug));
 				}
+				ReleaseHandler.regenerateAlbumFile(releaseId);
+				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(releaseSlug));
 			} catch (SQLException e) {
 				throw new ServletException(e);
 			}

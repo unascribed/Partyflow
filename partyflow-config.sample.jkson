@@ -69,7 +69,9 @@ programs: {
 }
 formats: {
 	// If true, uncompressed formats such as WAV and AIFF will be offered. These are a waste of
-	// space and bandwidth - FLAC is a better choice, but people often expect WAV to be an option.
+	// bandwidth - FLAC is a better choice, but people often expect WAV to be an option. To avoid
+	// wasting storage space, WAV and AIFF formats are streamed directly to the client from the FLAC
+	// masters.
 	allowUncompressedFormats: false
 	// If true, lossless formats such as ALAC and FLAC will be offered.
 	allowLosslessFormats: true

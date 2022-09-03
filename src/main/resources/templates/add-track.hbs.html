@@ -7,6 +7,9 @@
 <body>
 	{{> _header.hbs.html}}
 	<div class="inner">
+		{{#error}}
+			<div class="message error">{{error}}</div>
+		{{/error}}
 		<h1>Add tracks to {{release.title}}</h1>
 		<a href="{{root}}releases/{{release.slug}}">&laquo; Back to {{release.title}}</a>
 		<form class="release editing" method="POST" enctype="multipart/form-data">

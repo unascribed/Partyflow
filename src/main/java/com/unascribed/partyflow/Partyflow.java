@@ -46,6 +46,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import javax.crypto.spec.SecretKeySpec;
@@ -73,7 +75,6 @@ import org.slf4j.LoggerFactory;
 
 import com.unascribed.asyncsimplelog.AsyncSimpleLog;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.TranscodeFormat.Usage;
 import com.unascribed.partyflow.handler.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.FilesHandler;
 import com.unascribed.partyflow.handler.IndexHandler;
@@ -89,6 +90,7 @@ import com.unascribed.partyflow.handler.TranscodeHandler;
 import com.unascribed.random.RandomXoshiro256StarStar;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -265,6 +267,7 @@ public class Partyflow {
 				handler("assets/password-hasher.js", new MustacheHandler("password-hasher.hbs.js")),
 				handler("assets/edit-art.js", new MustacheHandler("edit-art.hbs.js")),
 				handler("assets/description-editor.js", new MustacheHandler("description-editor.hbs.js")),
+				handler("assets/gapless-player.js", new MustacheHandler("gapless-player.hbs.js")),
 				handler("create-release", new CreateReleaseHandler()),
 				handler("login", new LoginHandler()),
 				handler("logout", new LogoutHandler()),
@@ -389,14 +392,15 @@ public class Partyflow {
 		return sb.toString();
 	}
 
-	private static final Pattern ILLEGAL = Pattern.compile("[?/#&;\\\\=\\^\\[\\]%]");
+	private static final Pattern ILLEGAL = Pattern.compile("[?/#&;\\\\=\\^\\[\\]%]+");
 	private static final Pattern SPACE = Pattern.compile("[\\p{Space}]+");
 
 	public static String sanitizeSlug(String name) {
 		String s = Normalizer.normalize(name, Form.NFC);
-		s = SPACE.matcher(s).replaceAll(" ");
+		s = SPACE.matcher(s).replaceAll("-");
 		s = ILLEGAL.matcher(s).replaceAll("_");
-		return s.trim();
+		s = s.replace('"', '\'');
+		return s.strip().toLowerCase();
 	}
 
 	public static String resolveArt(String art) {
@@ -443,15 +447,20 @@ public class Partyflow {
 	}
 
 	public static Process magick_convert(Object... arguments) throws IOException {
-		return Runtime.getRuntime().exec(combine(config.programs.magickConvert, arguments));
+		return exec(combine(config.programs.magickConvert, arguments));
 	}
 
 	public static Process ffmpeg(Object... arguments) throws IOException {
-		return Runtime.getRuntime().exec(sub(combine(config.programs.ffmpeg, arguments), "mpeg"));
+		return exec(sub(combine(config.programs.ffmpeg, arguments), "mpeg"));
 	}
 
 	public static Process ffprobe(Object... arguments) throws IOException {
-		return Runtime.getRuntime().exec(sub(combine(config.programs.ffmpeg, arguments), "probe"));
+		return exec(sub(combine(config.programs.ffmpeg, arguments), "probe"));
+	}
+
+	private static Process exec(String[] arr) throws IOException {
+		log.trace("Executing command: {}", Joiner.on(' ').join(arr));
+		return Runtime.getRuntime().exec(arr);
 	}
 
 	public static boolean isFormatLegal(TranscodeFormat fmt) {
@@ -470,19 +479,25 @@ public class Partyflow {
 		return true;
 	}
 
-	public static List<Object> enumerateFormats(Usage usage) {
-		List<Object> li = Lists.newArrayList();
+	public static <T> List<T> enumerateFormats(Predicate<TranscodeFormat> pred, BiFunction<TranscodeFormat, String, T> func) {
+		List<T> li = Lists.newArrayList();
 		for (TranscodeFormat tf : TranscodeFormat.ALL_FORMATS) {
-			if (isFormatLegal(tf) && tf.getUsage() == usage) {
+			if (isFormatLegal(tf) && pred.test(tf)) {
 				String _name = tf.name().toLowerCase(Locale.ROOT).replace('_', '-');
-				li.add(new Object() {
-					String name = _name;
-					String mimetype = tf.getMimeType();
-					String ytdl_label = "$$ytdl-hack-"+tf.getYtdlPriority()+"kbps_"+_name;
-				});
+				li.add(func.apply(tf, _name));
 			}
 		}
 		return li;
+	}
+	
+	public static List<Object> enumerateFormats(Predicate<TranscodeFormat> pred) {
+		return enumerateFormats(pred, (tf, _name) -> {
+			return new Object() {
+				String name = _name;
+				String mimetype = tf.getMimeType();
+				String ytdl_label = "$$ytdl-hack-"+tf.getYtdlPriority()+"kbps_"+_name;
+			};
+		});
 	}
 
 }
