@@ -130,15 +130,23 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 								}
 							}
 						} else {
-							if (!head) {
-								try (PreparedStatement ps2 = c.prepareStatement("UPDATE `transcodes` SET `last_downloaded` = NOW() WHERE `transcode_id` = ?;")) {
+							if (Partyflow.storage.blobExists(Partyflow.storageContainer, rs.getString("transcodes.file"))) {
+								if (!head) {
+									try (PreparedStatement ps2 = c.prepareStatement("UPDATE `transcodes` SET `last_downloaded` = NOW() WHERE `transcode_id` = ?;")) {
+										ps2.setInt(1, rs.getInt("transcode_id"));
+										ps2.execute();
+									}
+								}
+								res.setHeader("Transcode-Status", "CACHED");
+								res.sendRedirect(Partyflow.resolveBlob(rs.getString("transcodes.file")));
+								return;
+							} else {
+								log.warn("A transcode of {} {} to {} has gone missing! Recreating it.", kind, slug, fmt.name());
+								try (PreparedStatement ps2 = c.prepareStatement("DELETE FROM `transcodes` WHERE `transcode_id` = ?;")) {
 									ps2.setInt(1, rs.getInt("transcode_id"));
-									ps2.execute();
+									ps2.executeUpdate();
 								}
 							}
-							res.setHeader("Transcode-Status", "CACHED");
-							res.sendRedirect(Partyflow.resolveBlob(rs.getString("transcodes.file")));
-							return;
 						}
 					}
 				}

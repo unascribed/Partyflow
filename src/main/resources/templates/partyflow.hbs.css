@@ -389,7 +389,7 @@ a.track:link:hover, a.track:link:focus {
 }
 
 body:not(.yesscript) .yesscript {
-	display: none;
+	display: none !important;
 }
 .flex-break {
 	width: 0; height: 0;

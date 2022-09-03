@@ -21,6 +21,9 @@ import org.jclouds.io.ContentMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.overzealous.remark.Remark;
 import com.unascribed.partyflow.MultipartData;
 import com.unascribed.partyflow.Partyflow;
@@ -35,6 +38,7 @@ import com.google.common.io.ByteStreams;
 public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
 
 	private static final Logger log = LoggerFactory.getLogger(TrackHandler.class);
+	private static final Gson gson = new Gson();
 
 	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/edit|/master)?$");
 
@@ -53,7 +57,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 				String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
 				try (PreparedStatement ps = c.prepareStatement(
 						"SELECT `tracks`.`title`, `tracks`.`subtitle`, `releases`.`published`, `releases`.`art`, `releases`.`title`, `releases`.`slug`, "
-								+ "`tracks`.`art`, `tracks`.`description`, `releases`.`user_id`, `users`.`display_name` FROM `tracks` "
+								+ "`tracks`.`art`, `tracks`.`description`, `releases`.`user_id`, `users`.`display_name`, `tracks`.`loudness`, `duration` FROM `tracks` "
 						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
 						+ "JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
 						+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
@@ -80,6 +84,15 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 							} else {
 								_art = trackArt;
 							}
+							JsonArray _tracksJson = new JsonArray();
+							JsonObject obj = new JsonObject();
+							obj.addProperty("title", rs.getString("tracks.title"));
+							obj.addProperty("subtitle", rs.getString("tracks.subtitle"));
+							obj.addProperty("slug", trackSlug);
+							obj.addProperty("art", _art);
+							obj.addProperty("start", 0);
+							obj.addProperty("end", rs.getLong("duration")/48000D);
+							_tracksJson.add(obj);
 							MustacheHandler.serveTemplate(req, res, "track.hbs.html", new Object() {
 								Object release = new Object() {
 									String title = rs.getString("releases.title");
@@ -97,6 +110,9 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 								String description = desc;
 								String descriptionMd = _descriptionMd;
 								String error = query.get("error");
+								double loudness = rs.getInt("tracks.loudness")/10D;
+								String tracks_json = gson.toJson(_tracksJson);
+								String stream_formats_json = gson.toJson(Partyflow.enumerateJsonFormats(tf -> tf.getUsage().canStream()));
 							});
 						} else {
 							res.sendError(HTTP_404_NOT_FOUND);

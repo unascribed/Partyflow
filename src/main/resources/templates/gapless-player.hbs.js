@@ -28,15 +28,25 @@
 	if (tracks.length === 0) return;
 	const firstTrack = tracks[0];
 	const release = data.releaseSlug;
+	const widget = document.querySelector("#player-widget");
+	const skipPrev = widget.querySelector(".skip-prev");
+	const skipNext = widget.querySelector(".skip-next");
+	if (tracks.length === 1) {
+		skipPrev.style.display = "none";
+		skipNext.style.display = "none";
+	}
 	tracks.forEach((track, i) => {
-		let ele = Array.prototype.slice.apply(document.querySelectorAll(".track")).find(e => e.dataset.trackSlug === track.slug);
-		track.element = ele;
-		track.button = ele.querySelector(".player-control");
 		track.length = track.end-track.start;
 		track.index = i;
-		ele.querySelector(".track-duration").textContent = formatTime(track.length);
+		let ele = Array.prototype.slice.apply(document.querySelectorAll(".track")).find(e => e.dataset.trackSlug === track.slug);
+		if (ele) {
+			track.element = ele;
+			track.button = ele.querySelector(".player-control");
+			ele.querySelector(".track-duration").textContent = formatTime(track.length);
+		}
 	});
 	const audio = new Audio();
+	audio.volume = Number(localStorage.getItem("volume") || 1);
 	let selectedFormat = null;
 	for (let i = 0; i < formats.length; i++) {
 		const fmt = formats[i];
@@ -64,6 +74,7 @@
 		}
 	}
 	function trans(e, from, to, cb) {
+		if (!e) return;
 		if (!e.classList.contains(from)) return;
 		e.classList.add("trans");
 		setTimeout(() => {
@@ -73,7 +84,6 @@
 			if (cb) cb();
 		}, 200);
 	}
-	const widget = document.querySelector("#player-widget");
 	const seekbar = widget.querySelector(".seekbar");
 	const seekbarPosition = seekbar.querySelector(".position");
 	const seekbarBuffered = seekbar.querySelector(".buffered");
@@ -81,8 +91,6 @@
 	const volbarPosition = volbar.querySelector(".position");
 	const volicon = widget.querySelector(".volicon");
 	const globalPlayPause = widget.querySelector(".play-toggle");
-	const skipPrev = widget.querySelector(".skip-prev");
-	const skipNext = widget.querySelector(".skip-next");
 	const playPositionNow = widget.querySelector(".play-position .current");
 	const playPositionTotal = widget.querySelector(".play-position .total");
 	let currentTrack = firstTrack;
@@ -142,22 +150,24 @@
 		}
 	});
 	tracks.forEach((track) => {
-		track.button.addEventListener("click", (e) => {
-			let paused = audio.paused;
-			if (currentTrack.slug !== track.slug) {
-				audio.currentTime = track.start;
-				updateTime();
-				paused = true;
-			}
-			if (paused) {
-				audio.play();
-			} else {
-				audio.pause();
-			}
-			e.preventDefault();
-		});
+		if (track.button) {
+			track.button.addEventListener("click", (e) => {
+				let paused = audio.paused;
+				if (currentTrack.slug !== track.slug) {
+					audio.currentTime = track.start;
+					updateTime();
+					paused = true;
+				}
+				if (paused) {
+					audio.play();
+				} else {
+					audio.pause();
+				}
+				e.preventDefault();
+			});
+		}
 	});
-	audio.src = "{{root}}transcode/release/"+release+"?format="+selectedFormat.name;
+	audio.src = "{{root}}transcode/"+(release ? "release/"+release : "track/"+tracks[0].slug)+"?format="+selectedFormat.name;
 	function updateBuffered() {
 		if (audio.buffered.length > 0 && currentTrack !== null) {
 			let end = audio.buffered.end(audio.buffered.length-1);
@@ -211,6 +221,7 @@
 		volicon.classList.remove("muted");
 		volicon.classList.add(clazz);
 		volbarPosition.style.width = (v*100)+"%";
+		localStorage.setItem("volume", v);
 	}
 	audio.addEventListener("progress", updateBuffered);
 	audio.addEventListener("timeupdate", updateTime);

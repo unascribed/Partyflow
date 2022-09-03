@@ -499,5 +499,17 @@ public class Partyflow {
 			};
 		});
 	}
+	
+	public static com.google.gson.JsonArray enumerateJsonFormats(Predicate<TranscodeFormat> pred) {
+		var arr = new com.google.gson.JsonArray();
+		enumerateFormats(pred,
+				(tf, name) -> {
+					var obj = new com.google.gson.JsonObject();
+					obj.addProperty("name", name);
+					obj.addProperty("mime", tf.getMimeType());
+					return obj;
+				}).forEach(arr::add);
+		return arr;
+	}
 
 }

@@ -54,12 +54,18 @@
 			<div class="title">{{title}}</div>
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
+			<noscript>
 			<audio controls>
 				{{#stream_formats}}
 					<!--<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
 					<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 				{{/stream_formats}}
 			</audio>
+			</noscript>
+			{{> _player-widget.hbs.html }}
+			<script data-loudness="{{loudness}}" data-tracks="{{tracks_json}}"
+				data-formats="{{stream_formats_json}}"
+				src="{{root}}assets/gapless-player.js"></script>
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}
