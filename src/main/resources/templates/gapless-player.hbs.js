@@ -21,8 +21,65 @@
 		}
 	}
 	document.body.classList.add("yesscript");
+
+	document.querySelectorAll(".lightboxable").forEach((e) => {
+		const input = e.querySelector("input");
+		const subject = e.querySelector("input + *");
+		const shadow = e.querySelector(".shadow");
+		input.addEventListener("click", () => {
+			if (input.checked) {
+				document.body.classList.add("shadowed");
+				shadow.style.width = "100%";
+				shadow.style.height = "100%";
+				shadow.style.opacity = "1";
+				input.checked = false;
+				const bcl = subject.getBoundingClientRect();
+				subject.style.position = "fixed";
+				subject.style.transform = "translateX(-50%) translateY(-50%)";
+				subject.style.top = (bcl.top+(bcl.height/2))+"px";
+				subject.style.left = (bcl.left+(bcl.width/2))+"px";
+				subject.style.width = bcl.width+"px";
+				subject.style.height = bcl.height+"px";
+				subject.getBoundingClientRect();
+				if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+					subject.style.transition = "top 0.6s, left 0.6s, width 0.6s, height 0.6s";
+				}
+				input.checked = true;
+			} else {
+				shadow.style.opacity = "0";
+				setTimeout(() => {
+					document.body.classList.remove("shadowed");
+					shadow.style.width = null;
+					shadow.style.height = null;
+					subject.style.position = null;
+					subject.style.transform = null;
+					subject.style.transition = null;
+					subject.style.top = null;
+					subject.style.left = null;
+					subject.style.width = null;
+					subject.style.height = null;
+				}, 600);
+			}
+		});
+	});
+
+	// R128 is -23, ReplayGain is -18, Apple Music is -16, Spotify/YouTube are -14
+	// All of these are kinda quiet, and Bandcamp doesn't apply normalization *at all*, so albums
+	// meant for Bandcamp sound very quiet with basically any amount of volume normalization
+	// -12 is an arbitrarily chosen compromise
+	const REFERENCE_LEVEL = -12;
+
 	const data = document.currentScript.dataset;
 	const loudness = Number(data.loudness);
+	const relativeLoudness = REFERENCE_LEVEL-loudness;
+	console.info("Album gain: "+relativeLoudness.toFixed(2)+" (-12dB reference level)");
+	const rgPercent = Math.pow(10, relativeLoudness/10)
+
+	function rg() {
+		if (localStorage.getItem("replaygain") === "off") return 1;
+		return rgPercent > 1 ? 1 : rgPercent;
+	}
+
 	const formats = JSON.parse(data.formats);
 	const tracks = JSON.parse(data.tracks);
 	if (tracks.length === 0) return;
@@ -46,7 +103,7 @@
 		}
 	});
 	const audio = new Audio();
-	audio.volume = Number(localStorage.getItem("volume") || 1);
+	audio.volume = Number(localStorage.getItem("volume") || 1) * rg();
 	let selectedFormat = null;
 	for (let i = 0; i < formats.length; i++) {
 		const fmt = formats[i];
@@ -90,9 +147,14 @@
 	const volbar = widget.querySelector(".volumebar");
 	const volbarPosition = volbar.querySelector(".position");
 	const volicon = widget.querySelector(".volicon");
+	const replaygain = widget.querySelector(".replaygain");
 	const globalPlayPause = widget.querySelector(".play-toggle");
 	const playPositionNow = widget.querySelector(".play-position .current");
 	const playPositionTotal = widget.querySelector(".play-position .total");
+	if (localStorage.getItem("replaygain") === "off") {
+		replaygain.classList.remove("replaygain");
+		replaygain.classList.add("replaygain-off");
+	}
 	let currentTrack = firstTrack;
 	let mouseDownInSeekbar = false;
 	let mouseDownInVolbar = false;
@@ -110,7 +172,7 @@
 		let p = x/bcr.width;
 		if (p < 0) p = 0;
 		if (p > 1) p = 1;
-		audio.volume = p;
+		audio.volume = p*rg();
 	}
 	window.addEventListener("mouseup", () => {
 		if (mouseDownInSeekbar) audio.play();
@@ -139,6 +201,19 @@
 		if (currentTrack.index < tracks.length) {
 			audio.currentTime = tracks[currentTrack.index+1].start;
 			updateTime();
+		}
+	});
+	replaygain.addEventListener("click", () => {
+		if (localStorage.getItem("replaygain") === "off") {
+			replaygain.classList.remove("replaygain-off");
+			replaygain.classList.add("replaygain");
+			localStorage.setItem("replaygain", "on");
+			audio.volume *= rgPercent;
+		} else {
+			replaygain.classList.remove("replaygain");
+			replaygain.classList.add("replaygain-off");
+			localStorage.setItem("replaygain", "off");
+			audio.volume /= rgPercent;
 		}
 	});
 	updateSkipState();
@@ -206,7 +281,7 @@
 		updateBuffered();
 	}
 	function updateVolume() {
-		let v = audio.volume;
+		let v = audio.volume/rg();
 		let clazz = "high";
 		if (v <= 0)  {
 			clazz = "muted";

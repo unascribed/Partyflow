@@ -59,6 +59,8 @@ CREATE TABLE `transcodes` (
 	`master`          VARCHAR(255) NOT NULL,
 	`format`          INT NOT NULL,
 	`file`            VARCHAR(255) NOT NULL,
+	`track_id`        BIGINT,
+	`release_id`      BIGINT NOT NULL,
 	`created_at`      TIMESTAMP NOT NULL,
 	`last_downloaded` TIMESTAMP NOT NULL
 );
@@ -91,12 +93,22 @@ CREATE INDEX `transcodes_format_index`
 	ON `transcodes` (`format`);
 CREATE INDEX `transcodes_last_downloaded_index`
 	ON `transcodes` (`last_downloaded`);
+CREATE INDEX `transcodes_release_id_index`
+	ON `transcodes` (`release_id`);
+CREATE INDEX `transcodes_track_id_index`
+	ON `transcodes` (`track_id`);
 
 CREATE INDEX `sessions_expires_index`
 	ON `sessions` (`expires`);
 
 ALTER TABLE `tracks` ADD CONSTRAINT `tracks_releases`
 	FOREIGN KEY (`release_id`) REFERENCES `releases`
+	ON DELETE CASCADE;
+ALTER TABLE `transcodes` ADD CONSTRAINT `transcodes_releases`
+	FOREIGN KEY (`release_id`) REFERENCES `releases`
+	ON DELETE CASCADE;
+ALTER TABLE `transcodes` ADD CONSTRAINT `transcodes_tracks`
+	FOREIGN KEY (`track_id`) REFERENCES `tracks`
 	ON DELETE CASCADE;
 ALTER TABLE `releases` ADD CONSTRAINT `releases_users`
 	FOREIGN KEY (`user_id`) REFERENCES `users`

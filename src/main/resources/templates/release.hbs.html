@@ -2,6 +2,17 @@
 <html>
 <head>
 	{{> _head.hbs.html}}
+	<!--
+	{{!youtube-dl hack. See track.hbs.html for more info}}
+	
+	<title>{{release.creator}} - {{release.title}} - {{title}}</title>
+	<audio>
+		{{#download_formats}}
+			<source src="{{root}}transcode/release/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>
+			<source src="{{root}}transcode/release/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+		{{/download_formats}}
+	</audio>
+	-->
 	<title>{{title}} by {{creator}} - Partyflow</title>
 	{{#editable}}
 		<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
@@ -24,7 +35,11 @@
 		{{/editable}}
 		<div class="release solo{{^published}} unpublished{{/published}}{{#editable}} editing{{/editable}}">
 			{{^editable}}
-			<div class="art" style="background-image: url({{art}})"></div>
+			<div class="lightboxable art">
+				<div class="shadow"></div>
+				<input type="checkbox"/>
+				<div class="art-img" style="background-image: url({{art}})"></div>
+			</div>
 			<div class="title">{{title}}</div>
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{creator}}</div>
@@ -58,7 +73,7 @@
 			{{#editable}}
 			<form class="inline" method="POST" enctype="multipart/form-data" action="{{root}}releases/{{slug}}/edit">
 				<input type="hidden" name="csrf" value="{{csrf}}"/>
-				<div class="art" style="background-image: url({{art}})">
+				<div class="art art-img" style="background-image: url({{art}})">
 					<input name="art" type="file" class="replaceArt" accept=".png,.jpeg,.jpg,.jpe,.jfif,image/png,image/jpeg"/>
 				</div>
 				<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title" value="{{title}}"/>

@@ -32,11 +32,14 @@ button {
 	padding: 8px;
 	height: 64px;
 	position: fixed;
-	z-index: 10000;
+	z-index: 100;
 	width: 100%;
 	top: 0;
 	left: 0;
 	right: 0;
+}
+.shadowed .header {
+	z-index: 50;
 }
 .header a:link, .header button.link {
 	color: #FFF;
@@ -91,6 +94,12 @@ a.release {
 	float: right;
 	width: 192px;
 	height: 192px;
+}
+.art > .art-img {
+	width: 100%;
+	height: 100%;
+}
+.release .art-img {
 	background-size: cover;
 	background-position: center center;
 	background-repeat: no-repeat;
@@ -424,6 +433,12 @@ button.player-control {
 .player-control.skip-next {
 	background-image: url({{root}}static/skip-next.svg);
 }
+.player-control.replaygain {
+	background-image: url({{root}}static/replaygain.svg);
+}
+.player-control.replaygain-off {
+	background-image: url({{root}}static/replaygain-off.svg);
+}
 .player-control.trans {
 	background-size: 0 0 !important;
 }
@@ -519,4 +534,51 @@ button.player-control {
 .volicon.low .vol2, .volicon.low .vol1, .volicon.low .muted,
 .volicon.muted .vol2, .volicon.muted .vol1 {
 	opacity: 0;
+}
+
+.lightboxable {
+	position: relative;
+	z-index: 50;
+}
+.shadowed .lightboxable {
+	z-index: 200;
+}
+.lightboxable input {
+	position: absolute;
+	top: 0; left: 0;
+	width: 100%; height: 100%;
+	background-color: transparent;
+	appearance: none;
+	margin: 0;
+	z-index: 40;
+}
+.lightboxable input:checked {
+	position: fixed;
+	background-color: #000A;
+	z-index: 0;
+}
+.yesscript .lightboxable input:checked {
+	background-color: transparent;
+}
+.lightboxable .shadow {
+	display: none;
+}
+.yesscript .lightboxable .shadow {
+	display: block;
+	position: fixed;
+	top: 0; left: 0;
+	width: 0; height: 0;
+	opacity: 0;
+	transition: opacity 0.6s;
+	background: #000A;
+}
+.lightboxable input:checked + * {
+	position: fixed;
+	top: 50% !important;
+	left: 50% !important;
+	transform: translateX(-50%) translateY(-50%);
+	width: 80vmin !important;
+	height: 80vmin !important;
+	max-width: 600px;
+	max-height: 600px;
 }

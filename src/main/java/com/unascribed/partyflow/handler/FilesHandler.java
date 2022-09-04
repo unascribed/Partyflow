@@ -27,6 +27,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.jclouds.blobstore.KeyNotFoundException;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobAccess;
 
@@ -41,8 +42,13 @@ public class FilesHandler extends SimpleHandler implements GetOrHead {
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
-		BlobAccess ba = Partyflow.storage.getBlobAccess(Partyflow.storageContainer, path);
-		if (ba == BlobAccess.PRIVATE) {
+		try {
+			BlobAccess ba = Partyflow.storage.getBlobAccess(Partyflow.storageContainer, path);
+			if (ba == BlobAccess.PRIVATE) {
+				res.sendError(HTTP_404_NOT_FOUND);
+				return;
+			}
+		} catch (KeyNotFoundException e) {
 			res.sendError(HTTP_404_NOT_FOUND);
 			return;
 		}

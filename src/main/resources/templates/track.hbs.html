@@ -50,7 +50,7 @@
 		{{/editable}}
 		<div class="release track solo{{^release.published}} unpublished{{/release.published}}{{#editable}} editing{{/editable}}">
 			{{^editable}}
-			<div class="art" style="background-image: url({{art}})"></div>
+			<div class="art art-img" style="background-image: url({{art}})"></div>
 			<div class="title">{{title}}</div>
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
@@ -71,7 +71,7 @@
 			{{#editable}}
 			<form class="inline" method="POST" enctype="multipart/form-data" action="{{root}}track/{{slug}}/edit">
 				<input type="hidden" name="csrf" value="{{csrf}}"/>
-				<div class="art" style="background-image: url({{art}})">
+				<div class="art art-img" style="background-image: url({{art}})">
 					<input name="art" type="file" class="replaceArt" accept=".png,.jpeg,.jpg,.jpe,.jfif,image/png,image/jpeg"/>
 				</div>
 				<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title" value="{{title}}"/>

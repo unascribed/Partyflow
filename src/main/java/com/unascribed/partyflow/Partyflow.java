@@ -429,7 +429,7 @@ public class Partyflow {
 				for (String s : (String[])o) {
 					out.add(s);
 				}
-			} else {
+			} else if (o != null) {
 				out.add(String.valueOf(o));
 			}
 		}

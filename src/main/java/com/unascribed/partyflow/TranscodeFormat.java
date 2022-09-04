@@ -34,14 +34,14 @@ public enum TranscodeFormat {
 	OGG_VORBIS_192( 3,  DL,  192,   "ogg",  "audio/ogg; codecs=vorbis"     , "-f ogg -codec:a libvorbis -q:a 6"         , "Ogg Vorbis"),
 	        MP3_V0( 4,  DL,  321,   "mp3",  "audio/mpeg; codecs=mp3"       , "-f mp3 -codec:a libmp3lame -q:a 0"        , "MP3 V0"),
 	       MP3_320( 5,  DL,  320,   "mp3",  "audio/mpeg; codecs=mp3"       , "-f mp3 -codec:a libmp3lame -b:a 320k"     , "MP3 320"),
-	           WAV( 6, DLD,  999,   "wav",  "audio/wav"                    , "-f wav"                                   , "WAV"),
-	          AIFF( 7, DLD,  998,   "aiff", "audio/aiff"                   , "-f aiff"                                  , "AIFF"),
+	           WAV( 6, DLU,  999,   "wav",  "audio/wav"                    , "-f wav"                                   , "WAV"),
+	          AIFF( 7, DLU,  998,   "aiff", "audio/aiff"                   , "-f aiff"                                  , "AIFF"),
 	       AAC_VBR( 8,  DL,  128,   "m4a",  "audio/x-m4a; codecs=mp4a.40.2", "-f ipod -codec:a libfdk_aac -vbr:a 5 {MF}", "AAC"),
                           
 	// streaming formats, in order of preference; mostly invisible to user
 	// WebM is used for macOS/Safari support
 	  WEBM_OPUS_72(20,  ST,  4, "webm",  "audio/webm; codecs=opus"    , "-f webm -codec:a libopus -b:a 72k"),
-	    MP4_AAC_88(21,  ST,  3,  "mp4",  "audio/mp4; codecs=mp4a.40.2", "-f mp4 -codec:a libfdk_aac -b:a 88k -cutoff 18k {MF}"),
+	    MP4_AAC_88(21, STB,  3,  "mp4",  "audio/mp4; codecs=mp4a.40.2", "-f mp4 -codec:a libfdk_aac -b:a 88k -cutoff 18k"),
 	 OGG_VORBIS_96(22,  ST,  2,  "ogg",  "audio/ogg; codecs=vorbis"   , "-f ogg -codec:a libvorbis -q:a 2"),
 	       MP3_112(23,  ST,  1,  "mp3",  "audio/mpeg; codecs=mp3"     , "-f mp3 -codec:a libmp3lame -b:a 112k"),
 	
@@ -61,17 +61,43 @@ public enum TranscodeFormat {
 	public static final ImmutableSet<TranscodeFormat> ALL_FORMATS = ImmutableSet.copyOf(values());
 
 	public enum Usage {
+		/**
+		 * Offered for download to users.
+		 */
 		DOWNLOAD,
-		DOWNLOAD_DIRECT,
+		/**
+		 * Offered for download to users. Not cached in object storage, streamed direct to clients.
+		 */
+		DOWNLOAD_UNCACHED,
+		/**
+		 * Internal format used to stream media on the site. Initial requests will be streamed
+		 * direct to clients.
+		 */
 		STREAM,
+		/**
+		 * Internal format used to stream media on the site. Initial request will stall until the
+		 * transcode is complete (e.g. the format doesn't support streaming)
+		 */
+		STREAM_BUFFERED,
+		/**
+		 * Internal format used to stream media on the site. Low-quality version that can be
+		 * optionally enabled by the admin.
+		 */
 		STREAM_LOW,
 		;
 		public static final Usage DL = DOWNLOAD;
-		public static final Usage DLD = DOWNLOAD_DIRECT;
+		public static final Usage DLU = DOWNLOAD_UNCACHED;
 		public static final Usage ST = STREAM;
+		public static final Usage STB = STREAM_BUFFERED;
 		public static final Usage STL = STREAM_LOW;
 		public boolean canDownload() {
-			return this == DOWNLOAD || this == DOWNLOAD_DIRECT;
+			return this == DOWNLOAD || this == DOWNLOAD_UNCACHED;
+		}
+		public boolean isDirect() {
+			return this == STREAM || this == DOWNLOAD_UNCACHED;
+		}
+		public boolean isCached() {
+			return this != DOWNLOAD_UNCACHED;
 		}
 		public boolean canStream() {
 			// TODO check if low-quality is enabled

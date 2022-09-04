@@ -185,8 +185,8 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String slugs = m.group(1);
 				String releaseSlug;
-				int trackId;
-				int releaseId;
+				long trackId;
+				long releaseId;
 				try (PreparedStatement ps = c.prepareStatement("SELECT `track_id`, `tracks`.`art`, `master`, `releases`.`slug`, `releases`.`release_id` FROM `tracks` "
 						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
 						+ "WHERE `tracks`.`slug` = ? AND `releases`.`user_id` = ?;")) {
@@ -194,8 +194,8 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					ps.setInt(2, s.userId);
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
-							trackId = rs.getInt("track_id");
-							releaseId = rs.getInt("releases.release_id");
+							trackId = rs.getLong("track_id");
+							releaseId = rs.getLong("releases.release_id");
 							String art = Strings.emptyToNull(rs.getString("tracks.art"));
 							if (art != null) {
 								log.trace("Deleting {}", art);
@@ -211,7 +211,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					}
 				}
 				try (PreparedStatement ps = c.prepareStatement("SELECT `file` FROM `transcodes` WHERE `track_id` = ?;")) {
-					ps.setInt(1, trackId);
+					ps.setLong(1, trackId);
 					try (ResultSet rs = ps.executeQuery()) {
 						while (rs.next()) {
 							log.trace("Deleting {}", rs.getString("file"));
@@ -220,8 +220,8 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					}
 				}
 				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `transcodes` WHERE `track_id` = ?; DELETE FROM `tracks` WHERE `track_id` = ?;")) {
-					ps.setInt(1, trackId);
-					ps.setInt(2, trackId);
+					ps.setLong(1, trackId);
+					ps.setLong(2, trackId);
 					ps.executeUpdate();
 				}
 				ReleaseHandler.regenerateAlbumFile(releaseId);
