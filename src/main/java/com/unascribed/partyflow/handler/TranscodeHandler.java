@@ -351,13 +351,13 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			
 			Callable<String> transcoder = () -> {
 				return performTranscode(format, kind, slug, MoreObjects.firstNonNull(fshortcutSource, master), title, releaseTitle, creator, art, lyrics, year,
-						trackNumber == null ? -1 : trackNumber, rgd, cache, published, fshortcut, (filename) -> {
+						trackNumber == null ? -1 : trackNumber, rgd, cache, published, fshortcut, direct ? (filename) -> {
 					res.setHeader("Transcode-Status", "DIRECT"+(cache ? ", WILL-CACHE" : ""));
 					res.setHeader("Content-Type", format.mimeType());
 					res.setHeader("Content-Disposition", "attachment; filename="+filename+"; filename*=utf-8''"+filename);
 					res.setStatus(HTTP_200_OK);
 					return res.getOutputStream();
-				}).blob();
+				} : null).blob();
 			};
 
 			String blobNameRes;
