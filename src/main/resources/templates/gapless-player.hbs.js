@@ -72,7 +72,7 @@
 	const data = document.currentScript.dataset;
 	const loudness = Number(data.loudness);
 	const relativeLoudness = REFERENCE_LEVEL-loudness;
-	console.info("Album gain: "+relativeLoudness.toFixed(2)+" (-12dB reference level)");
+	console.info("Album gain: "+relativeLoudness.toFixed(2)+" ("+REFERENCE_LEVEL+"dB reference level)");
 	const rgPercent = Math.pow(10, relativeLoudness/10)
 
 	function rg() {
@@ -146,11 +146,15 @@
 	const seekbarBuffered = seekbar.querySelector(".buffered");
 	const volbar = widget.querySelector(".volumebar");
 	const volbarPosition = volbar.querySelector(".position");
+	const voldrop = widget.querySelector(".voldrop");
+	const voldropContents = voldrop.querySelector(".contents");
 	const volicon = widget.querySelector(".volicon");
 	const replaygain = widget.querySelector(".replaygain");
 	const globalPlayPause = widget.querySelector(".play-toggle");
+	const trackName = widget.querySelector(".track-name");
 	const playPositionNow = widget.querySelector(".play-position .current");
 	const playPositionTotal = widget.querySelector(".play-position .total");
+	let storedVolume = 0;
 	if (localStorage.getItem("replaygain") === "off") {
 		replaygain.classList.remove("replaygain");
 		replaygain.classList.add("replaygain-off");
@@ -166,18 +170,23 @@
 		if (p > 1) p = 1;
 		audio.currentTime = currentTrack.start+(currentTrack.length*p);
 	}
-	function dragVolbar(x) {
+	function dragVolbar(y) {
 		let bcr = volbar.getBoundingClientRect();
-		x -= bcr.left;
-		let p = x/bcr.width;
+		y -= bcr.top;
+		let p = y/bcr.height;
 		if (p < 0) p = 0;
 		if (p > 1) p = 1;
-		audio.volume = p*rg();
+		audio.volume = (1-p)*rg();
 	}
-	window.addEventListener("mouseup", () => {
+	trackName.textContent = currentTrack.title;
+	window.addEventListener("mouseup", (e) => {
 		if (mouseDownInSeekbar) audio.play();
+		voldrop.classList.remove("open");
 		mouseDownInSeekbar = false;
 		mouseDownInVolbar = false;
+		if (mouseDownInSeekbar || mouseDownInVolbar) {
+			e.preventDefault();
+		}
 	});
 	seekbar.addEventListener("mousedown", (e) => {
 		audio.pause();
@@ -187,12 +196,24 @@
 	});
 	volbar.addEventListener("mousedown", (e) => {
 		mouseDownInVolbar = true;
-		dragVolbar(e.clientX);
+		voldrop.classList.add("open");
+		dragVolbar(e.clientY);
 		e.preventDefault();
 	});
 	window.addEventListener("mousemove", (e) => {
 		if (mouseDownInSeekbar) dragSeekbar(e.clientX);
-		if (mouseDownInVolbar) dragVolbar(e.clientX);
+		if (mouseDownInVolbar) dragVolbar(e.clientY);
+	});
+	voldrop.addEventListener("click", (e) => {
+		if (audio.volume === 0) {
+			audio.volume = storedVolume;
+		} else {
+			storedVolume = audio.volume;
+			audio.volume = 0;
+		}
+	});
+	voldropContents.addEventListener("click", (e) => {
+		e.stopPropagation();
 	});
 	skipPrev.addEventListener("click", () => {
 		if (currentTrack.index > 0) {
@@ -273,6 +294,7 @@
 				trans(currentTrack.button, "pause", "play");
 			}
 			currentTrack = track;
+			trackName.textContent = track.title;
 			trans(currentTrack.button, "play", "pause");
 			updateSkipState();
 		}
@@ -297,6 +319,11 @@
 		volicon.classList.remove("low");
 		volicon.classList.remove("muted");
 		volicon.classList.add(clazz);
+		let suffix = " (Normalized)";
+		if (localStorage.getItem("replaygain") === "off") {
+			suffix = "";
+		}
+		voldrop.title = "Volume: "+Math.floor(v*100)+"%"+suffix;
 		volbarPosition.style.width = (v*100)+"%";
 		localStorage.setItem("volume", v);
 	}

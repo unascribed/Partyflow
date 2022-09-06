@@ -385,6 +385,8 @@ input.ghost-input:invalid, textarea.ghost-input:invalid {
 
 .track {
 	display: block;
+	min-width: min-content;
+	max-width: max-content;
 }
 .track .title {
 	font-size: 16px !important;
@@ -457,6 +459,20 @@ button.player-control {
 	margin-bottom: 16px;
 	padding-right: 16px;
 }
+#player-widget .rightside {
+	flex-grow: 1;
+	padding-bottom: 8px;
+}
+#player-widget .rightside .track-name {
+	margin-left: 16px;
+}
+#player-widget .rightside .play-position {
+	float: right;
+	margin-right: 8px;
+}
+#player-widget .rightside .seekbar {
+	margin-top: 16px;
+}
 
 .play-position {
 	font-variant-numeric: tabular-nums;
@@ -523,8 +539,6 @@ button.player-control {
 .volicon {
 	width: 24px;
 	height: 24px;
-	vertical-align: middle;
-	margin-left: 8px;
 }
 .volicon path {
 	transition: opacity 0.4s;
@@ -535,6 +549,77 @@ button.player-control {
 .volicon.muted .vol2, .volicon.muted .vol1 {
 	opacity: 0;
 }
+
+.seekbar-outer {
+	display: flex;
+	align-items: center;
+}
+.voldrop {
+	display: block;
+	float: right;
+	position: relative;
+	top: 8px;
+	width: 32px;
+	height: 32px;
+	padding: 4px;
+}
+.voldrop .contents {
+	position: absolute;
+	display: block;
+	top: 100%;
+	left: -12px;
+	width: 56px;
+	height: 0px;
+	transition: height 0.6s;
+	overflow: hidden;
+	border-radius: 4px;
+}
+.voldrop:hover .contents, .voldrop:focus-within .contents, .voldrop.open .contents {
+	height: 246px;
+}
+.voldrop .volumebar {
+	transform-origin: 0 0;
+	transform: rotate(-90deg);
+	width: 160px;
+	position: absolute;
+	top: 218px;
+	left: 10px;
+}
+.volumebar .position:after {
+	box-shadow: -4px 0px 8px #0003, -2px 0px 4px #000a;
+}
+.voldrop .contents:before {
+	content: "";
+	display: block;
+	position: absolute;
+	z-index: -5;
+	top: 8px;
+	left: 8px;
+	right: 8px;
+	height: 238px;
+	background: #ECEFF1;
+	box-shadow: 0px 2px 8px #000A;
+	border-radius: 4px;
+}
+.voldrop .contents:after {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 8px;
+	height: 8px;
+	border-bottom: 8px #ECEFF1 solid;
+	border-left: 8px transparent solid;
+	border-right: 8px transparent solid;
+}
+.voldrop .contents button {
+	position: relative;
+	top: 8px;
+	left: 8px;
+}
+
 
 .lightboxable {
 	position: relative;

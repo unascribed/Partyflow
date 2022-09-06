@@ -20,6 +20,7 @@
 package com.unascribed.partyflow;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
@@ -87,7 +88,7 @@ public record TranscodeFormat(
 		for (var en : obj.getObject("_defs").entrySet()) {
 			for (var en2 : ((JsonObject)en.getValue()).entrySet()) {
 				if (en2.getValue() instanceof JsonObject jo) {
-					Map<String, JexlExpression> res = new HashMap<>();
+					Map<String, JexlExpression> res = new LinkedHashMap<>();
 					for (var en3 : jo.entrySet()) {
 						res.put(en3.getKey(), createExpr(engine, "_defs."+en.getKey()+"."+en2.getKey()+"."+en3.getKey(), ((JsonPrimitive)en3.getValue()).asString()));
 					}
@@ -131,7 +132,7 @@ public record TranscodeFormat(
 				if (replaygainEle instanceof JsonPrimitive rp) {
 					replaygainWork = mapDefs.get("replaygain", rp.asString());
 				} else if (replaygainEle instanceof JsonObject ro) {
-					replaygainWork = new HashMap<>();
+					replaygainWork = new LinkedHashMap<>();
 					for (var en2 : ro.entrySet()) {
 						replaygainWork.put(en2.getKey(), createExpr(engine, name+".replaygain."+en2.getKey(), ((JsonPrimitive)en2.getValue()).asString()));
 					}

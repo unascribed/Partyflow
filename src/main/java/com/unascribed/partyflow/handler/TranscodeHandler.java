@@ -58,7 +58,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 	
 	private static final ImmutableMap<String, String> QUERIES_BY_KIND = ImmutableMap.of(
 			"release", "SELECT `concat_master` AS `master`, `title`, NULL as `release_title`, `users`.`display_name` AS `creator`, "
-						+ "`releases`.`published` AS `published`, `release_id`, NULL as `track_id` "
+						+ "`releases`.`published` AS `published`, `release_id`, NULL as `track_id`, "
 						+ "`releases`.`peak` AS `album_peak`, `releases`.`loudness` AS `album_loudness`, "
 						+ "`releases`.`peak` AS `track_peak`, `releases`.`loudness` AS `track_loudness` "
 					+ "FROM `releases` "
@@ -93,7 +93,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 		}
 		String formatString = query.get("format");
 		TranscodeFormat format = Partyflow.getFormatByName(formatString)
-				.filter(Partyflow::isFormatLegal)
+				.filter(TranscodeFormat::available)
 				.orElseThrow(() -> new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+formatString));
 		String shortcutSource = null;
 		Shortcut shortcut = null;

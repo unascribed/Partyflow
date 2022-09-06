@@ -492,14 +492,10 @@ public class Partyflow {
 		return Runtime.getRuntime().exec(arr);
 	}
 
-	public static boolean isFormatLegal(TranscodeFormat fmt) {
-		return fmt.available();
-	}
-
 	public static <T> List<T> enumerateFormats(Predicate<TranscodeFormat> pred, Function<TranscodeFormat, T> func) {
 		List<T> li = Lists.newArrayList();
 		for (TranscodeFormat tf : formats) {
-			if (isFormatLegal(tf) && pred.test(tf)) {
+			if (tf.available() && pred.test(tf)) {
 				li.add(func.apply(tf));
 			}
 		}

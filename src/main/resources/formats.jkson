@@ -1,7 +1,7 @@
 _defs: {
 	replaygain: {
-		formatRGGain: "(i) -> {string:format('%.2fdB', (-18 - i))}"
-		formatR128Gain: "(i) -> {math:max(-32768, math:min(32767, math:floor((-23 - i) * 256)))}"
+		formatRGGain: "(i) -> {string:format('%.2f dB', (-18 - i))}"
+		formatR128Gain: "(i) -> {string:format('%.0f', math:max(-32768, math:min(32767, math:floor((-23 - i) * 256))))}"
 		formatRGPeak: "(i) -> {string:format('%.6f', math:pow(10, i / 20))}"
 		generic: {
 			REPLAYGAIN_ALBUM_PEAK: "formatRGPeak(albumPeak)"
