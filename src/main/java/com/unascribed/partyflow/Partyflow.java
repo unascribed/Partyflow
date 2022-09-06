@@ -37,6 +37,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +50,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
-
 import javax.crypto.spec.SecretKeySpec;
 
 import jakarta.servlet.ServletException;
@@ -76,6 +76,7 @@ import org.slf4j.LoggerFactory;
 import com.unascribed.asyncsimplelog.AsyncSimpleLog;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.handler.CreateReleaseHandler;
+import com.unascribed.partyflow.handler.DownloadHandler;
 import com.unascribed.partyflow.handler.FilesHandler;
 import com.unascribed.partyflow.handler.IndexHandler;
 import com.unascribed.partyflow.handler.LoginHandler;
@@ -300,6 +301,7 @@ public class Partyflow {
 				handler("releases/", new ReleaseHandler()),
 				handler("track/", new TrackHandler()),
 				handler("transcode/", new TranscodeHandler()),
+				handler("download/", new DownloadHandler()),
 				handler("static/", new StaticHandler()),
 				handler("files/", new FilesHandler())
 			);
@@ -488,7 +490,11 @@ public class Partyflow {
 	}
 
 	private static Process exec(String[] arr) throws IOException {
-		log.trace("Executing command: {}", Joiner.on(' ').join(arr));
+		if (log.isTraceEnabled()) {
+			log.trace("Executing command: {}", Joiner.on(' ').join(Arrays.stream(arr)
+					.map(s -> s.length() > 100 ? "[snip - "+s.length()+"]" : s)
+					.iterator()));
+		}
 		return Runtime.getRuntime().exec(arr);
 	}
 

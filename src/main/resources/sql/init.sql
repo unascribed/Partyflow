@@ -47,6 +47,7 @@ CREATE TABLE `tracks` (
 	`art`          VARCHAR(255),
 	`master`       VARCHAR(255) NOT NULL,
 	`description`  CLOB NOT NULL,
+	`lyrics`       CLOB,
 	`created_at`   TIMESTAMP NOT NULL,
 	`last_updated` TIMESTAMP NOT NULL,
 	`track_number` INT NOT NULL,

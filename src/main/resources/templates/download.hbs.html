@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+	{{> _head.hbs.html}}
+	<title>Download - Partyflow</title>
+</head>
+<body>
+	{{> _header.hbs.html}}
+	<div class="inner">
+		<div class="release download">
+			<div class="art art-img" style="background-image: url({{art}})"></div>
+			<a href="{{root}}{{kind}}s/{{slug}}">&laquo; Back</a>
+			<div class="title"><span class="preamble">Download</span> {{title}}</div>
+			<div class="subtitle">{{subtitle}}</div>
+			<div class="creator">By {{creator}}</div>
+			<h2>Recommended formats</h2>
+			Based on your platform and common use, we suggest the following formats:
+			<div class="formats recommended">
+				{{#suggested_formats}}
+				<a class="format" href="{{download_url}}?format={{name}}" style="background-image: url({{root}}static/{{icon}})">
+					<span class="name">{{display_name}}</span>
+					<span class="size">~{{{size}}}</span>
+					<span class="desc">{{description}}</span>
+				</a>
+				{{/suggested_formats}}
+			</div>
+			<h2>Other formats</h2>
+			All downloads are offered in high quality. File sizes reflect codec efficiency, not
+			quality.
+			<div class="formats">
+				{{#other_formats}}
+				<a class="format" href="{{download_url}}?format={{name}}" style="background-image: url({{root}}static/{{icon}})">
+					<span class="name">{{display_name}}</span>
+					<span class="size">~{{{size}}}</span>
+					<span class="desc">{{description}}</span>
+				</a>
+				{{/other_formats}}
+			</div>
+		</div>
+	</div>
+	{{> _footer.hbs.html}}
+</body>
+</html>

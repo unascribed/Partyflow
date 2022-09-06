@@ -18,6 +18,17 @@ _defs: {
 			R128_ALBUM_GAIN: "formatR128Gain(albumLoudness)"
 		}
 	}
+	suggestWhen: {
+		isApple: "(s) -> { s.contains('Macintosh') || s.contains('iPhone') }"
+		isAndroid: "(s) -> { !isWindows(s) && s.contains('Android') }"
+		isLinux: "(s) -> { !isAndroid(s) && s.contains('Linux') }"
+		isWindows: "(s) -> { s.contains('Windows') }"
+		androidVersion: "(s) -> { \
+			var m = ~/Android ([0-9]+)/.matcher(s); \
+			var v = m.find() ? int:parseInt(m.group(1)) : 0; \
+			return v; \
+		}"
+	}
 	availableWhen: {
 		uncompressed: "config.formats.allowUncompressedFormats"
 		lossless: "config.formats.allowLosslessFormats"
@@ -25,81 +36,115 @@ _defs: {
 		encumbered: "config.formats.allowEncumberedFormats"
 	}
 	sizeEstimate: {
-		kbps: "(i) -> { durationSecs*(i*1000) }
+		kbps: "(i) -> { durationSecs*(i*125) }
 	}
 }
 
 // Formats exposed directly to users when downloading a file.
 // The name is what users will see.
-// availableWhen, sizeEstimate, and replaygain values are all JEXL expressions.
+// suggestWhen, availableWhen, sizeEstimate, and replaygain values are all JEXL expressions.
 // https://commons.apache.org/proper/commons-jexl/reference/index.html
 download: {
 	"flac": {
 		name: "FLAC"
+		description: "The most popular lossless format"
 		ytdlPriority: 99999
+		icon: "flac.svg"
 		ext: "flac"
 		type: "audio/flac"
 		args: [ "-f" "flac" "-codec:a" "flac" ]
+		suggestWhen: "true"
 		availableWhen: "lossless"
 		sizeEstimate: "master"
 		replaygain: "generic"
 	}
 	"alac": {
 		name: "Apple Lossless"
+		description: "iTunes lossless format"
 		ytdlPriority: 99998
+		icon: "alac.svg"
 		ext: "m4a"
 		type: "audio/x-m4a; codecs=alac"
 		args: [ "-f" "ipod" "-codec:a" "alac" "-movflags" "+faststart" ]
+		suggestWhen: "isApple(userAgent)"
 		availableWhen: "lossless"
 		sizeEstimate: "master * 1.02"
 		replaygain: "generic"
 	}
-	"ogg-opus-160": {
+	"ogg-opus-144": {
 		name: "Opus"
+		description: "Current best lossy codec - smallest file"
 		ytdlPriority: 1280
+		icon: "opus.svg"
 		ext: "opus"
 		type: "audio/ogg; codecs=opus"
-		args: [ "-f" "ogg" "-codec:a" "libopus" "-b:a" "160k" ]
+		args: [ "-f" "ogg" "-codec:a" "libopus" "-b:a" "144k" ]
+		suggestWhen: "isAndroid(userAgent) ? androidVersion(userAgent) >= 10 : isLinux(userAgent)"
 		availableWhen: "true"
-		sizeEstimate: "kbps(160)"
+		sizeEstimate: "kbps(144)"
 		replaygain: "opus"
 	}
 	"ogg-vorbis-192": {
 		name: "Ogg Vorbis"
+		description: "Common free codec"
 		ytdlPriority: 192
+		icon: "vorbis.svg"
 		ext: "ogg"
 		type: "audio/ogg; codecs=vorbis"
 		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "6" ]
+		suggestWhen: "isLinux(userAgent) || isAndroid(userAgent)"
 		availableWhen: "true"
 		sizeEstimate: "kbps(192)"
 		replaygain: "generic"
 	}
-	"mp3-v0": {
-		name: "MP3 V0"
+	"aac-vbr": {
+		name: "AAC",
+		description: "Common lossy codec on iOS/macOS"
+		ytdlPriority: 128
+		icon: "aac.svg"
+		ext: "m4a"
+		type: "audio/x-m4a; codecs=mp4a.40.2"
+		args: [ "-f" "ipod" "-codec:a" "libfdk_aac" "-vbr:a" "5" "-movflags" "+faststart" ]
+		suggestWhen: "isApple(userAgent)"
+		availableWhen: "encumbered"
+		sizeEstimate: "kbps(192)"
+		replaygain: "generic"
+	}
+	"mp3-v1": {
+		name: "MP3 V1"
+		description: "Variable bitrate MP3, often the best choice"
 		ytdlPriority: 321
+		icon: "mp3.svg"
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
-		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-q:a" "0" ]
+		args: [ "-f" "mp3" "-id3v2_version" "3" "-codec:a" "libmp3lame" "-q:a" "1" ]
+		suggestWhen: "true"
 		availableWhen: "mp3"
-		sizeEstimate: "kbps(240)"
+		sizeEstimate: "kbps(220)"
 		replaygain: "generic"
 	}
 	"mp3-320": {
 		name: "MP3 320"
+		description: "Most compatible choice, but inefficient file size"
 		ytdlPriority: 320
+		icon: "mp3.svg"
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
 		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "320k" ]
+		suggestWhen: "true"
 		availableWhen: "mp3"
 		sizeEstimate: "kbps(320)"
 		replaygain: "generic"
 	}
 	"wav": {
 		name: "WAV"
+		description: "Raw WAV data - extremely large. Prefer FLAC."
 		ytdlPriority: 999
+		icon: "wav.svg"
 		ext: "wav"
 		type: "audio/wav"
-		args: [ "-f" "wav" ]
+		args: [ "-vn" "-f" "wav" ]
+		suggestWhen: "false"
 		// uncompressed audio is trivial to create and is a waste of space to cache
 		cache: false
 		direct: true
@@ -108,24 +153,17 @@ download: {
 	}
 	"aiff": {
 		name: "AIFF"
+		description: "Raw AIFF data - extremely large. Prefer FLAC."
 		ytdlPriority: 998
+		icon: "wav.svg"
 		ext: "aiff"
 		type: "audio/aiff"
-		args: [ "-f" "aiff" ]
+		args: [ "-vn" "-f" "aiff" ]
+		suggestWhen: "false"
 		cache: false
 		direct: true
 		availableWhen: "uncompressed"
 		sizeEstimate: "durationSamples * 2 * 2"
-	}
-	"aac-vbr": {
-		name: "AAC"
-		ytdlPriority: 128
-		ext: "m4a"
-		type: "audio/x-m4a; codecs=mp4a.40.2"
-		args: [ "-f" "ipod" "-codec:a" "libfdk_aac" "-vbr:a" "5" "-movflags" "+faststart" ]
-		availableWhen: "encumbered"
-		sizeEstimate: "kbps(192)"
-		replaygain: "generic"
 	}
 }
 

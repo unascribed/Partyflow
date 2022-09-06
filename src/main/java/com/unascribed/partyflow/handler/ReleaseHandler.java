@@ -88,6 +88,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 	private static final Pattern DURATION_FFPROBE_PATTERN = Pattern.compile("^format.duration=\"?(.*?)\"?$", Pattern.MULTILINE);
 	private static final Pattern TITLE_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:title|TITLE)=\"?(.*?)\"?$", Pattern.MULTILINE);
 	private static final Pattern TRACK_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:track|TRACK)=\"?(.*?)\"?$", Pattern.MULTILINE);
+	private static final Pattern LYRICS_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:(?:unsynced}UNSYNCED)?lyrics|LYRICS)=\"?(.*?)\"?$", Pattern.MULTILINE);
 	
 	private static final Pattern LOUDNESS_FFMPEG_PATTERN = Pattern.compile("^\\s+I:\\s+(-?\\d+\\.\\d+) LUFS$", Pattern.MULTILINE);
 	private static final Pattern PEAK_FFMPEG_PATTERN = Pattern.compile("^\\s+Peak:\\s+(-?(?:\\d+\\.\\d+|inf)) dBFS$", Pattern.MULTILINE);
@@ -475,7 +476,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						}
 					}
 					WORK_DIR.mkdirs();
-					record TrackData(String title, int trackNumber, String blobName, long duration, double loudness, double peak) {}
+					record TrackData(String title, int trackNumber, String blobName, long duration, double loudness, double peak, String lyrics) {}
 					List<Future<TrackData>> futures = new ArrayList<>();
 					for (Part master : masters) {
 						futures.add(ThreadPools.TRANSCODE.submit(() -> {
@@ -555,11 +556,13 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 								String title;
 								int trackNumber = -1;
 								long duration;
+								String lyrics;
 								if (probe.exitValue() != 0) {
 									String str = new String(ByteStreams.toByteArray(probe.getErrorStream()), Charsets.UTF_8);
 									log.warn("Failed to probe master with FFprobe:\n{}", str);
 									title = titleFromFilename;
 									duration = 0;
+									lyrics = null;
 								} else {
 									String probeOut = new String(ByteStreams.toByteArray(probe.getInputStream()), Charsets.UTF_8);
 									title = find(TITLE_FFPROBE_PATTERN, probeOut).orElse(titleFromFilename);
@@ -572,9 +575,12 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 											.map(bd -> bd.multiply(TO_SAMPLES))
 											.map(BigDecimal::longValue)
 											.orElse(0L);
+									lyrics = find(LYRICS_FFPROBE_PATTERN, probeOut)
+											.map(str -> str.replace("\\n", "\n"))
+											.orElse(null);
 								}
 								log.debug("Processed master {}. {} successfully.\nDuration: {}ms, loudness: {}LUFS, peak: {}dBFS", trackNumber, title, duration/48, loudness, peak);
-								return new TrackData(title, trackNumber, blobName, duration, loudness, peak);
+								return new TrackData(title, trackNumber, blobName, duration, loudness, peak, lyrics);
 							} finally {
 								tmpFile.delete();
 							}
@@ -622,8 +628,8 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						}
 						lastSlug = slug;
 						try (PreparedStatement ps = c.prepareStatement(
-								"INSERT INTO `tracks` (`release_id`, `title`, `subtitle`, `slug`, `master`, `description`, `track_number`, `loudness`, `peak`, `duration`, `created_at`, `last_updated`) "
-								+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());")) {
+								"INSERT INTO `tracks` (`release_id`, `title`, `subtitle`, `slug`, `master`, `description`, `track_number`, `loudness`, `peak`, `duration`, `lyrics`, `created_at`, `last_updated`) "
+								+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW());")) {
 							ps.setInt(1, releaseId);
 							ps.setString(2, td.title);
 							ps.setString(3, "");
@@ -634,6 +640,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 							ps.setInt(8, (int)(td.loudness*10));
 							ps.setInt(9, (int)(td.peak*10));
 							ps.setLong(10, td.duration);
+							ps.setString(11, td.lyrics);
 							ps.execute();
 						}
 					}
@@ -668,7 +675,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				List<String> concatLines = new ArrayList<>();
 				concatLines.add("ffconcat version 1.0");
 				log.debug("Regenerating gapless album file for release ID {}", releaseId);
-				try (PreparedStatement ps = c.prepareStatement("SELECT `master` FROM `tracks` WHERE `release_id` = ? ORDER BY `track_id` ASC;")) {
+				try (PreparedStatement ps = c.prepareStatement("SELECT `master` FROM `tracks` WHERE `release_id` = ? ORDER BY `track_number` ASC;")) {
 					ps.setLong(1, releaseId);
 					try (ResultSet rs = ps.executeQuery()) {
 						while (rs.next()) {

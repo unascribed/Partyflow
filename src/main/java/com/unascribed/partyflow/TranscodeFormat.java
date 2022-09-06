@@ -25,13 +25,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
-
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlContext;
 import org.apache.commons.jexl3.JexlExpression;
 import org.apache.commons.jexl3.MapContext;
 import org.apache.commons.jexl3.internal.Engine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -43,14 +46,21 @@ import blue.endless.jankson.JsonObject;
 import blue.endless.jankson.JsonPrimitive;
 
 public record TranscodeFormat(
-		String name, Usage usage, String displayName, int ytdlPriority, String fileExtension,
-		String mimeType, ImmutableList<String> args, BooleanSupplier availableWhen,
-		boolean direct, boolean cache, ToDoubleFunction<TrackData> sizeEstimate,
+		String name, Usage usage, String displayName, String description, String icon, int ytdlPriority,
+		String fileExtension, String mimeType, ImmutableList<String> args,
+		BooleanSupplier availableWhen, Predicate<UserData> suggestWhen, boolean direct, boolean cache,
+		ToDoubleFunction<TrackData> sizeEstimator,
 		ImmutableMap<String, Function<ReplayGainData, String>> replaygain,
 		ImmutableList<Shortcut> shortcuts
 	) {
 	
+	private static final Logger log = LoggerFactory.getLogger(TranscodeFormat.class);
+	
 	public boolean available() { return availableWhen().getAsBoolean(); }
+	public boolean suggested(String userAgent) { return suggestWhen.test(new UserData(userAgent)); }
+	public double estimateSize(long duration, long master) {
+		return sizeEstimator().applyAsDouble(new TrackData(duration, duration/48000D, master));
+	}
 
 	@Override
 	public String toString() {
@@ -59,6 +69,7 @@ public record TranscodeFormat(
 	
 	public record TrackData(long durationSamples, double durationSecs, long master) {}
 	public record ReplayGainData(double albumLoudness, double trackLoudness, double albumPeak, double trackPeak) {}
+	public record UserData(String userAgent) {}
 
 	public enum Usage {
 		DOWNLOAD,
@@ -81,7 +92,9 @@ public record TranscodeFormat(
 				.strict(true)
 				.namespaces(Map.of(
 							"math", Math.class,
-							"string", String.class
+							"string", String.class,
+							"log", log,
+							"int", Integer.class
 						)));
 		Table<String, String, JexlExpression> defs = HashBasedTable.create();
 		Table<String, String, Map<String, JexlExpression>> mapDefs = HashBasedTable.create();
@@ -106,6 +119,8 @@ public record TranscodeFormat(
 				JsonObject jo = (JsonObject)en.getValue();
 				String name = en.getKey();
 				String displayName = jo.get(String.class, "name");
+				String description = jo.get(String.class, "description");
+				String icon = jo.get(String.class, "icon");
 				int ytdlPriority = jo.getInt("ytdlPriority", 0);
 				String ext = jo.get(String.class, "ext");
 				String type = jo.get(String.class, "type");
@@ -124,7 +139,14 @@ public record TranscodeFormat(
 					ctx.set("durationSecs", data.durationSecs());
 					ctx.set("durationSamples", data.durationSamples());
 					ctx.set("master", data.master());
-					return evaluate(name+".sizeEstimate", sizeEstimateExpr, ctx, Double.class);
+					return evaluate(name+".sizeEstimate", sizeEstimateExpr, ctx, Number.class).doubleValue();
+				};
+				
+				var suggestWhenExpr = createExpr(engine, name+".suggestWhen", jo.containsKey("suggestWhen") ? jo.get(String.class, "suggestWhen") : "false");
+				Predicate<UserData> suggestWhen = (data) -> {
+					var ctx = new MapContext(new HashMap<>(defs.row("suggestWhen")));
+					ctx.set("userAgent", data.userAgent());
+					return evaluate(name+".suggestWhen", suggestWhenExpr, ctx, Boolean.class);
 				};
 				
 				Map<String, JexlExpression> replaygainWork;
@@ -153,7 +175,7 @@ public record TranscodeFormat(
 							};
 						}));
 				
-				out.add(new TranscodeFormat(name, usage, displayName, ytdlPriority, ext, type, args, availableWhen, direct, cache, sizeEstimate, replaygain, ImmutableList.of()));
+				out.add(new TranscodeFormat(name, usage, displayName, description, icon, ytdlPriority, ext, type, args, availableWhen, suggestWhen, direct, cache, sizeEstimate, replaygain, ImmutableList.of()));
 			}
 		}
 		return out.build();
