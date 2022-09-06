@@ -51,7 +51,13 @@
 		<div class="release track solo{{^release.published}} unpublished{{/release.published}}{{#editable}} editing{{/editable}}">
 			{{^editable}}
 			<div class="art art-img" style="background-image: url({{art}})"></div>
+			<noscript>
 			<div class="title">{{title}}</div>
+			</noscript>
+			{{> _player-widget.hbs.html }}
+			<script data-loudness="{{loudness}}" data-tracks="{{tracks_json}}"
+				data-formats="{{stream_formats_json}}"
+				src="{{root}}assets/gapless-player.js"></script>
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
 			<noscript>
@@ -62,11 +68,8 @@
 				{{/stream_formats}}
 			</audio>
 			</noscript>
-			{{> _player-widget.hbs.html }}
-			<script data-loudness="{{loudness}}" data-tracks="{{tracks_json}}"
-				data-formats="{{stream_formats_json}}"
-				src="{{root}}assets/gapless-player.js"></script>
 			<h2><a href="{{root}}download/track/{{slug}}">Download</a></h2>
+			<div class="lyrics">{{{lyrics}}}</div>
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}
@@ -84,8 +87,11 @@
 						<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 					{{/stream_formats}}
 				</audio>
+				<h3>Lyrics</h3>
+				<textarea rows="16" id="lyrics" name="lyrics" maxlength="16384" class="ghost-input" placeholder="Lyrics">{{lyrics}}</textarea>
+				<h3>Description</h3>
 				<div class="md-wrapper">
-				<textarea rows="16" id="descriptionMd" name="descriptionMd" maxlength="16384" class="ghost-input description" placeholder="Description">{{descriptionMd}}</textarea>
+				<textarea rows="16" id="descriptionMd" name="descriptionMd" maxlength="16384" class="ghost-input description">{{descriptionMd}}</textarea>
 				</div>
 				<div id="quillTarget" class="description" style="display: none">{{{description}}}</div>
 				<div class="buttons" style="z-index: 2">

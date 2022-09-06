@@ -99,6 +99,7 @@
 		if (ele) {
 			track.element = ele;
 			track.button = ele.querySelector(".player-control");
+			track.lyrics = ele.querySelector(".lyrics");
 			ele.querySelector(".track-duration").textContent = formatTime(track.length);
 		}
 	});
@@ -286,14 +287,32 @@
 		set(skipPrev, "disabled", currentTrack.index === 0);
 		set(skipNext, "disabled", currentTrack.index === tracks.length-1);
 	}
+	let wantsLyrics = false;
 	function updateTime() {
 		let track = tracks.find((track) => track.start <= audio.currentTime && track.end > audio.currentTime);
 		if (!track) return; // ????
 		if (!currentTrack || track.slug !== currentTrack.slug) {
+			let openLyrics = wantsLyrics;
 			if (currentTrack) {
 				trans(currentTrack.button, "pause", "play");
+				if (currentTrack.lyrics) {
+					if (currentTrack.lyrics.open) {
+						openLyrics = true;
+						currentTrack.lyrics.open = false;
+					} else {
+						wantsLyrics = false;
+						openLyrics = false;
+					}
+				}
 			}
 			currentTrack = track;
+			if (openLyrics) {
+				if (track.lyrics) {
+					track.lyrics.open = true;
+				} else {
+					wantsLyrics = true;
+				}
+			}
 			trackName.textContent = track.title;
 			trans(currentTrack.button, "play", "pause");
 			updateSkipState();

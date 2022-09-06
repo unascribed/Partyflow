@@ -28,7 +28,6 @@ import com.unascribed.partyflow.TranscodeFormat;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.google.common.base.Joiner;
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
@@ -82,7 +81,7 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 						_title = rs.getString("title");
 						_subtitle = rs.getString("subtitle");
 						_creator = rs.getString("creator");
-						_art = MoreObjects.firstNonNull(rs.getString("art"), rs.getString("fallback_art"));
+						_art = rs.getString("art") == null ? rs.getString("fallback_art") : rs.getString("art");
 						long duration = rs.getLong("duration");
 						if (rs.wasNull()) {
 							try (PreparedStatement ps2 = c.prepareStatement("SELECT `duration`, `master` FROM `tracks` WHERE `release_id` = ?;")) {
@@ -133,6 +132,7 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 				String subtitle = _subtitle;
 				String creator = _creator;
 				String kind = _kind;
+				String kinds = "release".equals(kind) ? "releases" : "track";
 				String slug = _slug;
 				String art = Partyflow.resolveArt(_art);
 				String download_url = Partyflow.config.http.path+"transcode/"+("release".equals(kind) ? "release-zip" : "track")+"/"+slug;

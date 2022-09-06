@@ -293,7 +293,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 						rgd = new ReplayGainData(rs.getInt("album_loudness")/10D, rs.getInt("track_loudness")/10D,
 								rs.getInt("album_peak")/10D, rs.getInt("track_peak")/10D);
 						year = rs.getInt("year");
-						art = MoreObjects.firstNonNull(rs.getString("art"), rs.getString("fallback_art"));
+						art = rs.getString("art") == null ? rs.getString("fallback_art") : rs.getString("art");
 						lyrics = rs.getString("lyrics");
 						int trackNumberI = rs.getInt("track_number");
 						trackNumber = rs.wasNull() ? null : trackNumberI;

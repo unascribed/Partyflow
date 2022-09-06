@@ -88,7 +88,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 	private static final Pattern DURATION_FFPROBE_PATTERN = Pattern.compile("^format.duration=\"?(.*?)\"?$", Pattern.MULTILINE);
 	private static final Pattern TITLE_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:title|TITLE)=\"?(.*?)\"?$", Pattern.MULTILINE);
 	private static final Pattern TRACK_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:track|TRACK)=\"?(.*?)\"?$", Pattern.MULTILINE);
-	private static final Pattern LYRICS_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:(?:unsynced}UNSYNCED)?lyrics|LYRICS)=\"?(.*?)\"?$", Pattern.MULTILINE);
+	private static final Pattern LYRICS_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:unsynced|UNSYNCED)?(?:lyrics|LYRICS)=\"?(.*?)\"?$", Pattern.MULTILINE);
 	
 	private static final Pattern LOUDNESS_FFMPEG_PATTERN = Pattern.compile("^\\s+I:\\s+(-?\\d+\\.\\d+) LUFS$", Pattern.MULTILINE);
 	private static final Pattern PEAK_FFMPEG_PATTERN = Pattern.compile("^\\s+Peak:\\s+(-?(?:\\d+\\.\\d+|inf)) dBFS$", Pattern.MULTILINE);
@@ -122,7 +122,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 							List<Object> _tracks = Lists.newArrayList();
 							JsonArray _tracksJson = new JsonArray();
 							try (PreparedStatement ps2 = c.prepareStatement(
-									"SELECT `title`, `subtitle`, `slug`, `art`, `track_number`, `duration` FROM `tracks` "
+									"SELECT `title`, `subtitle`, `slug`, `art`, `track_number`, `duration`, `lyrics` FROM `tracks` "
 									+ "WHERE `release_id` = ? ORDER BY `track_number` ASC;")) {
 								long durAccum = 0;
 								ps2.setInt(1, rs.getInt("release_id"));
@@ -134,6 +134,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 											String subtitle = rs2.getString("subtitle");
 											String slug = rs2.getString("slug");
 											String art = _art;
+											String lyrics = rs2.getString("lyrics");
 											int track_number = rs2.getInt("track_number");
 										});
 										JsonObject obj = new JsonObject();
@@ -576,7 +577,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 											.map(BigDecimal::longValue)
 											.orElse(0L);
 									lyrics = find(LYRICS_FFPROBE_PATTERN, probeOut)
-											.map(str -> str.replace("\\n", "\n"))
+											.map(str -> str.replace("\\n", "\n").replace("\\r", ""))
 											.orElse(null);
 								}
 								log.debug("Processed master {}. {} successfully.\nDuration: {}ms, loudness: {}LUFS, peak: {}dBFS", trackNumber, title, duration/48, loudness, peak);

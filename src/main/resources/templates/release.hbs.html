@@ -55,13 +55,18 @@
 			<h2><a href="{{root}}download/release/{{slug}}">Download</a></h2>
 			<div id="tracks">
 			{{#tracks}}
-				<a href="{{root}}track/{{slug}}" class="track" data-track-slug="{{slug}}">
+				<div class="track" data-track-slug="{{slug}}">
 					<button class="yesscript player-control play"></button>
-					<span class="trackNumber">{{track_number}}.</span>
-					<span class="title">{{title}}</span>
-					<span class="subtitle">{{subtitle}}</span>
+					<a href="{{root}}track/{{slug}}">
+						<span class="trackNumber">{{track_number}}.</span>
+						<span class="title">{{title}}</span>
+						<span class="subtitle">{{subtitle}}</span>
+					</a>
 					<span class="track-duration"></span>
-				</a>
+					{{#lyrics}}
+						<details class="lyrics"><summary>lyrics</summary><p>{{lyrics}}</p></details>
+					{{/lyrics}}
+				</div>
 			{{/tracks}}
 			</div>
 			{{#doneProcessing}}

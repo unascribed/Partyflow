@@ -3,6 +3,7 @@ package com.unascribed.partyflow.handler;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URLEncoder;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,9 +16,14 @@ import java.util.regex.Pattern;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.io.ContentMetadata;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +38,8 @@ import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
+
+import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 
@@ -57,7 +65,9 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 				String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
 				try (PreparedStatement ps = c.prepareStatement(
 						"SELECT `tracks`.`title`, `tracks`.`subtitle`, `releases`.`published`, `releases`.`art`, `releases`.`title`, `releases`.`slug`, "
-								+ "`tracks`.`art`, `tracks`.`description`, `releases`.`user_id`, `users`.`display_name`, `tracks`.`loudness`, `duration` FROM `tracks` "
+								+ "`tracks`.`art`, `tracks`.`description`, `releases`.`user_id`, `users`.`display_name`, `tracks`.`loudness`, `duration`, "
+								+ "`lyrics` "
+							+ " FROM `tracks` "
 						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
 						+ "JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
 						+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
@@ -107,6 +117,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 								String slug = trackSlug;
 								boolean editable = _editable;
 								String art = Partyflow.resolveArt(_art);
+								String lyrics = rs.getString("lyrics");
 								String description = desc;
 								String descriptionMd = _descriptionMd;
 								String error = query.get("error");
@@ -240,8 +251,119 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 	public void multipartPost(String path, HttpServletRequest req,
 			HttpServletResponse res, MultipartData data)
 			throws IOException, ServletException {
-		// TODO Auto-generated method stub
+		Matcher m = PATH_PATTERN.matcher(path);
+		if (!m.matches()) return;
+		if ("/edit".equals(m.group(2))) {
+			Session s = SessionHelper.getSession(req);
+			if (s == null) {
+				res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+				return;
+			}
+			String csrf = data.getPartAsString("csrf", 64);
+			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
+				res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(m.group(1))+"?error=Invalid CSRF token");
+				return;
+			}
+			Part art = data.getPart("art");
+			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
+			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
+			String descriptionMd = data.getPartAsString("descriptionMd", 65536);
+			String description;
+			if (descriptionMd != null) {
+				Parser parser = Parser.builder().build();
+				HtmlRenderer rend = HtmlRenderer.builder().build();
+				description = sanitizeHtml(rend.render(parser.parse(descriptionMd)));
+			} else {
+				description = sanitizeHtml(Strings.nullToEmpty(data.getPartAsString("description", 65536)));
+			}
+			String lyrics = data.getPartAsString("lyrics", 65536);
+			if (title.trim().isEmpty()) {
+				res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(m.group(1))+"?error=Title is required");
+				return;
+			}
+			if (title.length() > 255) {
+				res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(m.group(1))+"?error=Title is too long");
+				return;
+			}
+			if (subtitle.length() > 255) {
+				res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(m.group(1))+"?error=Subtitle is too long");
+				return;
+			}
+			if (description.length() > 16384) {
+				res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(m.group(1))+"?error=Description is too long");
+				return;
+			}
+			String artPath = null;
+			if (art != null && art.getSize() > 4) {
+				try {
+					artPath = CreateReleaseHandler.processArt(art);
+				} catch (IllegalArgumentException e) {
+					res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(m.group(1))+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8"));
+					return;
+				}
+			}
+			try (Connection c = Partyflow.sql.getConnection()) {
+				boolean published;
+				try (PreparedStatement ps = c.prepareStatement(
+						"SELECT `releases`.`published` FROM `tracks` "
+							+ "JOIN `releases` ON `tracks`.`release_id` = `releases`.`release_id` "
+						+ "WHERE `tracks`.`slug` = ? AND `releases`.`user_id` = ?;")) {
+					ps.setString(1, m.group(1));
+					ps.setInt(2, s.userId);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.first()) {
+							published = rs.getBoolean("published");
+						} else {
+							res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(m.group(1))+"?error=You're not allowed to do that");
+							return;
+						}
+					}
+				}
+				String slug = published ? m.group(1) : Partyflow.sanitizeSlug(title);
+				if (!Objects.equal(slug, m.group(1))) {
+					try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM `tracks` WHERE `slug` = ?;")) {
+						int i = 0;
+						String suffix = "";
+						while (true) {
+							if (i > 0) {
+								suffix = "-"+(i+1);
+							}
+							ps.setString(1, slug+suffix);
+							try (ResultSet rs = ps.executeQuery()) {
+								if (!rs.first()) break;
+							}
+							i++;
+						}
+						slug = slug+suffix;
+					}
+				}
+				String extraCols = artPath != null ? "`art` = ?," : "";
+				try (PreparedStatement ps = c.prepareStatement(
+						"UPDATE `tracks` SET `title` = ?, `subtitle` = ?, `slug` = ?, "+extraCols+" `description` = ?, `lyrics` = ?, `last_updated` = NOW() "
+						+ " WHERE `slug` = ?;")) {
+					int i = 1;
+					ps.setString(i++, title);
+					ps.setString(i++, subtitle);
+					ps.setString(i++, slug);
+					if (artPath != null) {
+						ps.setString(i++, artPath);
+					}
+					ps.setString(i++, description);
+					ps.setString(i++, lyrics);
+					ps.setString(i++, m.group(1));
+					ps.executeUpdate();
+				}
+				res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(slug));
+			} catch (SQLException e) {
+				throw new ServletException(e);
+			}
+		} else if ("/delete".equals(m.group(2))) {
+			res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
+		}
+	}
 
+	private String sanitizeHtml(String html) {
+		return Jsoup.clean(html, Safelist.relaxed().removeTags("img"));
 	}
 
 }

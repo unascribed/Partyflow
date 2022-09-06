@@ -157,6 +157,10 @@ a.release {
 	font-size: 16px;
 }
 
+.lyrics {
+	white-space: pre-wrap;
+}
+
 button:not([class^='ql-']) {
 	border: none;
 	border-radius: 2px;
@@ -392,8 +396,6 @@ input.ghost-input:invalid, textarea.ghost-input:invalid {
 a.track:link {
 	color: inherit !important;
 	text-decoration: none;
-	min-width: min-content;
-	max-width: max-content;
 }
 a.track:link:hover, a.track:link:focus {
 	text-decoration: underline;
