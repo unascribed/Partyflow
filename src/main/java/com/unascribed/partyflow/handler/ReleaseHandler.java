@@ -171,9 +171,9 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 								List<Object> tracks = _tracks;
 								double albumLoudness = rs.getInt("loudness")/10D;
 								boolean has_tracks = !_tracks.isEmpty();
-								List<Object> download_formats = Partyflow.enumerateFormats(tf -> tf.getUsage().canDownload());
-								List<Object> stream_formats = Partyflow.enumerateFormats(tf -> tf.getUsage().canStream());
-								String stream_formats_json = gson.toJson(Partyflow.enumerateJsonFormats(tf -> tf.getUsage().canStream()));
+								List<Object> download_formats = Partyflow.enumerateFormats(tf -> tf.usage().canDownload());
+								List<Object> stream_formats = Partyflow.enumerateFormats(tf -> tf.usage().canStream());
+								String stream_formats_json = gson.toJson(Partyflow.enumerateJsonFormats(tf -> tf.usage().canStream()));
 								String tracks_json = gson.toJson(_tracksJson);
 								boolean doneProcessing = rs.getString("concat_master") != null;
 							});

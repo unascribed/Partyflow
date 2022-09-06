@@ -1,0 +1,204 @@
+_defs: {
+	replaygain: {
+		formatRGGain: "(i) -> {string:format('%.2fdB', (-18 - i))}"
+		formatR128Gain: "(i) -> {math:max(-32768, math:min(32767, math:floor((-23 - i) * 256)))}"
+		formatRGPeak: "(i) -> {string:format('%.6f', math:pow(10, i / 20))}"
+		generic: {
+			REPLAYGAIN_ALBUM_PEAK: "formatRGPeak(albumPeak)"
+			REPLAYGAIN_TRACK_PEAK: "formatRGPeak(trackPeak)"
+			REPLAYGAIN_ALBUM_GAIN: "formatRGGain(albumLoudness)"
+			REPLAYGAIN_TRACK_GAIN: "formatRGGain(trackLoudness)"
+		}
+		opus: {
+			REPLAYGAIN_ALBUM_PEAK: "formatRGPeak(albumPeak)"
+			REPLAYGAIN_TRACK_PEAK: "formatRGPeak(trackPeak)"
+			REPLAYGAIN_ALBUM_GAIN: "formatRGGain(albumLoudness)"
+			REPLAYGAIN_TRACK_GAIN: "formatRGGain(trackLoudness)"
+			R128_TRACK_GAIN: "formatR128Gain(trackLoudness)"
+			R128_ALBUM_GAIN: "formatR128Gain(albumLoudness)"
+		}
+	}
+	availableWhen: {
+		uncompressed: "config.formats.allowUncompressedFormats"
+		lossless: "config.formats.allowLosslessFormats"
+		mp3: "config.formats.allowMP3"
+		encumbered: "config.formats.allowEncumberedFormats"
+	}
+	sizeEstimate: {
+		kbps: "(i) -> { durationSecs*(i*1000) }
+	}
+}
+
+// Formats exposed directly to users when downloading a file.
+// The name is what users will see.
+// availableWhen, sizeEstimate, and replaygain values are all JEXL expressions.
+// https://commons.apache.org/proper/commons-jexl/reference/index.html
+download: {
+	"flac": {
+		name: "FLAC"
+		ytdlPriority: 99999
+		ext: "flac"
+		type: "audio/flac"
+		args: [ "-f" "flac" "-codec:a" "flac" ]
+		availableWhen: "lossless"
+		sizeEstimate: "master"
+		replaygain: "generic"
+	}
+	"alac": {
+		name: "Apple Lossless"
+		ytdlPriority: 99998
+		ext: "m4a"
+		type: "audio/x-m4a; codecs=alac"
+		args: [ "-f" "ipod" "-codec:a" "alac" "-movflags" "+faststart" ]
+		availableWhen: "lossless"
+		sizeEstimate: "master * 1.02"
+		replaygain: "generic"
+	}
+	"ogg-opus-160": {
+		name: "Opus"
+		ytdlPriority: 1280
+		ext: "opus"
+		type: "audio/ogg; codecs=opus"
+		args: [ "-f" "ogg" "-codec:a" "libopus" "-b:a" "160k" ]
+		availableWhen: "true"
+		sizeEstimate: "kbps(160)"
+		replaygain: "opus"
+	}
+	"ogg-vorbis-192": {
+		name: "Ogg Vorbis"
+		ytdlPriority: 192
+		ext: "ogg"
+		type: "audio/ogg; codecs=vorbis"
+		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "6" ]
+		availableWhen: "true"
+		sizeEstimate: "kbps(192)"
+		replaygain: "generic"
+	}
+	"mp3-v0": {
+		name: "MP3 V0"
+		ytdlPriority: 321
+		ext: "mp3"
+		type: "audio/mpeg; codecs=mp3"
+		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-q:a" "0" ]
+		availableWhen: "mp3"
+		sizeEstimate: "kbps(240)"
+		replaygain: "generic"
+	}
+	"mp3-320": {
+		name: "MP3 320"
+		ytdlPriority: 320
+		ext: "mp3"
+		type: "audio/mpeg; codecs=mp3"
+		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "320k" ]
+		availableWhen: "mp3"
+		sizeEstimate: "kbps(320)"
+		replaygain: "generic"
+	}
+	"wav": {
+		name: "WAV"
+		ytdlPriority: 999
+		ext: "wav"
+		type: "audio/wav"
+		args: [ "-f" "wav" ]
+		// uncompressed audio is trivial to create and is a waste of space to cache
+		cache: false
+		direct: true
+		availableWhen: "uncompressed"
+		sizeEstimate: "durationSamples * 2 * 2"
+	}
+	"aiff": {
+		name: "AIFF"
+		ytdlPriority: 998
+		ext: "aiff"
+		type: "audio/aiff"
+		args: [ "-f" "aiff" ]
+		cache: false
+		direct: true
+		availableWhen: "uncompressed"
+		sizeEstimate: "durationSamples * 2 * 2"
+	}
+	"aac-vbr": {
+		name: "AAC"
+		ytdlPriority: 128
+		ext: "m4a"
+		type: "audio/x-m4a; codecs=mp4a.40.2"
+		args: [ "-f" "ipod" "-codec:a" "libfdk_aac" "-vbr:a" "5" "-movflags" "+faststart" ]
+		availableWhen: "encumbered"
+		sizeEstimate: "kbps(192)"
+		replaygain: "generic"
+	}
+}
+
+// Internal formats used for streaming on release/track pages. Name not used and does not need to be
+// specified.
+stream: {
+	"webm-opus-72": {
+		ytdlPriority: 4
+		ext: "webm"
+		type: "audio/webm; codecs=opus"
+		args: [ "-f" "webm" "-codec:a" "libopus" "-b:a" "72k" ]
+		direct: true
+		availableWhen: "true"
+		sizeEstimate: "kbps(72)"
+	}
+	"mp4-aac-88": {
+		ytdlPriority: 3
+		ext: "mp4"
+		type: "audio/mp4; codecs=mp4a.40.2"
+		args: [ "-f" "mp4" "-codec:a" "libfdk_aac" "-b:a" "88k" "-cutoff" "18k" ]
+		direct: false // MP4 muxer can't stream
+		availableWhen: "encumbered"
+		sizeEstimate: "kbps(88)"
+	}
+	"ogg-vorbis-96": {
+		ytdlPriority: 2
+		ext: "ogg"
+		type: "audio/ogg; codecs=vorbis"
+		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "2" ]
+		direct: true
+		availableWhen: "true"
+		sizeEstimate: "kbps(96)"
+	}
+	"mp3-112": {
+		ytdlPriority: 1
+		ext: "mp3"
+		// specifying codecs=mp3 is technically redundant, but makes browsers happy
+		type: "audio/mpeg; codecs=mp3"
+		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "112k" ]
+		direct: true
+		availableWhen: "true"
+		sizeEstimate: "kbps(112)"
+	}
+}
+
+// Extra-low-quality stream formats that can be enabled at the discretion of the server admin.
+stream_low: {
+	"webm-opus-48": {
+		ytdlPriority: 4
+		ext: "webm"
+		type: "audio/webm; codecs=opus"
+		args: [ "-f" "webm" "-codec:a" "libopus" "-b:a" "48k" ]
+		direct: true
+		availableWhen: "true"
+		sizeEstimate: "kbps(48)"
+	}
+	"ogg-vorbis-64": {
+		ytdlPriority: 2
+		ext: "ogg"
+		type: "audio/ogg; codecs=vorbis"
+		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "0" ]
+		direct: true
+		availableWhen: "true"
+		sizeEstimate: "kbps(64)"
+	}
+	"mp3-96": {
+		ytdlPriority: 1
+		ext: "mp3"
+		type: "audio/mpeg; codecs=mp3"
+		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "96k" ]
+		direct: true
+		availableWhen: "mp3"
+		sizeEstimate: "kbps(96)"
+	}
+}
+

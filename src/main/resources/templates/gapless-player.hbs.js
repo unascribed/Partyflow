@@ -183,10 +183,12 @@
 		audio.pause();
 		mouseDownInSeekbar = true;
 		dragSeekbar(e.clientX);
+		e.preventDefault();
 	});
 	volbar.addEventListener("mousedown", (e) => {
 		mouseDownInVolbar = true;
 		dragVolbar(e.clientX);
+		e.preventDefault();
 	});
 	window.addEventListener("mousemove", (e) => {
 		if (mouseDownInSeekbar) dragSeekbar(e.clientX);

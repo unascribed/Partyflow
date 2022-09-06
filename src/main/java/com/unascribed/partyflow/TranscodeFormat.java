@@ -19,85 +19,53 @@
 
 package com.unascribed.partyflow;
 
-import static com.unascribed.partyflow.TranscodeFormat.Usage.*;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 
-import com.google.common.base.Splitter;
+import org.apache.commons.jexl3.JexlBuilder;
+import org.apache.commons.jexl3.JexlContext;
+import org.apache.commons.jexl3.JexlExpression;
+import org.apache.commons.jexl3.MapContext;
+import org.apache.commons.jexl3.internal.Engine;
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Table;
 
-public enum TranscodeFormat {
-	// download formats - exposed to user
-	          FLAC( 0,  DL,  99999, "flac", "audio/flac"                   , "-f flac -codec:a flac"                    , "FLAC"),
-	          ALAC( 1,  DL,  99998, "m4a",  "audio/x-m4a; codecs=alac"     , "-f ipod -codec:a alac {MF}"               , "Apple Lossless"),
-	  OGG_OPUS_128( 2,  DL,  1280,  "opus", "audio/ogg; codecs=opus"       , "-f ogg -codec:a libopus -b:a 128k"        , "Opus"),
-	OGG_VORBIS_192( 3,  DL,  192,   "ogg",  "audio/ogg; codecs=vorbis"     , "-f ogg -codec:a libvorbis -q:a 6"         , "Ogg Vorbis"),
-	        MP3_V0( 4,  DL,  321,   "mp3",  "audio/mpeg; codecs=mp3"       , "-f mp3 -codec:a libmp3lame -q:a 0"        , "MP3 V0"),
-	       MP3_320( 5,  DL,  320,   "mp3",  "audio/mpeg; codecs=mp3"       , "-f mp3 -codec:a libmp3lame -b:a 320k"     , "MP3 320"),
-	           WAV( 6, DLU,  999,   "wav",  "audio/wav"                    , "-f wav"                                   , "WAV"),
-	          AIFF( 7, DLU,  998,   "aiff", "audio/aiff"                   , "-f aiff"                                  , "AIFF"),
-	       AAC_VBR( 8,  DL,  128,   "m4a",  "audio/x-m4a; codecs=mp4a.40.2", "-f ipod -codec:a libfdk_aac -vbr:a 5 {MF}", "AAC"),
-                          
-	// streaming formats, in order of preference; mostly invisible to user
-	// WebM is used for macOS/Safari support
-	  WEBM_OPUS_72(20,  ST,  4, "webm",  "audio/webm; codecs=opus"    , "-f webm -codec:a libopus -b:a 72k"),
-	    MP4_AAC_88(21, STB,  3,  "mp4",  "audio/mp4; codecs=mp4a.40.2", "-f mp4 -codec:a libfdk_aac -b:a 88k -cutoff 18k"),
-	 OGG_VORBIS_96(22,  ST,  2,  "ogg",  "audio/ogg; codecs=vorbis"   , "-f ogg -codec:a libvorbis -q:a 2"),
-	       MP3_112(23,  ST,  1,  "mp3",  "audio/mpeg; codecs=mp3"     , "-f mp3 -codec:a libmp3lame -b:a 112k"),
-	
-	// low quality streaming formats for future use when payment is enabled, by admin choice
-	  WEBM_OPUS_48(30, STL,  4, "webm",  "audio/webm; codecs=opus" , "-f webm -codec:a libopus -b:a 48k"),
-	 OGG_VORBIS_64(31, STL,  2,  "ogg",  "audio/ogg; codecs=vorbis", "-f ogg -codec:a libvorbis -q:a 0"),
-	        MP3_96(32, STL,  1,  "mp3",  "audio/mpeg; codecs=mp3"  , "-f mp3 -codec:a libmp3lame -b:a 96k"),
-	;
-	
-	// specifying "codecs=mp3" is technically redundant, but browsers won't confidently claim
-	// playback support without it
+import blue.endless.jankson.JsonArray;
+import blue.endless.jankson.JsonElement;
+import blue.endless.jankson.JsonObject;
+import blue.endless.jankson.JsonPrimitive;
 
-	public static final ImmutableSet<TranscodeFormat> ENCUMBERED_FORMATS = ImmutableSet.of(AAC_VBR, MP4_AAC_88);
-	public static final ImmutableSet<TranscodeFormat> MP3_FORMATS = ImmutableSet.of(MP3_V0, MP3_320, MP3_96);
-	public static final ImmutableSet<TranscodeFormat> LOSSLESS_FORMATS = ImmutableSet.of(FLAC, ALAC);
-	public static final ImmutableSet<TranscodeFormat> UNCOMPRESSED_FORMATS = ImmutableSet.of(WAV, AIFF);
-	public static final ImmutableSet<TranscodeFormat> ALL_FORMATS = ImmutableSet.copyOf(values());
+public record TranscodeFormat(
+		String name, Usage usage, String displayName, int ytdlPriority, String fileExtension,
+		String mimeType, ImmutableList<String> args, BooleanSupplier availableWhen,
+		boolean direct, boolean cache, ToDoubleFunction<TrackData> sizeEstimate,
+		ImmutableMap<String, Function<ReplayGainData, String>> replaygain,
+		ImmutableList<Shortcut> shortcuts
+	) {
+	
+	public boolean available() { return availableWhen().getAsBoolean(); }
+
+	@Override
+	public String toString() {
+		return name();
+	}
+	
+	public record TrackData(long durationSamples, double durationSecs, long master) {}
+	public record ReplayGainData(double albumLoudness, double trackLoudness, double albumPeak, double trackPeak) {}
 
 	public enum Usage {
-		/**
-		 * Offered for download to users.
-		 */
 		DOWNLOAD,
-		/**
-		 * Offered for download to users. Not cached in object storage, streamed direct to clients.
-		 */
-		DOWNLOAD_UNCACHED,
-		/**
-		 * Internal format used to stream media on the site. Initial requests will be streamed
-		 * direct to clients.
-		 */
 		STREAM,
-		/**
-		 * Internal format used to stream media on the site. Initial request will stall until the
-		 * transcode is complete (e.g. the format doesn't support streaming)
-		 */
-		STREAM_BUFFERED,
-		/**
-		 * Internal format used to stream media on the site. Low-quality version that can be
-		 * optionally enabled by the admin.
-		 */
 		STREAM_LOW,
 		;
-		public static final Usage DL = DOWNLOAD;
-		public static final Usage DLU = DOWNLOAD_UNCACHED;
-		public static final Usage ST = STREAM;
-		public static final Usage STB = STREAM_BUFFERED;
-		public static final Usage STL = STREAM_LOW;
 		public boolean canDownload() {
-			return this == DOWNLOAD || this == DOWNLOAD_UNCACHED;
-		}
-		public boolean isDirect() {
-			return this == STREAM || this == DOWNLOAD_UNCACHED;
-		}
-		public boolean isCached() {
-			return this != DOWNLOAD_UNCACHED;
+			return this == DOWNLOAD;
 		}
 		public boolean canStream() {
 			// TODO check if low-quality is enabled
@@ -105,115 +73,109 @@ public enum TranscodeFormat {
 		}
 	}
 
-	private static final ImmutableMap<Integer, TranscodeFormat> BY_DATABASE_ID = ALL_FORMATS.stream()
-			.collect(ImmutableMap.toImmutableMap(TranscodeFormat::getDatabaseId, f -> f));
-
-	public static class Shortcut {
-		private final String sourceStr;
-		private TranscodeFormat source;
-		private final String ffmpegOptions;
-		private final String[] ffmpegArguments;
-		private Shortcut(String sourceStr, String ffmpegOptions) {
-			this.sourceStr = sourceStr;
-			this.ffmpegOptions = ffmpegOptions;
-			this.ffmpegArguments = optToArg(ffmpegOptions);
+	public record Shortcut(TranscodeFormat source, ImmutableList<String> args) {}
+	
+	public static ImmutableList<TranscodeFormat> load(JsonObject obj) {
+		var engine = new Engine(new JexlBuilder()
+				.strict(true)
+				.namespaces(Map.of(
+							"math", Math.class,
+							"string", String.class
+						)));
+		Table<String, String, JexlExpression> defs = HashBasedTable.create();
+		Table<String, String, Map<String, JexlExpression>> mapDefs = HashBasedTable.create();
+		for (var en : obj.getObject("_defs").entrySet()) {
+			for (var en2 : ((JsonObject)en.getValue()).entrySet()) {
+				if (en2.getValue() instanceof JsonObject jo) {
+					Map<String, JexlExpression> res = new HashMap<>();
+					for (var en3 : jo.entrySet()) {
+						res.put(en3.getKey(), createExpr(engine, "_defs."+en.getKey()+"."+en2.getKey()+"."+en3.getKey(), ((JsonPrimitive)en3.getValue()).asString()));
+					}
+					mapDefs.put(en.getKey(), en2.getKey(), res);
+				} else if (en2.getValue() instanceof JsonPrimitive jp) {
+					defs.put(en.getKey(), en2.getKey(), createExpr(engine,  "_defs."+en.getKey()+"."+en2.getKey(), jp.asString()));
+				}
+			}
 		}
-		public TranscodeFormat getSource() {
-			if (source == null) source = TranscodeFormat.valueOf(sourceStr);
-			return source;
+		var availableWhenCtx = new MapContext(new HashMap<>(defs.row("availableWhen")));
+		availableWhenCtx.set("config", Partyflow.config);
+		ImmutableList.Builder<TranscodeFormat> out = ImmutableList.builder();
+		for (Usage usage : Usage.values()) {
+			for (var en : obj.getObject(usage.name().toLowerCase(Locale.ROOT)).entrySet()) {
+				JsonObject jo = (JsonObject)en.getValue();
+				String name = en.getKey();
+				String displayName = jo.get(String.class, "name");
+				int ytdlPriority = jo.getInt("ytdlPriority", 0);
+				String ext = jo.get(String.class, "ext");
+				String type = jo.get(String.class, "type");
+				boolean direct = jo.getBoolean("direct", false);
+				boolean cache = jo.getBoolean("cache", true);
+				ImmutableList<String> args = jo.get(JsonArray.class, "args").stream()
+						.map(ele -> ((JsonPrimitive)ele).asString())
+						.collect(ImmutableList.toImmutableList());
+				
+				var availableWhenExpr = createExpr(engine, name+".availableWhen", jo.get(String.class, "availableWhen"));
+				BooleanSupplier availableWhen = () -> evaluate(name+".availableWhen", availableWhenExpr, availableWhenCtx, Boolean.class);
+				
+				var sizeEstimateExpr = createExpr(engine, name+".sizeEstimate", jo.get(String.class, "sizeEstimate"));
+				ToDoubleFunction<TrackData> sizeEstimate = (data) -> {
+					var ctx = new MapContext(new HashMap<>(defs.row("sizeEstimate")));
+					ctx.set("durationSecs", data.durationSecs());
+					ctx.set("durationSamples", data.durationSamples());
+					ctx.set("master", data.master());
+					return evaluate(name+".sizeEstimate", sizeEstimateExpr, ctx, Double.class);
+				};
+				
+				Map<String, JexlExpression> replaygainWork;
+				JsonElement replaygainEle = jo.get("replaygain");
+				if (replaygainEle instanceof JsonPrimitive rp) {
+					replaygainWork = mapDefs.get("replaygain", rp.asString());
+				} else if (replaygainEle instanceof JsonObject ro) {
+					replaygainWork = new HashMap<>();
+					for (var en2 : ro.entrySet()) {
+						replaygainWork.put(en2.getKey(), createExpr(engine, name+".replaygain."+en2.getKey(), ((JsonPrimitive)en2.getValue()).asString()));
+					}
+				} else {
+					replaygainWork = Map.of();
+				}
+				ImmutableMap<String, Function<ReplayGainData, String>> replaygain = replaygainWork.entrySet().stream()
+						.collect(ImmutableMap.toImmutableMap(Map.Entry::getKey, entry -> {
+							var k = entry.getKey();
+							var expr = entry.getValue();
+							return (data) -> {
+								var ctx = new MapContext(new HashMap<>(defs.row("replaygain")));
+								ctx.set("albumLoudness", data.albumLoudness());
+								ctx.set("trackLoudness", data.trackLoudness());
+								ctx.set("albumPeak", data.albumPeak());
+								ctx.set("trackPeak", data.trackPeak());
+								return String.valueOf(evaluate(name+".replaygain."+k, expr, ctx, Object.class));
+							};
+						}));
+				
+				out.add(new TranscodeFormat(name, usage, displayName, ytdlPriority, ext, type, args, availableWhen, direct, cache, sizeEstimate, replaygain, ImmutableList.of()));
+			}
 		}
-		public String getFFmpegOptions() {
-			return ffmpegOptions;
+		return out.build();
+	}
+
+	private static JexlExpression createExpr(Engine engine, String info, String expr) {
+		try {
+			return engine.createExpression(expr);
+		} catch (Throwable t) {
+			throw new RuntimeException("Exception while creating expression for "+info, t);
 		}
-		public String[] getFFmpegArguments() {
-			return ffmpegArguments;
+	}
+
+	private static <T> T evaluate(String info, JexlExpression expr, JexlContext ctx, Class<T> clazz) {
+		try {
+			Object res = expr;
+			while (res instanceof JexlExpression e) {
+				res = e.evaluate(ctx);
+			}
+			return clazz.cast(res);
+		} catch (Throwable t) {
+			throw new RuntimeException("Exception while processing expression for "+info, t);
 		}
-	}
-
-	private final int databaseId;
-	private final String name;
-	private final int ytdlPriority;
-	private final Usage usage;
-	private final String fileExt;
-	private final String mimeType;
-	private final String ffmpegOptions;
-	private final String[] ffmpegArguments;
-	private final ImmutableList<Shortcut> shortcuts;
-
-	TranscodeFormat(int databaseId, Usage usage, int ytdlPriority, String fileExt, String mimeType, String ffmpegOptions, Shortcut... shortcuts) {
-		this(databaseId, usage, ytdlPriority, fileExt, mimeType, ffmpegOptions, null, shortcuts);
-	}
-
-	TranscodeFormat(int databaseId, Usage usage, int ytdlPriority, String fileExt, String mimeType, String ffmpegOptions, String name, Shortcut... shortcuts) {
-		this.databaseId = databaseId;
-		this.name = name;
-		this.usage = usage;
-		this.ytdlPriority = ytdlPriority;
-		this.fileExt = fileExt;
-		this.mimeType = mimeType;
-		this.ffmpegOptions = ffmpegOptions;
-		this.ffmpegArguments = optToArg(ffmpegOptions);
-		this.shortcuts = ImmutableList.copyOf(shortcuts);
-	}
-
-	public int getDatabaseId() {
-		return databaseId;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public int getYtdlPriority() {
-		return ytdlPriority;
-	}
-
-	public Usage getUsage() {
-		return usage;
-	}
-
-	public String getFileExtension() {
-		return fileExt;
-	}
-
-	public String getMimeType() {
-		return mimeType;
-	}
-
-	public String getFFmpegOptions() {
-		return ffmpegOptions;
-	}
-
-	public String[] getFFmpegArguments() {
-		return ffmpegArguments;
-	}
-
-	public boolean isEncumbered() {
-		return ENCUMBERED_FORMATS.contains(this);
-	}
-
-	public boolean isMP3() {
-		return MP3_FORMATS.contains(this);
-	}
-
-	public boolean isLossless() {
-		return LOSSLESS_FORMATS.contains(this);
-	}
-
-	public boolean isUncompressed() {
-		return UNCOMPRESSED_FORMATS.contains(this);
 	}
 	
-	public boolean canReplayGain() {
-		// there is no standard (at least, not one known to Regainer) for embedding RG info into WAV/AIFF
-		return !isUncompressed();
-	}
-
-	public ImmutableList<Shortcut> getShortcuts() {
-		return shortcuts;
-	}
-
-	private static String[] optToArg(String opt) {
-		return Splitter.on(' ').omitEmptyStrings().trimResults().splitToList(opt.replace("{MF}", "-movflags +faststart")).toArray(String[]::new);
-	}
 }

@@ -68,6 +68,9 @@ programs: {
 	maxTranscodes: 0
 }
 formats: {
+	// Specify the path to a formats.jkson to use custom file formats, or null to use the built-ins.
+	definitions: null
+
 	// If true, uncompressed formats such as WAV and AIFF will be offered. These are a waste of
 	// bandwidth - FLAC is a better choice, but people often expect WAV to be an option. To avoid
 	// wasting storage space, WAV and AIFF formats are streamed directly to the client from the FLAC

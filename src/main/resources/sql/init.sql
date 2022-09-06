@@ -57,7 +57,7 @@ CREATE TABLE `tracks` (
 CREATE TABLE `transcodes` (
 	`transcode_id`    BIGINT AUTO_INCREMENT PRIMARY KEY,
 	`master`          VARCHAR(255) NOT NULL,
-	`format`          INT NOT NULL,
+	`format`          VARCHAR(255) NOT NULL,
 	`file`            VARCHAR(255) NOT NULL,
 	`track_id`        BIGINT,
 	`release_id`      BIGINT NOT NULL,

@@ -76,6 +76,8 @@ public final class Config {
 
 	public FormatsSection formats;
 	public static final class FormatsSection {
+		public String definitions;
+		
 		public boolean allowUncompressedFormats;
 		public boolean allowLosslessFormats;
 		public boolean allowMP3;

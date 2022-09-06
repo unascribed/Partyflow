@@ -100,8 +100,8 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 									String slug = rs.getString("releases.slug");
 									boolean published = rs.getBoolean("releases.published");
 								};
-								List<Object> download_formats = Partyflow.enumerateFormats(tf -> tf.getUsage().canDownload());
-								List<Object> stream_formats = Partyflow.enumerateFormats(tf -> tf.getUsage().canStream());
+								List<Object> download_formats = Partyflow.enumerateFormats(tf -> tf.usage().canDownload());
+								List<Object> stream_formats = Partyflow.enumerateFormats(tf -> tf.usage().canStream());
 								String title = rs.getString("tracks.title");
 								String subtitle = rs.getString("tracks.subtitle");
 								String slug = trackSlug;
@@ -112,7 +112,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 								String error = query.get("error");
 								double loudness = rs.getInt("tracks.loudness")/10D;
 								String tracks_json = gson.toJson(_tracksJson);
-								String stream_formats_json = gson.toJson(Partyflow.enumerateJsonFormats(tf -> tf.getUsage().canStream()));
+								String stream_formats_json = gson.toJson(Partyflow.enumerateJsonFormats(tf -> tf.usage().canStream()));
 							});
 						} else {
 							res.sendError(HTTP_404_NOT_FOUND);

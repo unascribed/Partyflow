@@ -39,14 +39,14 @@ import java.text.Normalizer;
 import java.text.Normalizer.Form;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
@@ -92,6 +92,8 @@ import com.unascribed.random.RandomXoshiro256StarStar;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.BaseEncoding;
@@ -115,6 +117,8 @@ public class Partyflow {
 	public static String storageContainer;
 	public static String setupToken;
 	public static Key sessionSecret;
+	public static ImmutableList<TranscodeFormat> formats;
+	public static ImmutableMap<String, TranscodeFormat> formatsByName;
 
 	public static URI publicUri;
 
@@ -132,10 +136,10 @@ public class Partyflow {
 	public static void main(String[] args) {
 		System.out.print("\u001Bc");
 		AsyncSimpleLog.startLogging();
+		Jankson jkson = Jankson.builder().allowBareRootObject().build();
 		try {
 			File file = new File("partyflow-config.jkson");
 			String configStr = Files.asCharSource(file, Charsets.UTF_8).read();
-			Jankson jkson = Jankson.builder().allowBareRootObject().build();
 			JsonObject obj = jkson.load(configStr);
 			config = jkson.fromJsonCarefully(obj, Config.class);
 			if (config.security.sessionSecret == null) {
@@ -164,6 +168,27 @@ public class Partyflow {
 		AsyncSimpleLog.setAnsi(config.logger.color);
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.eclipse\\.jetty"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
+		try {
+			String formatsStr;
+			if (config.formats.definitions == null) {
+				formatsStr = Resources.toString(ClassLoader.getSystemResource("formats.jkson"), Charsets.UTF_8);
+			} else {
+				formatsStr = Files.asCharSource(new File(config.formats.definitions), Charsets.UTF_8).read();
+			}
+			JsonObject obj = jkson.load(formatsStr);
+			formats = TranscodeFormat.load(obj);
+			formatsByName = formats.stream().collect(ImmutableMap.toImmutableMap(TranscodeFormat::name, f -> f));
+			log.info("Loaded {} transcode formats", formats.size());
+		} catch (FileNotFoundException e) {
+			log.error("Format definitions do not exist. Cannot start.");
+			return;
+		} catch (IOException e) {
+			log.error("Failed to load format definitions", e);
+			return;
+		} catch (SyntaxError e) {
+			log.error("Failed to load format definitions: syntax error {}\n{}", e.getLineMessage().replaceFirst("^Errored ", ""), e.getMessage());
+			return;
+		}
 		try {
 			publicUri = new URI(config.http.publicUrl);
 		} catch (URISyntaxException e1) {
@@ -425,9 +450,13 @@ public class Partyflow {
 			out.add(s);
 		}
 		for (Object o : b) {
-			if (o instanceof String[]) {
-				for (String s : (String[])o) {
+			if (o instanceof String[] arr) {
+				for (String s : arr) {
 					out.add(s);
+				}
+			} else if (o instanceof Iterable iter) {
+				for (Object c : iter) {
+					out.add(String.valueOf(c));
 				}
 			} else if (o != null) {
 				out.add(String.valueOf(o));
@@ -464,38 +493,25 @@ public class Partyflow {
 	}
 
 	public static boolean isFormatLegal(TranscodeFormat fmt) {
-		if (!config.formats.allowEncumberedFormats && fmt.isEncumbered()) {
-			return false;
-		}
-		if (!config.formats.allowLosslessFormats && fmt.isLossless()) {
-			return false;
-		}
-		if (!config.formats.allowMP3 && fmt.isMP3()) {
-			return false;
-		}
-		if (!config.formats.allowUncompressedFormats && fmt.isUncompressed()) {
-			return false;
-		}
-		return true;
+		return fmt.available();
 	}
 
-	public static <T> List<T> enumerateFormats(Predicate<TranscodeFormat> pred, BiFunction<TranscodeFormat, String, T> func) {
+	public static <T> List<T> enumerateFormats(Predicate<TranscodeFormat> pred, Function<TranscodeFormat, T> func) {
 		List<T> li = Lists.newArrayList();
-		for (TranscodeFormat tf : TranscodeFormat.ALL_FORMATS) {
+		for (TranscodeFormat tf : formats) {
 			if (isFormatLegal(tf) && pred.test(tf)) {
-				String _name = tf.name().toLowerCase(Locale.ROOT).replace('_', '-');
-				li.add(func.apply(tf, _name));
+				li.add(func.apply(tf));
 			}
 		}
 		return li;
 	}
 	
 	public static List<Object> enumerateFormats(Predicate<TranscodeFormat> pred) {
-		return enumerateFormats(pred, (tf, _name) -> {
+		return enumerateFormats(pred, (tf) -> {
 			return new Object() {
-				String name = _name;
-				String mimetype = tf.getMimeType();
-				String ytdl_label = "$$ytdl-hack-"+tf.getYtdlPriority()+"kbps_"+_name;
+				String name = tf.name();
+				String mimetype = tf.mimeType();
+				String ytdl_label = "$$ytdl-hack-"+tf.ytdlPriority()+"kbps_"+tf.name();
 			};
 		});
 	}
@@ -503,13 +519,17 @@ public class Partyflow {
 	public static com.google.gson.JsonArray enumerateJsonFormats(Predicate<TranscodeFormat> pred) {
 		var arr = new com.google.gson.JsonArray();
 		enumerateFormats(pred,
-				(tf, name) -> {
+				(tf) -> {
 					var obj = new com.google.gson.JsonObject();
-					obj.addProperty("name", name);
-					obj.addProperty("mime", tf.getMimeType());
+					obj.addProperty("name", tf.name());
+					obj.addProperty("mime", tf.mimeType());
 					return obj;
 				}).forEach(arr::add);
 		return arr;
+	}
+
+	public static Optional<TranscodeFormat> getFormatByName(String name) {
+		return Optional.ofNullable(formatsByName.get(name));
 	}
 
 }

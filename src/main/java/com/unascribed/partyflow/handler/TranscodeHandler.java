@@ -11,7 +11,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Iterator;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -34,11 +33,11 @@ import com.unascribed.partyflow.TranscodeFormat;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.TranscodeFormat.ReplayGainData;
 import com.unascribed.partyflow.TranscodeFormat.Shortcut;
 import com.unascribed.partyflow.TranscodeFormat.Usage;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Enums;
 import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Splitter;
@@ -58,11 +57,19 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 	private static final Table<String, TranscodeFormat, Object> mutexes = Tables.synchronizedTable(HashBasedTable.create());
 	
 	private static final ImmutableMap<String, String> QUERIES_BY_KIND = ImmutableMap.of(
-			"release", "SELECT `concat_master` AS `master`, `title`, NULL as `release_title`, `users`.`display_name` AS `creator`, `releases`.`published` AS `published`, `release_id`, NULL as `track_id` FROM `releases` "
-					+ "JOIN `users` ON `users`.`user_id` = `releases`.`user_id` "
+			"release", "SELECT `concat_master` AS `master`, `title`, NULL as `release_title`, `users`.`display_name` AS `creator`, "
+						+ "`releases`.`published` AS `published`, `release_id`, NULL as `track_id` "
+						+ "`releases`.`peak` AS `album_peak`, `releases`.`loudness` AS `album_loudness`, "
+						+ "`releases`.`peak` AS `track_peak`, `releases`.`loudness` AS `track_loudness` "
+					+ "FROM `releases` "
+						+ "JOIN `users` ON `users`.`user_id` = `releases`.`user_id` "
 					+ "WHERE `slug` = ? AND (`published` = true OR {});",
 			
-			"track", "SELECT `tracks`.`master` AS `master`, `tracks`.`title` AS `title`, `releases`.`title` AS `release_title`, `users`.`display_name` AS `creator`, `releases`.`published` AS `published`, `releases`.`release_id` AS `release_id`, `track_id` FROM `tracks` "
+			"track", "SELECT `tracks`.`master` AS `master`, `tracks`.`title` AS `title`, `releases`.`title` AS `release_title`, "
+							+ "`users`.`display_name` AS `creator`, `releases`.`published` AS `published`, `releases`.`release_id` AS `release_id`, "
+							+ "`track_id`, `releases`.`peak` AS `album_peak`, `releases`.`loudness` AS `album_loudness`, "
+							+ "`tracks`.`loudness` AS `track_loudness`, `tracks`.`peak` AS `track_peak` "
+					+ "FROM `tracks` "
 						+ "JOIN `releases` ON `tracks`.`release_id` = `releases`.`release_id` "
 						+ "JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
 					+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true OR {});"
@@ -84,10 +91,10 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 		if (masterQuery == null) {
 			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Kind must be one of "+Joiner.on(", ").join(QUERIES_BY_KIND.keySet()));
 		}
-		String cleanedFormat = query.get("format").toUpperCase(Locale.ROOT).replace('-', '_');
-		TranscodeFormat fmt = Enums.getIfPresent(TranscodeFormat.class, cleanedFormat).toJavaUtil()
+		String formatString = query.get("format");
+		TranscodeFormat format = Partyflow.getFormatByName(formatString)
 				.filter(Partyflow::isFormatLegal)
-				.orElseThrow(() -> new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+cleanedFormat));
+				.orElseThrow(() -> new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+formatString));
 		String shortcutSource = null;
 		Shortcut shortcut = null;
 		Session s = SessionHelper.getSession(req);
@@ -99,6 +106,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			boolean published;
 			Long trackId;
 			long releaseId;
+			ReplayGainData rgd;
 			String permissionQuery = (s == null ? "false" : "`releases`.`user_id` = ?");
 			try (PreparedStatement ps = c.prepareStatement(masterQuery.replace("{}", permissionQuery))) {
 				ps.setString(1, slug);
@@ -113,6 +121,8 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 						releaseId = rs.getLong("release_id");
 						long trackIdL = rs.getLong("track_id");
 						trackId = rs.wasNull() ? null : trackIdL;
+						rgd = new ReplayGainData(rs.getInt("album_loudness")/10D, rs.getInt("track_loudness")/10D,
+								rs.getInt("album_peak")/10D, rs.getInt("track_peak")/10D);
 					} else {
 						res.sendError(HTTP_404_NOT_FOUND);
 						return;
@@ -123,22 +133,22 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 				res.sendError(HTTP_409_CONFLICT);
 				return;
 			}
-			String addnFormats = Strings.repeat(", ?", fmt.getShortcuts().size());
+			String addnFormats = Strings.repeat(", ?", format.shortcuts().size());
 			try (PreparedStatement ps = c.prepareStatement("SELECT `transcode_id`, `file`, `format` FROM `transcodes` "
 					+ "WHERE `master` = ? AND `transcodes`.`format` IN (?"+addnFormats+");")) {
 				int i = 1;
 				ps.setString(i++, master);
-				ps.setInt(i++, fmt.getDatabaseId());
-				for (Shortcut sc : fmt.getShortcuts()) {
-					ps.setInt(i++, sc.getSource().getDatabaseId());
+				ps.setString(i++, format.name());
+				for (Shortcut sc : format.shortcuts()) {
+					ps.setString(i++, sc.source().name());
 				}
 				try (ResultSet rs = ps.executeQuery()) {
 					if (rs.first()) {
-						int id = rs.getInt("transcodes.format");
-						if (id != fmt.getDatabaseId()) {
+						String id = rs.getString("transcodes.format");
+						if (!format.name().equals(id)) {
 							shortcutSource = rs.getString("transcodes.file");
-							for (Shortcut sc : fmt.getShortcuts()) {
-								if (sc.getSource().getDatabaseId() == id) {
+							for (Shortcut sc : format.shortcuts()) {
+								if (sc.source().name().equals(id)) {
 									shortcut = sc;
 									break;
 								}
@@ -155,7 +165,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 								res.sendRedirect(Partyflow.resolveBlob(rs.getString("transcodes.file")));
 								return;
 							} else {
-								log.warn("A transcode of {} {} to {} has gone missing! Recreating it.", kind, slug, fmt.name());
+								log.warn("A transcode of {} {} to {} has gone missing! Recreating it.", kind, slug, format.name());
 								try (PreparedStatement ps2 = c.prepareStatement("DELETE FROM `transcodes` WHERE `transcode_id` = ?;")) {
 									ps2.setInt(1, rs.getInt("transcode_id"));
 									ps2.executeUpdate();
@@ -172,20 +182,20 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 				res.getOutputStream().close();
 				return;
 			}
-			boolean direct = fmt.getUsage().isDirect();
-			boolean cache = fmt.getUsage().isCached();
+			boolean direct = format.direct();
+			boolean cache = format.cache();
 			if (direct) {
-				log.debug("Streaming {} from master...", fmt);
+				log.debug("Streaming {} from master...", format);
 			} else if (shortcut == null) {
-				log.debug("Transcoding to {} from master...", fmt);
+				log.debug("Transcoding to {} from master...", format);
 			} else {
-				log.debug("Remuxing to {} from {}...", fmt, shortcut.getSource());
+				log.debug("Remuxing to {} from {}...", format, shortcut.source());
 			}
 			
 			if (cache) {
-				Object mutex = mutexes.get(master, fmt);
+				Object mutex = mutexes.get(master, format);
 				if (mutex != null) {
-					while (mutexes.get(master, fmt) == mutex) {
+					while (mutexes.get(master, format) == mutex) {
 						synchronized (mutex) {
 							mutex.wait();
 						}
@@ -194,7 +204,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			}
 			
 			Object mutex = new Object();
-			if (cache) mutexes.put(master, fmt, mutex);
+			if (cache) mutexes.put(master, format, mutex);
 			final Shortcut fshortcut = shortcut;
 			final String fshortcutSource = shortcutSource;
 			
@@ -206,25 +216,31 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 					res.sendError(HTTP_404_NOT_FOUND);
 					return null;
 				}
-				File tmpFile = cache ? File.createTempFile("transcode-", "."+fmt.getFileExtension(), WORK_DIR) : null;
-				String guilt = (!fmt.getUsage().canDownload() ? ". Low-quality encode for streaming; consider downloading a real copy." : "");
+				File tmpFile = cache ? File.createTempFile("transcode-", "."+format.fileExtension(), WORK_DIR) : null;
+				String guilt = (!format.usage().canDownload() ? ". Low-quality encode for streaming; consider downloading a real copy." : "");
 				try {
 					Process p = Partyflow.ffmpeg("-v", "error",
 							"-i", "-",
-							fshortcut == null ? fmt.getFFmpegArguments() : fshortcut.getFFmpegArguments(),
+							fshortcut == null ? format.args() : fshortcut.args(),
 							"-map_metadata", "-1",
 							"-map", "a",
 							"-metadata", "title="+title+(releaseTitle == null ? " (Full Album)" : ""),
 							"-metadata", "album="+MoreObjects.firstNonNull(releaseTitle, title),
 							"-metadata", "artist="+creator,
 							"-metadata", "comment=Generated by Partyflow v"+Version.FULL+" hosted at "+Partyflow.publicUri.getHost()+guilt,
+							format.replaygain().entrySet().stream()
+								.mapMulti((en, cons) -> {
+									cons.accept("-metadata");
+									cons.accept(en.getKey()+"="+en.getValue().apply(rgd));
+								})
+								.toList(),
 							"-y",
 							direct ? "-" : tmpFile.getAbsolutePath());
-					String filename = encodeFilename(title+"."+fmt.getFileExtension());
+					String filename = encodeFilename(title+"."+format.fileExtension());
 					if (direct) {
 						OutputStream out = cache ? new ForkOutputStream(new FileOutputStream(tmpFile), res.getOutputStream()) : res.getOutputStream();
 						res.setHeader("Transcode-Status", "DIRECT"+(cache ? ", WILL-CACHE" : ""));
-						res.setHeader("Content-Type", fmt.getMimeType());
+						res.setHeader("Content-Type", format.mimeType());
 						res.setHeader("Content-Disposition", "attachment; filename="+filename+"; filename*=utf-8''"+filename);
 						res.setStatus(HTTP_200_OK);
 						new Thread(() -> {
@@ -260,12 +276,12 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 						String blobName;
 						do {
 							String rand = Partyflow.randomString(16);
-							blobName = "transcodes/"+rand.substring(0, 3)+"/"+rand+"."+fmt.getFileExtension();
+							blobName = "transcodes/"+rand.substring(0, 3)+"/"+rand+"."+format.fileExtension();
 						} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
 						Blob transBlob = Partyflow.storage.blobBuilder(blobName)
 								.payload(tmpFile)
-								.contentType(fmt.getMimeType())
-								.contentDisposition(fmt.getUsage() == Usage.DOWNLOAD ? "attachment; filename="+filename+"; filename*=utf-8''"+filename : "inline")
+								.contentType(format.mimeType())
+								.contentDisposition(format.usage() == Usage.DOWNLOAD ? "attachment; filename="+filename+"; filename*=utf-8''"+filename : "inline")
 								.cacheControl(published ? "public, immutable" : "private")
 								.build();
 						Partyflow.storage.putBlob(Partyflow.storageContainer, transBlob, new PutOptions().multipart().setBlobAccess(BlobAccess.PUBLIC_READ));
@@ -293,7 +309,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 				try (PreparedStatement ps = c.prepareStatement("INSERT INTO `transcodes` (`master`, `format`, `file`, `track_id`, `release_id`, `created_at`, `last_downloaded`) "
 						+ "VALUES (?, ?, ?, ?, ?, NOW(), NOW());")) {
 					ps.setString(1, master);
-					ps.setInt(2, fmt.getDatabaseId());
+					ps.setString(2, format.name());
 					ps.setString(3, blobNameRes);
 					if (trackId == null) {
 						ps.setNull(4, Types.BIGINT);
@@ -303,7 +319,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 					ps.setLong(5, releaseId);
 					ps.execute();
 				}
-				mutexes.row(master).remove(fmt, mutex);
+				mutexes.row(master).remove(format, mutex);
 				mutex.notifyAll();
 			}
 			if (!direct) {
