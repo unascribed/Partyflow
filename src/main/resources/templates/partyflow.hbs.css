@@ -718,3 +718,42 @@ button.player-control {
 	background-color: #BBDEFB;
 	border-color: #64B5F6;
 }
+#tracks {
+	max-width: 512px;
+}
+#tracks .track a {
+	color: inherit;
+	text-decoration: none;
+}
+#tracks .track a:hover, #tracks .track a:focus {
+	text-decoration: underline;
+}
+#tracks .track {
+	position: relative;
+}
+#tracks .track .lyrics {
+	display: block;
+}
+#tracks .track .lyrics summary {
+	position: absolute;
+	top: 2px;
+	right: 0;
+	list-style: none;
+}
+#tracks .track .lyrics summary:hover, #tracks .track .lyrics summary:focus {
+	text-decoration: underline;
+}
+#tracks .track .lyrics[open] summary {
+	font-weight: bold;
+}
+#tracks .track .lyrics p {
+	display: block;
+}
+
+textarea {
+	font-size: 16px;
+}
+
+textarea#lyrics {
+	font-family: sans-serif;
+}
