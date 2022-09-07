@@ -1,3 +1,4 @@
+"use strict";
 (async function() {
 	function pad(n) {
 		return (n+100).toString().substring(1);
@@ -23,8 +24,11 @@
 	document.body.classList.add("yesscript");
 
 	document.querySelectorAll(".lightboxable").forEach((e) => {
+		/** @type {HTMLInputElement} */
 		const input = e.querySelector("input");
+		/** @type {HTMLElement} */
 		const subject = e.querySelector("input + *");
+		/** @type {HTMLDivElement} */
 		const shadow = e.querySelector(".shadow");
 		input.addEventListener("click", () => {
 			if (input.checked) {
@@ -85,8 +89,11 @@
 	if (tracks.length === 0) return;
 	const firstTrack = tracks[0];
 	const release = data.releaseSlug;
+	/** @type {HTMLDivElement} */
 	const widget = document.querySelector("#player-widget");
+	/** @type {HTMLButtonElement} */
 	const skipPrev = widget.querySelector(".skip-prev");
+	/** @type {HTMLButtonElement} */
 	const skipNext = widget.querySelector(".skip-next");
 	if (tracks.length === 1) {
 		skipPrev.style.display = "none";
@@ -142,18 +149,31 @@
 			if (cb) cb();
 		}, 200);
 	}
+	/** @type {HTMLDivElement} */
 	const seekbar = widget.querySelector(".seekbar");
+	/** @type {HTMLDivElement} */
 	const seekbarPosition = seekbar.querySelector(".position");
+	/** @type {HTMLDivElement} */
 	const seekbarBuffered = seekbar.querySelector(".buffered");
+	/** @type {HTMLDivElement} */
 	const volbar = widget.querySelector(".volumebar");
+	/** @type {HTMLDivElement} */
 	const volbarPosition = volbar.querySelector(".position");
+	/** @type {HTMLDivElement} */
 	const voldrop = widget.querySelector(".voldrop");
+	/** @type {HTMLDivElement} */
 	const voldropContents = voldrop.querySelector(".contents");
+	/** @type {SVGSVGElement} */
 	const volicon = widget.querySelector(".volicon");
+	/** @type {HTMLButtonElement} */
 	const replaygain = widget.querySelector(".replaygain");
+	/** @type {HTMLButtonElement} */
 	const globalPlayPause = widget.querySelector(".play-toggle");
+	/** @type {HTMLSpanElement} */
 	const trackName = widget.querySelector(".track-name");
+	/** @type {HTMLSpanElement} */
 	const playPositionNow = widget.querySelector(".play-position .current");
+	/** @type {HTMLSpanElement} */
 	const playPositionTotal = widget.querySelector(".play-position .total");
 	let storedVolume = 0;
 	if (localStorage.getItem("replaygain") === "off") {
@@ -344,7 +364,7 @@
 		}
 		voldrop.title = "Volume: "+Math.floor(v*100)+"%"+suffix;
 		volbarPosition.style.width = (v*100)+"%";
-		localStorage.setItem("volume", v);
+		localStorage.setItem("volume", String(v));
 	}
 	audio.addEventListener("progress", updateBuffered);
 	audio.addEventListener("timeupdate", updateTime);

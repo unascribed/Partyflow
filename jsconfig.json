@@ -1,0 +1,9 @@
+{
+	"compilerOptions": {
+		"module": "none",
+		"target": "ES2016",
+		"allowJs": true,
+		"checkJs": true
+	},
+	"include": ["src/main/resources/*/*.js"]
+}

@@ -1,3 +1,4 @@
+"use strict";
 if (!window.crypto) {
 	document.getElementById("no-crypto-warning").style.display = 'block';
 } else {
@@ -24,11 +25,16 @@ if (!window.crypto) {
 		return hexOctets.join("");
 	}
 	
-	var confirmPass = document.getElementById("confirm-password");
-	var pass = document.getElementById("password");
+	/** @type {HTMLInputElement} */
+	// @ts-ignore
+	const confirmPass = document.getElementById("confirm-password");
+	/** @type {HTMLInputElement} */
+	// @ts-ignore
+	const pass = document.getElementById("password");
 	
+	let checkConfirmPass;
 	if (confirmPass) {
-		function checkConfirmPass() {
+		checkConfirmPass = function() {
 			if (pass.value !== confirmPass.value) {
 				confirmPass.setCustomValidity("Does not match password");
 			} else {
@@ -41,7 +47,9 @@ if (!window.crypto) {
 		});
 	}
 	
-	var hashedPass = document.getElementById("hashed-password");
+	/** @type {HTMLInputElement} */
+	// @ts-ignore
+	const hashedPass = document.getElementById("hashed-password");
 	pass.removeAttribute("name");
 	hashedPass.name = "hashed-password";
 	var te = new TextEncoder();
