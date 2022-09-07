@@ -114,7 +114,11 @@ public class SimpleHandler {
 
 	private static final Joiner COMMA_JOINER = Joiner.on(", ");
 	protected static final File TEMP_DIR = Files.createTempDir();
-	private static final MultipartConfigElement MP_CFG = new MultipartConfigElement(TEMP_DIR.getAbsolutePath(), 512L*1024L*1024L, 524L*1024L*1024L, 2*1024*1024);
+	private static final int K = 1024;
+	private static final int M = 1024*K;
+	private static final long G = 1024*M;
+	private static final MultipartConfigElement MP_CFG = new MultipartConfigElement(TEMP_DIR.getAbsolutePath(),
+			512L*M, 2*G, 2*M);
 
 	private static final MapSplitter URLENCODED_SPLITTER = Splitter.on('&').withKeyValueSeparator('=');
 

@@ -617,7 +617,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 				Partyflow.storage.putBlob(Partyflow.storageContainer, transBlob, new PutOptions().multipart().setBlobAccess(BlobAccess.PUBLIC_READ));
 				return new TranscodeResult(blobName, tmpFile.length(), filename);
 			} else {
-				return null;
+				return new TranscodeResult(null, 0, filename);
 			}
 		} finally {
 			if (tmpFile != null) tmpFile.delete();
