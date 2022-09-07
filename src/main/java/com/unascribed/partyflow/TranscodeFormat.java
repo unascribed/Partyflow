@@ -30,10 +30,13 @@ import java.util.function.ToDoubleFunction;
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlContext;
 import org.apache.commons.jexl3.JexlExpression;
+import org.apache.commons.jexl3.JexlInfo;
 import org.apache.commons.jexl3.MapContext;
 import org.apache.commons.jexl3.internal.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.unascribed.partyflow.Dankson.JsonJexlExpression;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
@@ -103,11 +106,11 @@ public record TranscodeFormat(
 				if (en2.getValue() instanceof JsonObject jo) {
 					Map<String, JexlExpression> res = new LinkedHashMap<>();
 					for (var en3 : jo.entrySet()) {
-						res.put(en3.getKey(), createExpr(engine, "_defs."+en.getKey()+"."+en2.getKey()+"."+en3.getKey(), ((JsonPrimitive)en3.getValue()).asString()));
+						res.put(en3.getKey(), createExpr(engine, "_defs."+en.getKey()+"."+en2.getKey()+"."+en3.getKey(), en3.getValue()));
 					}
 					mapDefs.put(en.getKey(), en2.getKey(), res);
 				} else if (en2.getValue() instanceof JsonPrimitive jp) {
-					defs.put(en.getKey(), en2.getKey(), createExpr(engine,  "_defs."+en.getKey()+"."+en2.getKey(), jp.asString()));
+					defs.put(en.getKey(), en2.getKey(), createExpr(engine,  "_defs."+en.getKey()+"."+en2.getKey(), jp));
 				}
 			}
 		}
@@ -130,10 +133,10 @@ public record TranscodeFormat(
 						.map(ele -> ((JsonPrimitive)ele).asString())
 						.collect(ImmutableList.toImmutableList());
 				
-				var availableWhenExpr = createExpr(engine, name+".availableWhen", jo.get(String.class, "availableWhen"));
+				var availableWhenExpr = createExpr(engine, name+".availableWhen", jo.get("availableWhen"));
 				BooleanSupplier availableWhen = () -> evaluate(name+".availableWhen", availableWhenExpr, availableWhenCtx, Boolean.class);
 				
-				var sizeEstimateExpr = createExpr(engine, name+".sizeEstimate", jo.get(String.class, "sizeEstimate"));
+				var sizeEstimateExpr = createExpr(engine, name+".sizeEstimate", jo.get("sizeEstimate"));
 				ToDoubleFunction<TrackData> sizeEstimate = (data) -> {
 					var ctx = new MapContext(new HashMap<>(defs.row("sizeEstimate")));
 					ctx.set("durationSecs", data.durationSecs());
@@ -142,7 +145,7 @@ public record TranscodeFormat(
 					return evaluate(name+".sizeEstimate", sizeEstimateExpr, ctx, Number.class).doubleValue();
 				};
 				
-				var suggestWhenExpr = createExpr(engine, name+".suggestWhen", jo.containsKey("suggestWhen") ? jo.get(String.class, "suggestWhen") : "false");
+				var suggestWhenExpr = createExpr(engine, name+".suggestWhen", jo.containsKey("suggestWhen") ? jo.get("suggestWhen") : JsonPrimitive.of("false"));
 				Predicate<UserData> suggestWhen = (data) -> {
 					var ctx = new MapContext(new HashMap<>(defs.row("suggestWhen")));
 					ctx.set("userAgent", data.userAgent());
@@ -156,7 +159,7 @@ public record TranscodeFormat(
 				} else if (replaygainEle instanceof JsonObject ro) {
 					replaygainWork = new LinkedHashMap<>();
 					for (var en2 : ro.entrySet()) {
-						replaygainWork.put(en2.getKey(), createExpr(engine, name+".replaygain."+en2.getKey(), ((JsonPrimitive)en2.getValue()).asString()));
+						replaygainWork.put(en2.getKey(), createExpr(engine, name+".replaygain."+en2.getKey(), en2.getValue()));
 					}
 				} else {
 					replaygainWork = Map.of();
@@ -181,9 +184,19 @@ public record TranscodeFormat(
 		return out.build();
 	}
 
-	private static JexlExpression createExpr(Engine engine, String info, String expr) {
+	private static JexlExpression createExpr(Engine engine, String info, JsonElement expr) {
 		try {
-			return engine.createExpression(expr);
+			JexlInfo jinfo = null;
+			String str;
+			if (expr instanceof JsonJexlExpression jje) {
+				str = jje.asString();
+				jinfo = jje.getInfo();
+			} else if (expr instanceof JsonPrimitive jp) {
+				str = jp.asString();
+			} else {
+				throw new IllegalArgumentException(expr.getClass().getName());
+			}
+			return engine.createExpression(jinfo, str);
 		} catch (Throwable t) {
 			throw new RuntimeException("Exception while creating expression for "+info, t);
 		}

@@ -64,7 +64,7 @@ public class Jankson {
 	private int retries = 0;
 	private SyntaxError delayedError = null;
 	
-	private Jankson(Builder builder) {}
+	protected Jankson(Builder builder) {} // PARTYFLOW: Make constructor protected
 	
 	@Nonnull
 	public JsonObject load(String s) throws SyntaxError {

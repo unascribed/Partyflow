@@ -137,11 +137,11 @@ public class Partyflow {
 	public static void main(String[] args) {
 		System.out.print("\u001Bc");
 		AsyncSimpleLog.startLogging();
-		Jankson jkson = Jankson.builder().allowBareRootObject().build();
+		Dankson jkson = new Dankson(Jankson.builder().allowBareRootObject());
 		try {
 			File file = new File("partyflow-config.jkson");
 			String configStr = Files.asCharSource(file, Charsets.UTF_8).read();
-			JsonObject obj = jkson.load(configStr);
+			JsonObject obj = jkson.load("partyflow-config.jkson", configStr);
 			config = jkson.fromJsonCarefully(obj, Config.class);
 			if (config.security.sessionSecret == null) {
 				String secret;
@@ -169,25 +169,28 @@ public class Partyflow {
 		AsyncSimpleLog.setAnsi(config.logger.color);
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.eclipse\\.jetty"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
+		String fname = "?";
 		try {
 			String formatsStr;
 			if (config.formats.definitions == null) {
 				formatsStr = Resources.toString(ClassLoader.getSystemResource("formats.jkson"), Charsets.UTF_8);
+				fname = "<built-in>/formats.jkson";
 			} else {
 				formatsStr = Files.asCharSource(new File(config.formats.definitions), Charsets.UTF_8).read();
+				fname = config.formats.definitions;
 			}
-			JsonObject obj = jkson.load(formatsStr);
+			JsonObject obj = jkson.load(fname, formatsStr);
 			formats = TranscodeFormat.load(obj);
 			formatsByName = formats.stream().collect(ImmutableMap.toImmutableMap(TranscodeFormat::name, f -> f));
 			log.info("Loaded {} transcode formats", formats.size());
 		} catch (FileNotFoundException e) {
-			log.error("Format definitions do not exist. Cannot start.");
+			log.error("{} does not exist. Cannot start.", fname);
 			return;
 		} catch (IOException e) {
-			log.error("Failed to load format definitions", e);
+			log.error("Failed to load {}", fname, e);
 			return;
 		} catch (SyntaxError e) {
-			log.error("Failed to load format definitions: syntax error {}\n{}", e.getLineMessage().replaceFirst("^Errored ", ""), e.getMessage());
+			log.error("Failed to load {}: syntax error {}\n{}", fname, e.getLineMessage().replaceFirst("^Errored ", ""), e.getMessage());
 			return;
 		}
 		try {

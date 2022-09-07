@@ -1,42 +1,42 @@
 _defs: {
 	replaygain: {
-		formatRGGain: "(i) -> {string:format('%.2f dB', (-18 - i))}"
-		formatR128Gain: "(i) -> {string:format('%.0f', math:max(-32768, math:min(32767, math:floor((-23 - i) * 256))))}"
-		formatRGPeak: "(i) -> {string:format('%.6f', math:pow(10, i / 20))}"
+		formatRGGain: ((i) -> {string:format('%.2f dB', (-18 - i))})
+		formatR128Gain: ((i) -> {string:format('%.0f', math:max(-32768, math:min(32767, math:floor((-23 - i) * 256))))})
+		formatRGPeak: ((i) -> {string:format('%.6f', math:pow(10, i / 20))})
 		generic: {
-			REPLAYGAIN_ALBUM_PEAK: "formatRGPeak(albumPeak)"
-			REPLAYGAIN_TRACK_PEAK: "formatRGPeak(trackPeak)"
-			REPLAYGAIN_ALBUM_GAIN: "formatRGGain(albumLoudness)"
-			REPLAYGAIN_TRACK_GAIN: "formatRGGain(trackLoudness)"
+			REPLAYGAIN_ALBUM_PEAK: (formatRGPeak(albumPeak))
+			REPLAYGAIN_TRACK_PEAK: (formatRGPeak(trackPeak))
+			REPLAYGAIN_ALBUM_GAIN: (formatRGGain(albumLoudness))
+			REPLAYGAIN_TRACK_GAIN: (formatRGGain(trackLoudness))
 		}
 		opus: {
-			REPLAYGAIN_ALBUM_PEAK: "formatRGPeak(albumPeak)"
-			REPLAYGAIN_TRACK_PEAK: "formatRGPeak(trackPeak)"
-			REPLAYGAIN_ALBUM_GAIN: "formatRGGain(albumLoudness)"
-			REPLAYGAIN_TRACK_GAIN: "formatRGGain(trackLoudness)"
-			R128_TRACK_GAIN: "formatR128Gain(trackLoudness)"
-			R128_ALBUM_GAIN: "formatR128Gain(albumLoudness)"
+			REPLAYGAIN_ALBUM_PEAK: (formatRGPeak(albumPeak))
+			REPLAYGAIN_TRACK_PEAK: (formatRGPeak(trackPeak))
+			REPLAYGAIN_ALBUM_GAIN: (formatRGGain(albumLoudness))
+			REPLAYGAIN_TRACK_GAIN: (formatRGGain(trackLoudness))
+			R128_TRACK_GAIN: (formatR128Gain(trackLoudness))
+			R128_ALBUM_GAIN: (formatR128Gain(albumLoudness))
 		}
 	}
 	suggestWhen: {
-		isApple: "(s) -> { s.contains('Macintosh') || s.contains('iPhone') }"
-		isAndroid: "(s) -> { !isWindows(s) && s.contains('Android') }"
-		isLinux: "(s) -> { !isAndroid(s) && s.contains('Linux') }"
-		isWindows: "(s) -> { s.contains('Windows') }"
-		androidVersion: "(s) -> { \
-			var m = ~/Android ([0-9]+)/.matcher(s); \
-			var v = m.find() ? int:parseInt(m.group(1)) : 0; \
-			return v; \
-		}"
+		isApple: ((s) -> { s.contains('Macintosh') || s.contains('iPhone') })
+		isAndroid: ((s) -> { !isWindows(s) && s.contains('Android') })
+		isLinux: ((s) -> { !isAndroid(s) && s.contains('Linux') })
+		isWindows: ((s) -> { s.contains('Windows') })
+		androidVersion: ((s) -> {
+			var m = ~/Android ([0-9]+)/.matcher(s);
+			var v = m.find() ? int:parseInt(m.group(1)) : 0;
+			return v;
+		})
 	}
 	availableWhen: {
-		uncompressed: "config.formats.allowUncompressedFormats"
-		lossless: "config.formats.allowLosslessFormats"
-		mp3: "config.formats.allowMP3"
-		encumbered: "config.formats.allowEncumberedFormats"
+		uncompressed: (config.formats.allowUncompressedFormats)
+		lossless: (config.formats.allowLosslessFormats)
+		mp3: (config.formats.allowMP3)
+		encumbered: (config.formats.allowEncumberedFormats)
 	}
 	sizeEstimate: {
-		kbps: "(i) -> { durationSecs*(i*125) }
+		kbps: ((i) -> { durationSecs*(i*125) })
 	}
 }
 
