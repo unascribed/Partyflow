@@ -575,7 +575,10 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 											.map(this::tryParseBigDecimal)
 											.map(bd -> bd.multiply(TO_SAMPLES))
 											.map(BigDecimal::longValue)
-											.orElse(0L);
+											.orElseGet(() -> {
+												log.warn("Couldn't parse duration from ffprobe output:\n{}", probeOut);
+												return 0L;
+											});
 									lyrics = find(LYRICS_FFPROBE_PATTERN, probeOut)
 											.map(str -> str.replace("\\n", "\n").replace("\\r", ""))
 											.orElse(null);
