@@ -572,7 +572,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 											.filter(i -> i >= 1)
 											.orElse(-1);
 									duration = find(DURATION_FFPROBE_PATTERN, probeOut)
-											.map(BigDecimal::new)
+											.map(this::tryParseBigDecimal)
 											.map(bd -> bd.multiply(TO_SAMPLES))
 											.map(BigDecimal::longValue)
 											.orElse(0L);
@@ -669,6 +669,14 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 		}
 	}
 	
+	private BigDecimal tryParseBigDecimal(String s) {
+		try {
+			return new BigDecimal(s);
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
+	}
+	
 	public static void regenerateAlbumFile(long releaseId) {
 		ThreadPools.GENERIC.execute(() -> {
 			List<File> tmpFiles = new ArrayList<>();
@@ -676,20 +684,39 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				List<String> concatLines = new ArrayList<>();
 				concatLines.add("ffconcat version 1.0");
 				log.debug("Regenerating gapless album file for release ID {}", releaseId);
-				try (PreparedStatement ps = c.prepareStatement("SELECT `master` FROM `tracks` WHERE `release_id` = ? ORDER BY `track_number` ASC;")) {
+				List<String> masters = new ArrayList<>();
+				double loudness = -70;
+				double peak = 0;
+				try (PreparedStatement ps = c.prepareStatement("SELECT `master`, `loudness`, `peak` FROM `tracks` WHERE `release_id` = ? ORDER BY `track_number` ASC;")) {
 					ps.setLong(1, releaseId);
 					try (ResultSet rs = ps.executeQuery()) {
 						while (rs.next()) {
-							File tmpFile = File.createTempFile("concat-", ".flac", WORK_DIR);
-							tmpFiles.add(tmpFile);
-							try (InputStream in = Partyflow.storage.getBlob(Partyflow.storageContainer, rs.getString("master")).getPayload().openStream()) {
-								try (OutputStream out = new FileOutputStream(tmpFile)) {
-									ByteStreams.copy(in, out);
-								}
-							}
-							concatLines.add("file "+tmpFile.getName());
+							loudness = rs.getInt("loudness")/10D;
+							peak = rs.getInt("peak")/10D;
+							masters.add(rs.getString("master"));
+						}
+						
+					}
+				}
+				if (masters.isEmpty()) {
+					log.debug("Trivial case: No tracks. Empty concat.");
+					updateConcatMaster(c, releaseId, -70, 0, null);
+					return;
+				}
+				if (masters.size() == 1) {
+					log.debug("Trivial case: One track. Concat = sole track.");
+					updateConcatMaster(c, releaseId, loudness, peak, masters.get(0));
+					return;
+				}
+				for (String m : masters) {
+					File tmpFile = File.createTempFile("concat-", ".flac", WORK_DIR);
+					tmpFiles.add(tmpFile);
+					try (InputStream in = Partyflow.storage.getBlob(Partyflow.storageContainer, m).getPayload().openStream()) {
+						try (OutputStream out = new FileOutputStream(tmpFile)) {
+							ByteStreams.copy(in, out);
 						}
 					}
+					concatLines.add("file "+tmpFile.getName());
 				}
 				File concatFile = File.createTempFile("concat-", ".txt", WORK_DIR);
 				tmpFiles.add(concatFile);
@@ -717,10 +744,10 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					log.warn("Failed to process audio with FFmpeg, output:\n{}", mpegErr);
 					return;
 				}
-				double loudness = find(LOUDNESS_FFMPEG_PATTERN, mpegErr)
+				loudness = find(LOUDNESS_FFMPEG_PATTERN, mpegErr)
 						.map(Doubles::tryParse)
 						.orElse(0D);
-				double peak = find(PEAK_FFMPEG_PATTERN, mpegErr)
+				peak = find(PEAK_FFMPEG_PATTERN, mpegErr)
 						.map(Doubles::tryParse)
 						.orElse(0D);
 				String blobName;
@@ -736,48 +763,52 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						.contentType("audio/flac")
 						.build();
 				Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
-				try {
-					c.setAutoCommit(false);
-					boolean committed = false;
-					String oldBlob = null;
-					try {
-						try (PreparedStatement ps = c.prepareStatement("SELECT `concat_master` FROM `releases` WHERE `release_id` = ?;")) {
-							ps.setLong(1, releaseId);
-							try (ResultSet rs = ps.executeQuery()) {
-								if (rs.first()) {
-									oldBlob = rs.getString("concat_master");
-								}
-							}
-						}
-						boolean success = false;
-						try (PreparedStatement ps = c.prepareStatement("UPDATE `releases` SET `concat_master` = ?, `loudness` = ?, `peak` = ? WHERE `release_id` = ?;")) {
-							ps.setString(1, blobName);
-							ps.setInt(2, (int)(loudness*10));
-							ps.setInt(3, (int)(peak*10));
-							ps.setLong(4, releaseId);
-							success = (ps.executeUpdate() > 0);
-						}
-						c.commit();
-						committed = true;
-						log.debug("Processed concatenation successfully.\nAlbum loudness: {}LUFS, album peak: {}dBFS", loudness, peak);
-						if (success && oldBlob != null) {
-							log.trace("Deleting {}", oldBlob);
-							Partyflow.storage.removeBlob(Partyflow.storageContainer, oldBlob);
-						}
-					} finally {
-						if (!committed) {
-							c.rollback();
-						}
-					}
-				} finally {
-					c.setAutoCommit(true);
-				}
+				updateConcatMaster(c, releaseId, loudness, peak, blobName);
 			} catch (Throwable e) {
 				log.warn("Failed to regenerate album file for release ID {}", releaseId, e);
 			} finally {
 				tmpFiles.forEach(File::delete);
 			}
 		});
+	}
+
+	private static void updateConcatMaster(Connection c, long releaseId, double loudness, double peak, String blobName) throws SQLException {
+		try {
+			c.setAutoCommit(false);
+			boolean committed = false;
+			String oldBlob = null;
+			try {
+				try (PreparedStatement ps = c.prepareStatement("SELECT `concat_master` FROM `releases` WHERE `release_id` = ?;")) {
+					ps.setLong(1, releaseId);
+					try (ResultSet rs = ps.executeQuery()) {
+						if (rs.first()) {
+							oldBlob = rs.getString("concat_master");
+						}
+					}
+				}
+				boolean success = false;
+				try (PreparedStatement ps = c.prepareStatement("UPDATE `releases` SET `concat_master` = ?, `loudness` = ?, `peak` = ? WHERE `release_id` = ?;")) {
+					ps.setString(1, blobName);
+					ps.setInt(2, (int)(loudness*10));
+					ps.setInt(3, (int)(peak*10));
+					ps.setLong(4, releaseId);
+					success = (ps.executeUpdate() > 0);
+				}
+				c.commit();
+				committed = true;
+				log.debug("Processed concatenation successfully.\nAlbum loudness: {}LUFS, album peak: {}dBFS", loudness, peak);
+				if (success && oldBlob != null) {
+					log.trace("Deleting {}", oldBlob);
+					Partyflow.storage.removeBlob(Partyflow.storageContainer, oldBlob);
+				}
+			} finally {
+				if (!committed) {
+					c.rollback();
+				}
+			}
+		} finally {
+			c.setAutoCommit(true);
+		}
 	}
 
 	private static Optional<String> find(Pattern pattern, String haystack) {
