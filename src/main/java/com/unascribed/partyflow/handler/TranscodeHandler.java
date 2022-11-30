@@ -21,8 +21,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,6 +41,7 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.unascribed.partyflow.Commands;
 import com.unascribed.partyflow.ForkOutputStream;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
@@ -499,7 +503,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 					attachArt = false;
 					// FFmpeg doesn't support writing Ogg album art...
 					// Been an open feature request for 7 years
-					Process p = Partyflow.magick_convert(artFile.getPath(), "-identify", "null:-");
+					Process p = Commands.magick_convert(artFile.getPath(), "-identify", "null:-").start();
 					p.getOutputStream().close();
 					String out = new String(ByteStreams.toByteArray(p.getInputStream()), Charsets.UTF_8);
 					String err = new String(ByteStreams.toByteArray(p.getErrorStream()), Charsets.UTF_8);
@@ -554,7 +558,8 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 				.map(en -> en.getKey()+"="+en.getValue().apply(rgd))
 				.forEach(meta::add);
 			Files.asCharSink(metaFile, Charsets.UTF_8).writeLines(meta);
-			Process p = Partyflow.ffmpeg("-v", "error",
+			List<Process> processes = new ArrayList<>();
+			ProcessBuilder ffmBldr = Commands.ffmpeg("-v", "error",
 					"-i", "-", "-i", metaFile.getAbsolutePath(), attachArt ? List.of("-i", artFile.getAbsolutePath()) : null,
 					shortcut == null ? fmt.args() : shortcut.args(),
 					"-map_metadata", "1",
@@ -569,37 +574,62 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 						) : null,
 					"-y",
 					directOut != null ? "-" : tmpFile.getAbsolutePath());
+			Process input;
+			if (shortcut == null && fmt.altcmd() != null) {
+				ProcessBuilder inffm = Commands.ffmpeg("-v", "error",
+						"-i", "-",
+						"-f", "wav", "-");
+				ProcessBuilder altcmd = Commands.altcmd(fmt.altcmd(), fmt.altcmdargs());
+				processes.addAll(ProcessBuilder.startPipeline(List.of(inffm, altcmd, ffmBldr)));
+				input = processes.get(0);
+			} else {
+				input = ffmBldr.start();
+				processes.add(input);
+			}
+			Process ffm = processes.get(processes.size()-1);
 			String filename = creator+" - "+(releaseTitle == null ? "" : releaseTitle+" - ")+String.format("%02d", trackNumber)+" "+title+"."+fmt.fileExtension();
 			String filenameEncoded = encodeFilename(filename);
 			if (directOut != null) {
 				OutputStream out = cache ? new ForkOutputStream(new FileOutputStream(tmpFile), directOut.get(filenameEncoded)) : directOut.get(filenameEncoded);
-				new Thread(() -> {
-					try {
-						ByteStreams.copy(p.getInputStream(), out);
-						out.close();
-					} catch (IOException e) {
-						log.warn("Exception while copying", e);
-					}
-				}, "FFmpeg copy thread").start();
+				pipe(ffm, out);
 			}
 			try (InputStream in = masterBlob.getPayload().openStream()) {
-				ByteStreams.copy(in, p.getOutputStream());
-				p.getOutputStream().close();
+				ByteStreams.copy(in, input.getOutputStream());
+				input.getOutputStream().close();
 			} catch (IOException e) {
 				if (!"Broken pipe".equals(e.getMessage())) {
 					throw e;
 				}
 			}
-			String err = new String(ByteStreams.toByteArray(p.getErrorStream()), Charsets.UTF_8);
-			while (p.isAlive()) {
-				try {
-					p.waitFor();
-				} catch (InterruptedException e) {
-				}
+			AtomicBoolean errored = new AtomicBoolean(false);
+			CountDownLatch cdl = new CountDownLatch(processes.size());
+			for (var p : processes) {
+				new Thread(() -> {
+					try {
+						String err = new String(ByteStreams.toByteArray(p.getErrorStream()), Charsets.UTF_8);
+						while (p.isAlive()) {
+							try {
+								p.waitFor();
+							} catch (InterruptedException e) {}
+						}
+						if (p.exitValue() != 0) {
+							log.warn("Failed to process audio:\n{}", err);
+							errored.set(true);
+						}
+					} catch (IOException e) {
+						log.warn("Failed to process audio:\n{}", e);
+						errored.set(true);
+					} finally {
+						cdl.countDown();
+					}
+				}, "Process watcher").start();
 			}
-			if (p.exitValue() != 0) {
-				log.warn("Failed to process audio with FFmpeg:\n{}", err);
-				throw new ServletException("Failed to transcode; FFmpeg exited with code "+p.exitValue());
+			try {
+				cdl.await();
+			} catch (InterruptedException e) {
+			}
+			if (errored.get()) {
+				throw new ServletException("Failed to process audio");
 			}
 			if (tmpFile != null) {
 				log.debug("{} completed", shortcut == null ? "Transcode" : "Remux");
@@ -624,6 +654,26 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			if (artFile != null) artFile.delete();
 			metaFile.delete();
 		}
+	}
+
+	private static void pipe(Process a, Process b) {
+		pipe(a.getInputStream(), b.getOutputStream());
+	}
+
+	private static void pipe(Process a, OutputStream b) {
+		pipe(a.getInputStream(), b);
+	}
+
+	private static final AtomicInteger pipeNum = new AtomicInteger();
+	
+	private static void pipe(InputStream a, OutputStream b) {
+		new Thread(() -> {
+			try (a) {
+				a.transferTo(b);
+			} catch (IOException e) {
+				log.warn("Exception while copying", e);
+			}
+		}, "Pipe #"+pipeNum.getAndIncrement()).start();
 	}
 
 	public static String encodeFilename(String str) {

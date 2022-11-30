@@ -51,6 +51,7 @@ import blue.endless.jankson.JsonPrimitive;
 public record TranscodeFormat(
 		String name, Usage usage, String displayName, String description, String icon, int ytdlPriority,
 		String fileExtension, String mimeType, ImmutableList<String> args,
+		String altcmd, ImmutableList<String> altcmdargs,
 		BooleanSupplier availableWhen, Predicate<UserData> suggestWhen, boolean direct, boolean cache,
 		ToDoubleFunction<TrackData> sizeEstimator,
 		ImmutableMap<String, Function<ReplayGainData, String>> replaygain,
@@ -178,7 +179,15 @@ public record TranscodeFormat(
 							};
 						}));
 				
-				out.add(new TranscodeFormat(name, usage, displayName, description, icon, ytdlPriority, ext, type, args, availableWhen, suggestWhen, direct, cache, sizeEstimate, replaygain, ImmutableList.of()));
+				String altcmd = jo.get(String.class, "altcmd");
+				ImmutableList<String> altcmdargs = null;
+				if (altcmd != null) {
+					altcmdargs = jo.get(JsonArray.class, "altcmdargs").stream()
+							.map(ele -> ((JsonPrimitive)ele).asString())
+							.collect(ImmutableList.toImmutableList());;
+				}
+				
+				out.add(new TranscodeFormat(name, usage, displayName, description, icon, ytdlPriority, ext, type, args, altcmd, altcmdargs, availableWhen, suggestWhen, direct, cache, sizeEstimate, replaygain, ImmutableList.of()));
 			}
 		}
 		return out.build();

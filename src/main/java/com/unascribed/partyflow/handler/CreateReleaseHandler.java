@@ -38,6 +38,7 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.unascribed.partyflow.Commands;
 import com.unascribed.partyflow.MultipartData;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
@@ -153,7 +154,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		} else {
 			throw new IllegalArgumentException("Invalid file format for art; only PNG and JPEG are accepted");
 		}
-		Process magick = Partyflow.magick_convert("-", "-strip", "-resize", "x576>", "-quality", "80", format+":-");
+		Process magick = Commands.magick_convert("-", "-strip", "-resize", "x576>", "-quality", "80", format+":-").start();
 		ByteStreams.copy(art.getInputStream(), magick.getOutputStream());
 		magick.getOutputStream().close();
 		byte[] imgData = ByteStreams.toByteArray(magick.getInputStream());

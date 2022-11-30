@@ -13,11 +13,11 @@ public class ThreadPools {
 	public static final ExecutorService TRANSCODE;
 	
 	static {
-		GENERIC = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), Runtime.getRuntime().availableProcessors(),
+		GENERIC = new ThreadPoolExecutor(1, Runtime.getRuntime().availableProcessors(),
 				5, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), namedFactory("Generic pool thread"));
 		int maxTranscodes = Partyflow.config.programs.maxTranscodes;
 		if (maxTranscodes == 0) maxTranscodes = Runtime.getRuntime().availableProcessors();
-		TRANSCODE = new ThreadPoolExecutor(maxTranscodes, maxTranscodes,
+		TRANSCODE = new ThreadPoolExecutor(1, maxTranscodes,
 				5, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), namedFactory("Transcode pool thread"));
 	}
 

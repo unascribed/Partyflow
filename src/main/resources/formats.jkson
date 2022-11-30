@@ -53,10 +53,10 @@ download: {
 		ext: "flac"
 		type: "audio/flac"
 		args: [ "-f" "flac" "-codec:a" "flac" ]
-		suggestWhen: "true"
-		availableWhen: "lossless"
-		sizeEstimate: "master"
-		replaygain: "generic"
+		suggestWhen: (true)
+		availableWhen: (lossless)
+		sizeEstimate: (master)
+		replaygain: (generic)
 	}
 	"alac": {
 		name: "Apple Lossless"
@@ -66,10 +66,10 @@ download: {
 		ext: "m4a"
 		type: "audio/x-m4a; codecs=alac"
 		args: [ "-f" "ipod" "-codec:a" "alac" "-movflags" "+faststart" ]
-		suggestWhen: "isApple(userAgent)"
-		availableWhen: "lossless"
-		sizeEstimate: "master * 1.02"
-		replaygain: "generic"
+		suggestWhen: (isApple(userAgent))
+		availableWhen: (lossless)
+		sizeEstimate: (master * 1.02)
+		replaygain: (generic)
 	}
 	"ogg-opus-144": {
 		name: "Opus"
@@ -79,10 +79,10 @@ download: {
 		ext: "opus"
 		type: "audio/ogg; codecs=opus"
 		args: [ "-f" "ogg" "-codec:a" "libopus" "-b:a" "144k" ]
-		suggestWhen: "isAndroid(userAgent) ? androidVersion(userAgent) >= 10 : isLinux(userAgent)"
-		availableWhen: "true"
-		sizeEstimate: "kbps(144)"
-		replaygain: "opus"
+		suggestWhen: (isAndroid(userAgent) ? androidVersion(userAgent) >= 10 : isLinux(userAgent))
+		availableWhen: (true)
+		sizeEstimate: (kbps(144))
+		replaygain: (opus)
 	}
 	"ogg-vorbis-192": {
 		name: "Ogg Vorbis"
@@ -92,23 +92,52 @@ download: {
 		ext: "ogg"
 		type: "audio/ogg; codecs=vorbis"
 		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "6" ]
-		suggestWhen: "isLinux(userAgent) || isAndroid(userAgent)"
-		availableWhen: "true"
-		sizeEstimate: "kbps(192)"
-		replaygain: "generic"
+		suggestWhen: (isLinux(userAgent) || isAndroid(userAgent))
+		availableWhen: (true)
+		sizeEstimate: (kbps(192))
+		replaygain: (generic)
 	}
-	"aac-vbr": {
-		name: "AAC",
+	"aac-vbr-ffmpeg": {
+		name: "AAC"
 		description: "Common lossy codec on iOS/macOS"
 		ytdlPriority: 128
 		icon: "aac.svg"
 		ext: "m4a"
 		type: "audio/x-m4a; codecs=mp4a.40.2"
 		args: [ "-f" "ipod" "-codec:a" "libfdk_aac" "-vbr:a" "5" "-movflags" "+faststart" ]
-		suggestWhen: "isApple(userAgent)"
-		availableWhen: "encumbered"
-		sizeEstimate: "kbps(192)"
-		replaygain: "generic"
+		suggestWhen: (isApple(userAgent))
+		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg")
+		sizeEstimate: (kbps(192))
+		replaygain: (generic)
+	}
+	"aac-vbr-fdkaac": {
+		name: "AAC"
+		description: "Common lossy codec on iOS/macOS"
+		ytdlPriority: 128
+		icon: "aac.svg"
+		ext: "m4a"
+		type: "audio/x-m4a; codecs=mp4a.40.2"
+		altcmd: "fdkaac"
+		altcmdargs: [ "-m" "5" "-f" "2" "-" "-o" "-" ]
+		args: [ "-f" "ipod" "-codec:a" "copy" "-movflags" "+faststart" ]
+		suggestWhen: (isApple(userAgent))
+		availableWhen: (encumbered && config.formats.aacMode == "fdkaac")
+		sizeEstimate: (kbps(192))
+		replaygain: (generic)
+	}
+	"aac-vbr-qaac": {
+		name: "AAC"
+		description: "Common lossy codec on iOS/macOS"
+		ytdlPriority: 128
+		icon: "aac.svg"
+		ext: "m4a"
+		type: "audio/x-m4a; codecs=mp4a.40.2"
+		altcmd: "qaac"
+		altcmdargs: [ "--adts" "-q" "1" "-" "-o" "-" ]
+		args: [ "-f" "ipod" "-codec:a" "copy" "-movflags" "+faststart" ]
+		availableWhen: (encumbered && config.formats.aacMode == "qaac")
+		sizeEstimate: (kbps(128))
+		replaygain: (generic)
 	}
 	"mp3-v1": {
 		name: "MP3 V1"
@@ -118,11 +147,13 @@ download: {
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
 		args: [ "-f" "mp3" "-id3v2_version" "3" "-codec:a" "libmp3lame" "-q:a" "1" ]
-		suggestWhen: "true"
-		availableWhen: "mp3"
-		sizeEstimate: "kbps(220)"
-		replaygain: "generic"
+		suggestWhen: (true)
+		availableWhen: (mp3)
+		sizeEstimate: (kbps(220))
+		replaygain: (generic)
 	}
+	// I would make this 256 or so, but "320" is a magic Good Number to some.
+	// people who care should be getting MP3 V1 already
 	"mp3-320": {
 		name: "MP3 320"
 		description: "Most compatible choice, but inefficient file size"
@@ -131,10 +162,10 @@ download: {
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
 		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "320k" ]
-		suggestWhen: "true"
-		availableWhen: "mp3"
-		sizeEstimate: "kbps(320)"
-		replaygain: "generic"
+		suggestWhen: (true)
+		availableWhen: (mp3)
+		sizeEstimate: (kbps(320))
+		replaygain: (generic)
 	}
 	"wav": {
 		name: "WAV"
@@ -144,12 +175,12 @@ download: {
 		ext: "wav"
 		type: "audio/wav"
 		args: [ "-vn" "-f" "wav" ]
-		suggestWhen: "false"
+		suggestWhen: (false)
 		// uncompressed audio is trivial to create and is a waste of space to cache
 		cache: false
 		direct: true
-		availableWhen: "uncompressed"
-		sizeEstimate: "durationSamples * 2 * 2"
+		availableWhen: (uncompressed)
+		sizeEstimate: (durationSamples * 2 * 2)
 	}
 	"aiff": {
 		name: "AIFF"
@@ -159,11 +190,11 @@ download: {
 		ext: "aiff"
 		type: "audio/aiff"
 		args: [ "-vn" "-f" "aiff" ]
-		suggestWhen: "false"
+		suggestWhen: (false)
 		cache: false
 		direct: true
-		availableWhen: "uncompressed"
-		sizeEstimate: "durationSamples * 2 * 2"
+		availableWhen: (uncompressed)
+		sizeEstimate: (durationSamples * 2 * 2)
 	}
 }
 
@@ -176,17 +207,39 @@ stream: {
 		type: "audio/webm; codecs=opus"
 		args: [ "-f" "webm" "-codec:a" "libopus" "-b:a" "72k" ]
 		direct: true
-		availableWhen: "true"
-		sizeEstimate: "kbps(72)"
+		availableWhen: (true)
+		sizeEstimate: (kbps(72))
 	}
-	"mp4-aac-88": {
+	"mp4-aac-88-ffmpeg": {
 		ytdlPriority: 3
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
 		args: [ "-f" "mp4" "-codec:a" "libfdk_aac" "-b:a" "88k" "-cutoff" "18k" ]
 		direct: false // MP4 muxer can't stream
-		availableWhen: "encumbered"
-		sizeEstimate: "kbps(88)"
+		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg")
+		sizeEstimate: (kbps(88))
+	}
+	"mp4-aac-88-fdkaac": {
+		ytdlPriority: 3
+		ext: "mp4"
+		type: "audio/mp4; codecs=mp4a.40.2"
+		altcmd: "fdkaac"
+		altcmdargs: [ "-b" "88" "-f" "2" "-" "-o" "-" ]
+		args: [ "-f" "mp4" "-codec:a" "copy" ]
+		direct: false
+		availableWhen: (encumbered && config.formats.aacMode == "fdkaac")
+		sizeEstimate: (kbps(88))
+	}
+	"mp4-aac-88-qaac": {
+		ytdlPriority: 3
+		ext: "mp4"
+		type: "audio/mp4; codecs=mp4a.40.2"
+		altcmd: "qaac"
+		altcmdargs: [ "--adts" "-v" "88" "-" "-o" "-" ]
+		args: [ "-f" "mp4" "-codec:a" "copy" ]
+		direct: false
+		availableWhen: (encumbered && config.formats.aacMode == "qaac")
+		sizeEstimate: (kbps(88))
 	}
 	"ogg-vorbis-96": {
 		ytdlPriority: 2
@@ -194,8 +247,8 @@ stream: {
 		type: "audio/ogg; codecs=vorbis"
 		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "2" ]
 		direct: true
-		availableWhen: "true"
-		sizeEstimate: "kbps(96)"
+		availableWhen: (true)
+		sizeEstimate: (kbps(96))
 	}
 	"mp3-112": {
 		ytdlPriority: 1
@@ -204,8 +257,8 @@ stream: {
 		type: "audio/mpeg; codecs=mp3"
 		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "112k" ]
 		direct: true
-		availableWhen: "true"
-		sizeEstimate: "kbps(112)"
+		availableWhen: (true)
+		sizeEstimate: (kbps(112))
 	}
 }
 
@@ -217,8 +270,8 @@ stream_low: {
 		type: "audio/webm; codecs=opus"
 		args: [ "-f" "webm" "-codec:a" "libopus" "-b:a" "48k" ]
 		direct: true
-		availableWhen: "true"
-		sizeEstimate: "kbps(48)"
+		availableWhen: (true)
+		sizeEstimate: (kbps(48))
 	}
 	"ogg-vorbis-64": {
 		ytdlPriority: 2
@@ -226,8 +279,8 @@ stream_low: {
 		type: "audio/ogg; codecs=vorbis"
 		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "0" ]
 		direct: true
-		availableWhen: "true"
-		sizeEstimate: "kbps(64)"
+		availableWhen: (true)
+		sizeEstimate: (kbps(64))
 	}
 	"mp3-96": {
 		ytdlPriority: 1
@@ -235,8 +288,8 @@ stream_low: {
 		type: "audio/mpeg; codecs=mp3"
 		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "96k" ]
 		direct: true
-		availableWhen: "mp3"
-		sizeEstimate: "kbps(96)"
+		availableWhen: (mp3)
+		sizeEstimate: (kbps(96))
 	}
 }
 

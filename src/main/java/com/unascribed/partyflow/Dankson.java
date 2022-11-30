@@ -42,16 +42,6 @@ public class Dankson extends Jankson {
 		return super.load(f);
 	}
 	
-	@Override
-	public JsonObject load(InputStream in) throws IOException, SyntaxError {
-		return super.load(in);
-	}
-	
-	@Override
-	public JsonObject load(String s) throws SyntaxError {
-		return super.load(s);
-	}
-	
 	public JsonObject load(String filename, InputStream in) throws IOException, SyntaxError {
 		this.filename = filename;
 		return super.load(in);

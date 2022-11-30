@@ -37,7 +37,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -91,8 +90,8 @@ import com.unascribed.partyflow.handler.TranscodeHandler;
 import com.unascribed.random.RandomXoshiro256StarStar;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -135,7 +134,7 @@ public class Partyflow {
 	}
 
 	public static void main(String[] args) {
-		System.out.print("\u001Bc");
+		Stopwatch sw = Stopwatch.createStarted();
 		AsyncSimpleLog.startLogging();
 		Dankson jkson = new Dankson(Jankson.builder().allowBareRootObject());
 		try {
@@ -169,6 +168,12 @@ public class Partyflow {
 		AsyncSimpleLog.setAnsi(config.logger.color);
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.eclipse\\.jetty"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
+		
+		if (config.formats.allowEncumberedFormats) {
+			// separate class so we don't load ThreadPools too early
+			AACSupport.test();
+		}
+		
 		String fname = "?";
 		try {
 			String formatsStr;
@@ -182,7 +187,9 @@ public class Partyflow {
 			JsonObject obj = jkson.load(fname, formatsStr);
 			formats = TranscodeFormat.load(obj);
 			formatsByName = formats.stream().collect(ImmutableMap.toImmutableMap(TranscodeFormat::name, f -> f));
-			log.info("Loaded {} transcode formats", formats.size());
+			log.info("Loaded {} transcode formats ({} available)", formats.size(), formats.stream()
+					.filter(TranscodeFormat::available)
+					.count());
 		} catch (FileNotFoundException e) {
 			log.error("{} does not exist. Cannot start.", fname);
 			return;
@@ -199,7 +206,7 @@ public class Partyflow {
 			log.error("{} does not appear to be a valid URI", config.http.publicUrl);
 			return;
 		}
-
+		
 		byte[] sessionSecretBytes = config.security.sessionSecret.getBytes(Charsets.UTF_8);
 		sessionSecret = new SecretKeySpec(sessionSecretBytes, "RAW");
 
@@ -325,7 +332,7 @@ public class Partyflow {
 			return;
 		}
 		log.info("Listening on http://{}:{}", displayBind, config.http.port);
-		log.info("Ready.");
+		log.info("Ready after {}", sw);
 
 		try (Connection c = sql.getConnection()) {
 			try (Statement s = c.createStatement()) {
@@ -447,58 +454,6 @@ public class Partyflow {
 		} else {
 			return config.http.path+config.storage.publicUrlPattern.replace("{}", blob);
 		}
-	}
-
-	private static String[] combine(String[] a, Object[] b) {
-		List<String> out = Lists.newArrayListWithExpectedSize(a.length+b.length);
-		for (String s : a) {
-			out.add(s);
-		}
-		for (Object o : b) {
-			if (o instanceof String[] arr) {
-				for (String s : arr) {
-					out.add(s);
-				}
-			} else if (o instanceof Iterable iter) {
-				for (Object c : iter) {
-					out.add(String.valueOf(c));
-				}
-			} else if (o != null) {
-				out.add(String.valueOf(o));
-			}
-		}
-		return out.toArray(new String[out.size()]);
-	}
-
-	private static String[] sub(String[] haystack, String replacement) {
-		String[] nw = haystack.clone();
-		for (int i = 0; i < nw.length; i++) {
-			if (nw[i].contains("{}")) {
-				nw[i] = nw[i].replace("{}", replacement);
-			}
-		}
-		return nw;
-	}
-
-	public static Process magick_convert(Object... arguments) throws IOException {
-		return exec(combine(config.programs.magickConvert, arguments));
-	}
-
-	public static Process ffmpeg(Object... arguments) throws IOException {
-		return exec(sub(combine(config.programs.ffmpeg, arguments), "mpeg"));
-	}
-
-	public static Process ffprobe(Object... arguments) throws IOException {
-		return exec(sub(combine(config.programs.ffmpeg, arguments), "probe"));
-	}
-
-	private static Process exec(String[] arr) throws IOException {
-		if (log.isTraceEnabled()) {
-			log.trace("Executing command: {}", Joiner.on(' ').join(Arrays.stream(arr)
-					.map(s -> s.length() > 100 ? "[snip - "+s.length()+"]" : s)
-					.iterator()));
-		}
-		return Runtime.getRuntime().exec(arr);
 	}
 
 	public static <T> List<T> enumerateFormats(Predicate<TranscodeFormat> pred, Function<TranscodeFormat, T> func) {

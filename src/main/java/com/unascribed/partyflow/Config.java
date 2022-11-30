@@ -82,6 +82,11 @@ public final class Config {
 		public boolean allowLosslessFormats;
 		public boolean allowMP3;
 		public boolean allowEncumberedFormats;
+		
+		public String aacMode;
+		
+		public String[] fdkaac;
+		public String[] qaac;
 	}
 
 }

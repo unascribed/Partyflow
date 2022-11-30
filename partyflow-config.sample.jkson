@@ -87,4 +87,18 @@ formats: {
 	// it and are willing to accept this risk. Note that your FFmpeg must be built with libfdk_aac
 	// support; the native aac encoder is very low quality and therefore unsupported by Partyflow.
 	allowEncumberedFormats: false
+	
+	// Possible values:
+	// - none: Do not offer AAC (recommended)
+	// - ffmpeg: Use libfdk_aac in ffmpeg (requires a custom build)
+	// - fdkaac: Use the fdkaac command-line tool (easiest)
+	// - qaac: Use qaac with Apple's CoreAudio in Wine (hardest, best quality)
+	aacMode: "none"
+	
+	// Available in many distros. Just install it. You may need to enable a "contrib" repository,
+	// as FDK-AAC is open source but not free software.
+	fdkaac: ["fdkaac"]
+	// qaac requires proprietary non-redistributable Apple components, and as such, requires special
+	// installation. https://git.sleeping.town/unascribed/Partyflow/wiki/qaac-Installation
+	qaac: ["env" "WINEPREFIX=/opt/qaac" "wine" "/opt/qaac/x86/qaac.exe"]
 }
