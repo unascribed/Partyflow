@@ -21,8 +21,10 @@ package com.unascribed.partyflow;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -41,6 +43,8 @@ import com.unascribed.partyflow.Dankson.JsonJexlExpression;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableMultimap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Table;
 
 import blue.endless.jankson.JsonArray;
@@ -65,13 +69,27 @@ public record TranscodeFormat(
 	public double estimateSize(long duration, long master) {
 		return sizeEstimator().applyAsDouble(new TrackData(duration, duration/48000D, master));
 	}
+	
+	/**
+	 * @return the name of this TranscodeFormat without its private @ suffix
+	 */
+	public String publicName() {
+		int idx = name.indexOf('@');
+		if (idx == -1) return name;
+		return name.substring(0, idx);
+	}
 
 	@Override
 	public String toString() {
 		return name();
 	}
 	
+	public static ImmutableList<TranscodeFormat> formats;
+	public static ImmutableMultimap<String, TranscodeFormat> formatsByPublicName;
+	public static ImmutableMap<String, TranscodeFormat> formatsByName;
+
 	public record TrackData(long durationSamples, double durationSecs, long master) {}
+
 	public record ReplayGainData(double albumLoudness, double trackLoudness, double albumPeak, double trackPeak) {}
 	public record UserData(String userAgent) {}
 
@@ -91,7 +109,7 @@ public record TranscodeFormat(
 
 	public record Shortcut(TranscodeFormat source, ImmutableList<String> args) {}
 	
-	public static ImmutableList<TranscodeFormat> load(JsonObject obj) {
+	public static void load(JsonObject obj) {
 		var engine = new Engine(new JexlBuilder()
 				.strict(true)
 				.namespaces(Map.of(
@@ -190,7 +208,13 @@ public record TranscodeFormat(
 				out.add(new TranscodeFormat(name, usage, displayName, description, icon, ytdlPriority, ext, type, args, altcmd, altcmdargs, availableWhen, suggestWhen, direct, cache, sizeEstimate, replaygain, ImmutableList.of()));
 			}
 		}
-		return out.build();
+		formats = out.build();
+		var formatsByPublicNameBldr = ImmutableMultimap.<String, TranscodeFormat>builder();
+		formats.stream()
+			.map(tf -> Map.entry(tf.publicName(), tf))
+			.forEach(formatsByPublicNameBldr::put);
+		formatsByPublicName = formatsByPublicNameBldr.build();
+		formatsByName = TranscodeFormat.formats.stream().collect(ImmutableMap.toImmutableMap(TranscodeFormat::name, f -> f));
 	}
 
 	private static JexlExpression createExpr(Engine engine, String info, JsonElement expr) {
@@ -221,6 +245,49 @@ public record TranscodeFormat(
 		} catch (Throwable t) {
 			throw new RuntimeException("Exception while processing expression for "+info, t);
 		}
+	}
+	
+	
+	public static <T> List<T> enumerate(Predicate<TranscodeFormat> pred, Function<TranscodeFormat, T> func) {
+		List<T> li = Lists.newArrayList();
+		for (TranscodeFormat tf : TranscodeFormat.formats) {
+			if (tf.available() && pred.test(tf)) {
+				li.add(func.apply(tf));
+			}
+		}
+		return li;
+	}
+	public static List<Object> enumerate(Predicate<TranscodeFormat> pred) {
+		return enumerate(pred, (tf) -> {
+			return new Object() {
+				String name = tf.publicName();
+				String mimetype = tf.mimeType();
+				String ytdl_label = "$$ytdl-hack-"+tf.ytdlPriority()+"kbps_"+tf.publicName();
+			};
+		});
+	}
+	public static com.google.gson.JsonArray enumerateAsJson(Predicate<TranscodeFormat> pred) {
+		var arr = new com.google.gson.JsonArray();
+		enumerate(pred,
+				(tf) -> {
+					var obj = new com.google.gson.JsonObject();
+					obj.addProperty("name", tf.publicName());
+					obj.addProperty("mime", tf.mimeType());
+					return obj;
+				}).forEach(arr::add);
+		return arr;
+	}
+	
+	public static Optional<TranscodeFormat> byName(String name) {
+		return Optional.ofNullable(formatsByName.get(name))
+				.filter(TranscodeFormat::available)
+				.or(() -> byPublicName(name));
+	}
+	
+	public static Optional<TranscodeFormat> byPublicName(String name) {
+		return formatsByPublicName.get(name).stream()
+				.filter(TranscodeFormat::available)
+				.findFirst();
 	}
 	
 }

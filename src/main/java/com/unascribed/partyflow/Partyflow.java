@@ -38,16 +38,12 @@ import java.sql.Statement;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -92,9 +88,6 @@ import com.unascribed.random.RandomXoshiro256StarStar;
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
@@ -117,9 +110,6 @@ public class Partyflow {
 	public static String storageContainer;
 	public static String setupToken;
 	public static Key sessionSecret;
-	public static ImmutableList<TranscodeFormat> formats;
-	public static ImmutableMap<String, TranscodeFormat> formatsByName;
-
 	public static URI publicUri;
 
 	public static ConcurrentMap<String, Long> csrfTokens = Maps.newConcurrentMap();
@@ -185,9 +175,8 @@ public class Partyflow {
 				fname = config.formats.definitions;
 			}
 			JsonObject obj = jkson.load(fname, formatsStr);
-			formats = TranscodeFormat.load(obj);
-			formatsByName = formats.stream().collect(ImmutableMap.toImmutableMap(TranscodeFormat::name, f -> f));
-			log.info("Loaded {} transcode formats ({} available)", formats.size(), formats.stream()
+			TranscodeFormat.load(obj);
+			log.info("Loaded {} transcode formats ({} available)", TranscodeFormat.formats.size(), TranscodeFormat.formats.stream()
 					.filter(TranscodeFormat::available)
 					.count());
 		} catch (FileNotFoundException e) {
@@ -454,42 +443,6 @@ public class Partyflow {
 		} else {
 			return config.http.path+config.storage.publicUrlPattern.replace("{}", blob);
 		}
-	}
-
-	public static <T> List<T> enumerateFormats(Predicate<TranscodeFormat> pred, Function<TranscodeFormat, T> func) {
-		List<T> li = Lists.newArrayList();
-		for (TranscodeFormat tf : formats) {
-			if (tf.available() && pred.test(tf)) {
-				li.add(func.apply(tf));
-			}
-		}
-		return li;
-	}
-	
-	public static List<Object> enumerateFormats(Predicate<TranscodeFormat> pred) {
-		return enumerateFormats(pred, (tf) -> {
-			return new Object() {
-				String name = tf.name();
-				String mimetype = tf.mimeType();
-				String ytdl_label = "$$ytdl-hack-"+tf.ytdlPriority()+"kbps_"+tf.name();
-			};
-		});
-	}
-	
-	public static com.google.gson.JsonArray enumerateJsonFormats(Predicate<TranscodeFormat> pred) {
-		var arr = new com.google.gson.JsonArray();
-		enumerateFormats(pred,
-				(tf) -> {
-					var obj = new com.google.gson.JsonObject();
-					obj.addProperty("name", tf.name());
-					obj.addProperty("mime", tf.mimeType());
-					return obj;
-				}).forEach(arr::add);
-		return arr;
-	}
-
-	public static Optional<TranscodeFormat> getFormatByName(String name) {
-		return Optional.ofNullable(formatsByName.get(name));
 	}
 
 }

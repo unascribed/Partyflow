@@ -118,8 +118,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Kind must be one of "+Joiner.on(", ").join(QUERIES_BY_KIND.keySet()));
 		}
 		String formatString = query.get("format");
-		TranscodeFormat format = Partyflow.getFormatByName(formatString)
-				.filter(TranscodeFormat::available)
+		TranscodeFormat format = TranscodeFormat.byPublicName(formatString)
 				.orElseThrow(() -> new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+formatString));
 		Session s = SessionHelper.getSession(req);
 		String permissionQuery = (s == null ? "false" : "`releases`.`user_id` = ?");

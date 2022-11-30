@@ -111,7 +111,7 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 					.filter(Objects::nonNull)
 					.reduce((a, b) -> a + b)
 					.orElse(0L);
-			List<TranscodeFormat> otherFormats = Partyflow.formats.stream()
+			List<TranscodeFormat> otherFormats = TranscodeFormat.formats.stream()
 					.filter(tf -> tf.available() && tf.usage().canDownload())
 					.collect(Collectors.toCollection(ArrayList::new));
 			String ua = Strings.nullToEmpty(req.getHeader("User-Agent"));
@@ -120,7 +120,7 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 					.toList();
 			otherFormats.removeAll(suggestedFormats);
 			Function<TranscodeFormat, Object> munger = tf -> new Object() {
-				String name = tf.name();
+				String name = tf.publicName();
 				String display_name = tf.displayName();
 				String description = tf.description();
 				String icon = tf.icon();

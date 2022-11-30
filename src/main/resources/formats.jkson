@@ -71,17 +71,17 @@ download: {
 		sizeEstimate: (master * 1.02)
 		replaygain: (generic)
 	}
-	"ogg-opus-144": {
+	"ogg-opus-128": {
 		name: "Opus"
 		description: "Current best lossy codec - smallest file"
 		ytdlPriority: 1280
 		icon: "opus.svg"
 		ext: "opus"
 		type: "audio/ogg; codecs=opus"
-		args: [ "-f" "ogg" "-codec:a" "libopus" "-b:a" "144k" ]
+		args: [ "-f" "ogg" "-codec:a" "libopus" "-b:a" "128k" ]
 		suggestWhen: (isAndroid(userAgent) ? androidVersion(userAgent) >= 10 : isLinux(userAgent))
 		availableWhen: (true)
-		sizeEstimate: (kbps(144))
+		sizeEstimate: (kbps(128))
 		replaygain: (opus)
 	}
 	"ogg-vorbis-192": {
@@ -97,7 +97,7 @@ download: {
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
-	"aac-vbr-ffmpeg": {
+	"aac-vbr@ffmpeg": {
 		name: "AAC"
 		description: "Common lossy codec on iOS/macOS"
 		ytdlPriority: 128
@@ -110,7 +110,7 @@ download: {
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
-	"aac-vbr-fdkaac": {
+	"aac-vbr@fdkaac": {
 		name: "AAC"
 		description: "Common lossy codec on iOS/macOS"
 		ytdlPriority: 128
@@ -125,7 +125,7 @@ download: {
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
-	"aac-vbr-qaac": {
+	"aac-vbr@qaac": {
 		name: "AAC"
 		description: "Common lossy codec on iOS/macOS"
 		ytdlPriority: 128
@@ -135,13 +135,14 @@ download: {
 		altcmd: "qaac"
 		altcmdargs: [ "--adts" "-q" "1" "-" "-o" "-" ]
 		args: [ "-f" "ipod" "-codec:a" "copy" "-movflags" "+faststart" ]
+		suggestWhen: (isApple(userAgent))
 		availableWhen: (encumbered && config.formats.aacMode == "qaac")
-		sizeEstimate: (kbps(128))
+		sizeEstimate: (kbps(160))
 		replaygain: (generic)
 	}
 	"mp3-v1": {
 		name: "MP3 V1"
-		description: "Variable bitrate MP3, often the best choice"
+		description: "Highly compatible variable bitrate, usually the best choice"
 		ytdlPriority: 321
 		icon: "mp3.svg"
 		ext: "mp3"
@@ -156,7 +157,7 @@ download: {
 	// people who care should be getting MP3 V1 already
 	"mp3-320": {
 		name: "MP3 320"
-		description: "Most compatible choice, but inefficient file size"
+		description: "Plays just about anywhere, but inefficient"
 		ytdlPriority: 320
 		icon: "mp3.svg"
 		ext: "mp3"
@@ -210,7 +211,7 @@ stream: {
 		availableWhen: (true)
 		sizeEstimate: (kbps(72))
 	}
-	"mp4-aac-88-ffmpeg": {
+	"mp4-aac-88@ffmpeg": {
 		ytdlPriority: 3
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
@@ -219,7 +220,7 @@ stream: {
 		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg")
 		sizeEstimate: (kbps(88))
 	}
-	"mp4-aac-88-fdkaac": {
+	"mp4-aac-88@fdkaac": {
 		ytdlPriority: 3
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
@@ -230,7 +231,7 @@ stream: {
 		availableWhen: (encumbered && config.formats.aacMode == "fdkaac")
 		sizeEstimate: (kbps(88))
 	}
-	"mp4-aac-88-qaac": {
+	"mp4-aac-88@qaac": {
 		ytdlPriority: 3
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
