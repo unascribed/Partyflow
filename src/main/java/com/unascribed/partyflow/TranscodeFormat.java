@@ -199,11 +199,14 @@ public record TranscodeFormat(
 				
 				String altcmd = jo.get(String.class, "altcmd");
 				ImmutableList<String> altcmdargs = null;
+				System.out.println(args);
 				if (altcmd != null) {
 					altcmdargs = jo.get(JsonArray.class, "altcmdargs").stream()
 							.map(ele -> ((JsonPrimitive)ele).asString())
 							.collect(ImmutableList.toImmutableList());;
+							System.out.println(altcmdargs);
 				}
+				
 				
 				out.add(new TranscodeFormat(name, usage, displayName, description, icon, ytdlPriority, ext, type, args, altcmd, altcmdargs, availableWhen, suggestWhen, direct, cache, sizeEstimate, replaygain, ImmutableList.of()));
 			}

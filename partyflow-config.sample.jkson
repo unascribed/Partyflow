@@ -56,12 +56,12 @@ programs: {
 	
 	// Used to process audio.
 	// {} will be replaced with "mpeg" or "probe" depending on which program is needed.
-	ffmpeg: ["ff{}", "-hide_banner"]
+	ffmpeg: <ff{} -hide_banner>
 	
 	// Used to process images.
-	magickConvert: ["convert"]
+	magickConvert: <convert>
 	// For newer versions of ImageMagick:
-	//magickConvert: ["magick" "convert"]
+	//magickConvert: <magick convert>
 	
 	// The maximum number of FFmpeg processes that will be run simultaneously. If set to 0, uses
 	// the number of CPU threads.
@@ -97,8 +97,8 @@ formats: {
 	
 	// Available in many distros. Just install it. You may need to enable a "contrib" repository,
 	// as FDK-AAC is open source but not free software.
-	fdkaac: ["fdkaac"]
+	fdkaac: <fdkaac>
 	// qaac requires proprietary non-redistributable Apple components, and as such, requires special
 	// installation. https://git.sleeping.town/unascribed/Partyflow/wiki/qaac-Installation
-	qaac: ["env" "WINEPREFIX=/opt/qaac" "wine" "/opt/qaac/x86/qaac.exe"]
+	qaac: <env WINEPREFIX=/opt/qaac wine /opt/qaac/x86/qaac.exe>
 }

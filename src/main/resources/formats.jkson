@@ -52,7 +52,7 @@ download: {
 		icon: "flac.svg"
 		ext: "flac"
 		type: "audio/flac"
-		args: [ "-f" "flac" "-codec:a" "flac" ]
+		args: <-f flac -codec:a flac>
 		suggestWhen: (true)
 		availableWhen: (lossless)
 		sizeEstimate: (master)
@@ -65,7 +65,7 @@ download: {
 		icon: "alac.svg"
 		ext: "m4a"
 		type: "audio/x-m4a; codecs=alac"
-		args: [ "-f" "ipod" "-codec:a" "alac" "-movflags" "+faststart" ]
+		args: <-f ipod -codec:a alac -movflags +faststart>
 		suggestWhen: (isApple(userAgent))
 		availableWhen: (lossless)
 		sizeEstimate: (master * 1.02)
@@ -78,7 +78,7 @@ download: {
 		icon: "opus.svg"
 		ext: "opus"
 		type: "audio/ogg; codecs=opus"
-		args: [ "-f" "ogg" "-codec:a" "libopus" "-b:a" "128k" ]
+		args: <-f ogg -codec:a libopus -b:a 128k>
 		suggestWhen: (isAndroid(userAgent) ? androidVersion(userAgent) >= 10 : isLinux(userAgent))
 		availableWhen: (true)
 		sizeEstimate: (kbps(128))
@@ -91,7 +91,7 @@ download: {
 		icon: "vorbis.svg"
 		ext: "ogg"
 		type: "audio/ogg; codecs=vorbis"
-		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "6" ]
+		args: <-f ogg -codec:a libvorbis -q:a 6>
 		suggestWhen: (isLinux(userAgent) || isAndroid(userAgent))
 		availableWhen: (true)
 		sizeEstimate: (kbps(192))
@@ -104,7 +104,7 @@ download: {
 		icon: "aac.svg"
 		ext: "m4a"
 		type: "audio/x-m4a; codecs=mp4a.40.2"
-		args: [ "-f" "ipod" "-codec:a" "libfdk_aac" "-vbr:a" "5" "-movflags" "+faststart" ]
+		args: <-f ipod '-codec:a libfdk_aac' -vbr:a 5 -movflags +faststart>
 		suggestWhen: (isApple(userAgent))
 		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg")
 		sizeEstimate: (kbps(192))
@@ -118,8 +118,8 @@ download: {
 		ext: "m4a"
 		type: "audio/x-m4a; codecs=mp4a.40.2"
 		altcmd: "fdkaac"
-		altcmdargs: [ "-m" "5" "-f" "2" "-" "-o" "-" ]
-		args: [ "-f" "ipod" "-codec:a" "copy" "-movflags" "+faststart" ]
+		altcmdargs: <-m 5 -f 2 - -o ->
+		args: <-f ipod -codec:a copy -movflags +faststart>
 		suggestWhen: (isApple(userAgent))
 		availableWhen: (encumbered && config.formats.aacMode == "fdkaac")
 		sizeEstimate: (kbps(192))
@@ -133,8 +133,8 @@ download: {
 		ext: "m4a"
 		type: "audio/x-m4a; codecs=mp4a.40.2"
 		altcmd: "qaac"
-		altcmdargs: [ "--adts" "-q" "1" "-" "-o" "-" ]
-		args: [ "-f" "ipod" "-codec:a" "copy" "-movflags" "+faststart" ]
+		altcmdargs: <--adts -q 1 - -o ->
+		args: <-f ipod -codec:a copy -movflags +faststart>
 		suggestWhen: (isApple(userAgent))
 		availableWhen: (encumbered && config.formats.aacMode == "qaac")
 		sizeEstimate: (kbps(160))
@@ -147,7 +147,7 @@ download: {
 		icon: "mp3.svg"
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
-		args: [ "-f" "mp3" "-id3v2_version" "3" "-codec:a" "libmp3lame" "-q:a" "1" ]
+		args: <-f mp3 -id3v2_version 3 -codec:a libmp3lame -q:a 1>
 		suggestWhen: (true)
 		availableWhen: (mp3)
 		sizeEstimate: (kbps(220))
@@ -162,7 +162,7 @@ download: {
 		icon: "mp3.svg"
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
-		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "320k" ]
+		args: <-f mp3 -codec:a libmp3lame -b:a 320k>
 		suggestWhen: (true)
 		availableWhen: (mp3)
 		sizeEstimate: (kbps(320))
@@ -175,7 +175,7 @@ download: {
 		icon: "wav.svg"
 		ext: "wav"
 		type: "audio/wav"
-		args: [ "-vn" "-f" "wav" ]
+		args: <-vn -f wav>
 		suggestWhen: (false)
 		// uncompressed audio is trivial to create and is a waste of space to cache
 		cache: false
@@ -190,7 +190,7 @@ download: {
 		icon: "wav.svg"
 		ext: "aiff"
 		type: "audio/aiff"
-		args: [ "-vn" "-f" "aiff" ]
+		args: <-vn -f aiff>
 		suggestWhen: (false)
 		cache: false
 		direct: true
@@ -206,7 +206,7 @@ stream: {
 		ytdlPriority: 4
 		ext: "webm"
 		type: "audio/webm; codecs=opus"
-		args: [ "-f" "webm" "-codec:a" "libopus" "-b:a" "72k" ]
+		args: <-f webm -codec:a libopus -b:a 72k>
 		direct: true
 		availableWhen: (true)
 		sizeEstimate: (kbps(72))
@@ -215,7 +215,7 @@ stream: {
 		ytdlPriority: 3
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
-		args: [ "-f" "mp4" "-codec:a" "libfdk_aac" "-b:a" "88k" "-cutoff" "18k" ]
+		args: <-f mp4 -codec:a libfdk_aac -b:a 88k -cutoff 18k>
 		direct: false // MP4 muxer can't stream
 		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg")
 		sizeEstimate: (kbps(88))
@@ -225,8 +225,8 @@ stream: {
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
 		altcmd: "fdkaac"
-		altcmdargs: [ "-b" "88" "-f" "2" "-" "-o" "-" ]
-		args: [ "-f" "mp4" "-codec:a" "copy" ]
+		altcmdargs: <-b 88 -f 2 - -o ->
+		args: <-f mp4 -codec:a copy>
 		direct: false
 		availableWhen: (encumbered && config.formats.aacMode == "fdkaac")
 		sizeEstimate: (kbps(88))
@@ -236,8 +236,8 @@ stream: {
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
 		altcmd: "qaac"
-		altcmdargs: [ "--adts" "-v" "88" "-" "-o" "-" ]
-		args: [ "-f" "mp4" "-codec:a" "copy" ]
+		altcmdargs: <--adts -v 88 - -o ->
+		args: <-f mp4 -codec:a copy>
 		direct: false
 		availableWhen: (encumbered && config.formats.aacMode == "qaac")
 		sizeEstimate: (kbps(88))
@@ -246,7 +246,7 @@ stream: {
 		ytdlPriority: 2
 		ext: "ogg"
 		type: "audio/ogg; codecs=vorbis"
-		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "2" ]
+		args: <-f ogg -codec:a libvorbis -q:a 2>
 		direct: true
 		availableWhen: (true)
 		sizeEstimate: (kbps(96))
@@ -256,7 +256,7 @@ stream: {
 		ext: "mp3"
 		// specifying codecs=mp3 is technically redundant, but makes browsers happy
 		type: "audio/mpeg; codecs=mp3"
-		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "112k" ]
+		args: <-f mp3 -codec:a libmp3lame -b:a 112k>
 		direct: true
 		availableWhen: (true)
 		sizeEstimate: (kbps(112))
@@ -269,7 +269,7 @@ stream_low: {
 		ytdlPriority: 4
 		ext: "webm"
 		type: "audio/webm; codecs=opus"
-		args: [ "-f" "webm" "-codec:a" "libopus" "-b:a" "48k" ]
+		args: <-f webm -codec:a libopus -b:a 48k>
 		direct: true
 		availableWhen: (true)
 		sizeEstimate: (kbps(48))
@@ -278,7 +278,7 @@ stream_low: {
 		ytdlPriority: 2
 		ext: "ogg"
 		type: "audio/ogg; codecs=vorbis"
-		args: [ "-f" "ogg" "-codec:a" "libvorbis" "-q:a" "0" ]
+		args: <-f ogg -codec:a libvorbis -q:a 0>
 		direct: true
 		availableWhen: (true)
 		sizeEstimate: (kbps(64))
@@ -287,7 +287,7 @@ stream_low: {
 		ytdlPriority: 1
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
-		args: [ "-f" "mp3" "-codec:a" "libmp3lame" "-b:a" "96k" ]
+		args: <-f mp3 -codec:a libmp3lame -b:a 96k>
 		direct: true
 		availableWhen: (mp3)
 		sizeEstimate: (kbps(96))
