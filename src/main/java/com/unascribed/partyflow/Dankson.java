@@ -17,6 +17,7 @@ import blue.endless.jankson.JsonObject;
 import blue.endless.jankson.JsonPrimitive;
 import blue.endless.jankson.api.SyntaxError;
 import blue.endless.jankson.impl.ElementParserContext;
+import blue.endless.jankson.impl.ObjectParserContext;
 import blue.endless.jankson.impl.ParserContext;
 import blue.endless.jankson.impl.StringParserContext;
 import blue.endless.jankson.impl.TokenParserContext;
@@ -27,6 +28,8 @@ public class Dankson extends Jankson {
 	
 	private final MethodHandle line, column, spc_builder;
 	
+	private boolean firstObject = false;
+	
 	public Dankson(Builder builder) {
 		super(builder);
 		try {
@@ -36,7 +39,7 @@ public class Dankson extends Jankson {
 			line = lk.findGetter(Jankson.class, "line", int.class);
 			column = lk.findGetter(Jankson.class, "column", int.class);
 			spc_builder = MethodHandles.privateLookupIn(StringParserContext.class, MethodHandles.lookup())
-					.findGetter(StringParserContext.class, "builder", StringBuilder.class);
+				.findGetter(StringParserContext.class, "builder", StringBuilder.class);
 		} catch (Throwable e) {
 			throw new AssertionError(e);
 		}
@@ -45,16 +48,19 @@ public class Dankson extends Jankson {
 	@Override
 	public JsonObject load(File f) throws IOException, SyntaxError {
 		filename = f.getName();
+		firstObject = true;
 		return super.load(f);
 	}
 	
 	public JsonObject load(String filename, InputStream in) throws IOException, SyntaxError {
 		this.filename = filename;
+		firstObject = true;
 		return super.load(in);
 	}
 	
 	public JsonObject load(String filename, String s) throws SyntaxError {
 		this.filename = filename;
+		firstObject = true;
 		return super.load(s);
 	}
 
@@ -68,8 +74,34 @@ public class Dankson extends Jankson {
 			} catch (SyntaxError e) {
 				throw new AssertionError(e);
 			}
+		} else if (t instanceof ObjectParserContext) {
+			t = (ParserContext<T>) new DankObjectParserContext(firstObject);
+			if (firstObject) firstObject = false;
 		}
 		super.push(t, consumer);
+	}
+
+	public class DankObjectParserContext extends ObjectParserContext {
+
+		public DankObjectParserContext(boolean assumeOpen) {
+			super(assumeOpen);
+		}
+
+		@Override
+		public boolean consume(int codePoint, Jankson loader) throws SyntaxError {
+			try {
+				return super.consume(codePoint, loader);
+			} catch (SyntaxError e) {
+				// this is the easiest way to get the ObjectParserContext to expose its internal state
+				// I tried some other solutions that don't involve catching an exception and they were buggy
+				if ("Found unexpected character '{' while looking for the colon (':') between a key and a value in an object".equals(e.getMessage())) {
+					super.consume(':', loader);
+					return super.consume(codePoint, loader);
+				}
+				throw e;
+			}
+		}
+		
 	}
 
 	public class DankElementParserContext extends ElementParserContext {

@@ -120,16 +120,16 @@ public record TranscodeFormat(
 						)));
 		Table<String, String, JexlExpression> defs = HashBasedTable.create();
 		Table<String, String, Map<String, JexlExpression>> mapDefs = HashBasedTable.create();
-		for (var en : obj.getObject("_defs").entrySet()) {
+		for (var en : obj.getObject("@defs").entrySet()) {
 			for (var en2 : ((JsonObject)en.getValue()).entrySet()) {
 				if (en2.getValue() instanceof JsonObject jo) {
 					Map<String, JexlExpression> res = new LinkedHashMap<>();
 					for (var en3 : jo.entrySet()) {
-						res.put(en3.getKey(), createExpr(engine, "_defs."+en.getKey()+"."+en2.getKey()+"."+en3.getKey(), en3.getValue()));
+						res.put(en3.getKey(), createExpr(engine, "@defs."+en.getKey()+"."+en2.getKey()+"."+en3.getKey(), en3.getValue()));
 					}
 					mapDefs.put(en.getKey(), en2.getKey(), res);
 				} else if (en2.getValue() instanceof JsonPrimitive jp) {
-					defs.put(en.getKey(), en2.getKey(), createExpr(engine,  "_defs."+en.getKey()+"."+en2.getKey(), jp));
+					defs.put(en.getKey(), en2.getKey(), createExpr(engine, "@defs."+en.getKey()+"."+en2.getKey(), jp));
 				}
 			}
 		}

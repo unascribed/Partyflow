@@ -6,22 +6,18 @@
  * - omitting the root object braces
  * - comments
  * 
- * Partyflow extends Jankson with two new kinds of elements; shell arrays and nest strings.
- * A nest string, delineated with parentheses () and primarily seen in other files than this
- * one, are generally used for JEXL expressions. They're useful as you don't have to escape quotes
- * or other delimiters inside them; the string's ending is unambiguous.
+ * Partyflow further extends Jankson with these quirks:
+ * - dashes and at-signs in keys
+ * - nest strings () for code without escaping quotes
+ * - shell arrays <> for compactly describing command-line argument arrays
+ * - objects without : delimiters
  * 
- * A shell array, delinated with angle brackets <>, is shorthand for an array of strings that
- * has shell-like splitting semantics. For example, the following two are equivalent:
- * [ "foo" "bar" "baz" "this one has spaces" ]
- * <foo bar baz "this one has spaces">
- * 
- * Together, these new string types make working with Partyflow configuration and data files
+ * Together, these new quirks make working with Partyflow configuration and data files
  * much easier and more intuitive, even if at first they're weird and out-of-place.
  */
 
 // Many of these settings can also be changed in the admin panel.
-http: {
+http {
 	bind: "0.0.0.0"
 	port: 3000
 	path: "/"
@@ -32,19 +28,19 @@ http: {
 	// The absolute public URL this instance is accessible at, excluding the root path
 	publicUrl: "http://localhost:3000"
 }
-logger: {
+logger {
 	// TRACE, DEBUG, INFO, WARN, or ERROR
 	level: "INFO"
 	// true to enable ANSI color support
 	color: true
 }
-database: {
+database {
 	// The only valid option right now is "h2", which is similar to SQLite
 	driver: "h2"
 	// .mv.db suffix is added automatically
 	file: "./partyflow"
 }
-security: {
+security {
 	// Used to secure session cookies. Should be set to something long and random; if null, an
 	// appropriate value will be generated for you.
 	sessionSecret: null
@@ -62,7 +58,7 @@ security: {
 	// so setting this >1 basically just weakens your hashes. Linear; 1 is 1 core, 2 is 2 cores.
 	scryptParallelization: 1
 }
-storage: {
+storage {
 	// The only valid option right now is "fs" - support for S3, Swift, etc, will be added later
 	driver: "fs"
 	dir: "./files"
@@ -71,7 +67,7 @@ storage: {
 	// {} will be replaced with the file path
 	publicUrlPattern: "files/{}"
 }
-programs: {
+programs {
 	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
 	// unshare) is recommended in production. All files will be in /tmp/partyflow/work (or whatever
 	// your platform's default temp directory is)
@@ -89,7 +85,7 @@ programs: {
 	// the number of CPU threads.
 	maxTranscodes: 0
 }
-formats: {
+formats {
 	// Specify the path to a formats.jkson to use custom file formats, or null to use the built-ins.
 	definitions: null
 
