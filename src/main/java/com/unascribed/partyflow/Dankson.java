@@ -19,6 +19,7 @@ import blue.endless.jankson.api.SyntaxError;
 import blue.endless.jankson.impl.ElementParserContext;
 import blue.endless.jankson.impl.ParserContext;
 import blue.endless.jankson.impl.StringParserContext;
+import blue.endless.jankson.impl.TokenParserContext;
 
 public class Dankson extends Jankson {
 
@@ -61,6 +62,12 @@ public class Dankson extends Jankson {
 	public <T> void push(ParserContext<T> t, Consumer<T> consumer) {
 		if (t instanceof ElementParserContext) {
 			t = (ParserContext<T>) new DankElementParserContext();
+		} else if (t instanceof TokenParserContext tpc) {
+			try {
+				t = (ParserContext<T>) new DankTokenParserContext(tpc.getResult().asString().codePointAt(0));
+			} catch (SyntaxError e) {
+				throw new AssertionError(e);
+			}
 		}
 		super.push(t, consumer);
 	}
@@ -78,6 +85,46 @@ public class Dankson extends Jankson {
 				return true;
 			}
 			return super.consume(codePoint, loader);
+		}
+		
+	}
+	
+	public class DankTokenParserContext extends TokenParserContext {
+
+		private final StringBuilder bldr = new StringBuilder();
+		private boolean complete = false;
+		
+		public DankTokenParserContext(int firstCodePoint) {
+			super(firstCodePoint);
+			bldr.appendCodePoint(firstCodePoint);
+		}
+		
+		@Override
+		public boolean consume(int codePoint, Jankson loader) throws SyntaxError {
+			if (complete) return false;
+			
+			if (codePoint == '~' || Character.isUnicodeIdentifierPart(codePoint) || codePoint == '-' || codePoint == '@') {
+				bldr.appendCodePoint(codePoint);
+				return true;
+			} else {
+				complete = true;
+				return false;
+			}
+		}
+
+		@Override
+		public void eof() throws SyntaxError {
+			complete = true;
+		}
+
+		@Override
+		public boolean isComplete() {
+			return complete;
+		}
+
+		@Override
+		public JsonPrimitive getResult() throws SyntaxError {
+			return JsonPrimitive.of(bldr.toString());
 		}
 		
 	}

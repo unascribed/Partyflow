@@ -199,12 +199,10 @@ public record TranscodeFormat(
 				
 				String altcmd = jo.get(String.class, "altcmd");
 				ImmutableList<String> altcmdargs = null;
-				System.out.println(args);
 				if (altcmd != null) {
 					altcmdargs = jo.get(JsonArray.class, "altcmdargs").stream()
 							.map(ele -> ((JsonPrimitive)ele).asString())
 							.collect(ImmutableList.toImmutableList());;
-							System.out.println(altcmdargs);
 				}
 				
 				

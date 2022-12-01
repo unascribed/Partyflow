@@ -45,7 +45,7 @@ _defs: {
 // suggestWhen, availableWhen, sizeEstimate, and replaygain values are all JEXL expressions.
 // https://commons.apache.org/proper/commons-jexl/reference/index.html
 download: {
-	"flac": {
+	flac: {
 		name: "FLAC"
 		description: "The most popular lossless format"
 		ytdlPriority: 99999
@@ -58,7 +58,7 @@ download: {
 		sizeEstimate: (master)
 		replaygain: (generic)
 	}
-	"alac": {
+	alac: {
 		name: "Apple Lossless"
 		description: "iTunes lossless format"
 		ytdlPriority: 99998
@@ -71,7 +71,7 @@ download: {
 		sizeEstimate: (master * 1.02)
 		replaygain: (generic)
 	}
-	"ogg-opus-128": {
+	ogg-opus-128: {
 		name: "Opus"
 		description: "Current best lossy codec - smallest file"
 		ytdlPriority: 1280
@@ -84,7 +84,7 @@ download: {
 		sizeEstimate: (kbps(128))
 		replaygain: (opus)
 	}
-	"ogg-vorbis-192": {
+	ogg-vorbis-192: {
 		name: "Ogg Vorbis"
 		description: "Common free codec"
 		ytdlPriority: 192
@@ -97,7 +97,7 @@ download: {
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
-	"aac-vbr@ffmpeg": {
+	aac-vbr@ffmpeg: {
 		name: "AAC"
 		description: "Common lossy codec on iOS/macOS"
 		ytdlPriority: 128
@@ -110,7 +110,7 @@ download: {
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
-	"aac-vbr@fdkaac": {
+	aac-vbr@fdkaac: {
 		name: "AAC"
 		description: "Common lossy codec on iOS/macOS"
 		ytdlPriority: 128
@@ -125,7 +125,7 @@ download: {
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
-	"aac-vbr@qaac": {
+	aac-vbr@qaac: {
 		name: "AAC"
 		description: "Common lossy codec on iOS/macOS"
 		ytdlPriority: 128
@@ -140,7 +140,7 @@ download: {
 		sizeEstimate: (kbps(160))
 		replaygain: (generic)
 	}
-	"mp3-v1": {
+	mp3-v1: {
 		name: "MP3 V1"
 		description: "Highly compatible variable bitrate, usually the best choice"
 		ytdlPriority: 321
@@ -155,7 +155,7 @@ download: {
 	}
 	// I would make this 256 or so, but "320" is a magic Good Number to some.
 	// people who care should be getting MP3 V1 already
-	"mp3-320": {
+	mp3-320: {
 		name: "MP3 320"
 		description: "Plays just about anywhere, but inefficient"
 		ytdlPriority: 320
@@ -168,7 +168,7 @@ download: {
 		sizeEstimate: (kbps(320))
 		replaygain: (generic)
 	}
-	"wav": {
+	wav: {
 		name: "WAV"
 		description: "Raw WAV data - extremely large. Prefer FLAC."
 		ytdlPriority: 999
@@ -183,7 +183,7 @@ download: {
 		availableWhen: (uncompressed)
 		sizeEstimate: (durationSamples * 2 * 2)
 	}
-	"aiff": {
+	aiff: {
 		name: "AIFF"
 		description: "Raw AIFF data - extremely large. Prefer FLAC."
 		ytdlPriority: 998
@@ -202,7 +202,7 @@ download: {
 // Internal formats used for streaming on release/track pages. Name not used and does not need to be
 // specified.
 stream: {
-	"webm-opus-72": {
+	webm-opus-72: {
 		ytdlPriority: 4
 		ext: "webm"
 		type: "audio/webm; codecs=opus"
@@ -211,7 +211,7 @@ stream: {
 		availableWhen: (true)
 		sizeEstimate: (kbps(72))
 	}
-	"mp4-aac-88@ffmpeg": {
+	mp4-aac-88@ffmpeg: {
 		ytdlPriority: 3
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
@@ -220,7 +220,7 @@ stream: {
 		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg")
 		sizeEstimate: (kbps(88))
 	}
-	"mp4-aac-88@fdkaac": {
+	mp4-aac-88@fdkaac: {
 		ytdlPriority: 3
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
@@ -231,7 +231,7 @@ stream: {
 		availableWhen: (encumbered && config.formats.aacMode == "fdkaac")
 		sizeEstimate: (kbps(88))
 	}
-	"mp4-aac-88@qaac": {
+	mp4-aac-88@qaac: {
 		ytdlPriority: 3
 		ext: "mp4"
 		type: "audio/mp4; codecs=mp4a.40.2"
@@ -242,7 +242,7 @@ stream: {
 		availableWhen: (encumbered && config.formats.aacMode == "qaac")
 		sizeEstimate: (kbps(88))
 	}
-	"ogg-vorbis-96": {
+	ogg-vorbis-96: {
 		ytdlPriority: 2
 		ext: "ogg"
 		type: "audio/ogg; codecs=vorbis"
@@ -251,7 +251,7 @@ stream: {
 		availableWhen: (true)
 		sizeEstimate: (kbps(96))
 	}
-	"mp3-112": {
+	mp3-112: {
 		ytdlPriority: 1
 		ext: "mp3"
 		// specifying codecs=mp3 is technically redundant, but makes browsers happy
@@ -265,7 +265,7 @@ stream: {
 
 // Extra-low-quality stream formats that can be enabled at the discretion of the server admin.
 stream_low: {
-	"webm-opus-48": {
+	webm-opus-48: {
 		ytdlPriority: 4
 		ext: "webm"
 		type: "audio/webm; codecs=opus"
@@ -274,7 +274,7 @@ stream_low: {
 		availableWhen: (true)
 		sizeEstimate: (kbps(48))
 	}
-	"ogg-vorbis-64": {
+	ogg-vorbis-64: {
 		ytdlPriority: 2
 		ext: "ogg"
 		type: "audio/ogg; codecs=vorbis"
@@ -283,7 +283,7 @@ stream_low: {
 		availableWhen: (true)
 		sizeEstimate: (kbps(64))
 	}
-	"mp3-96": {
+	mp3-96: {
 		ytdlPriority: 1
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
@@ -294,3 +294,6 @@ stream_low: {
 	}
 }
 
+// kate: hl c
+// vi: set ft=c
+// -*- mode: c -*-

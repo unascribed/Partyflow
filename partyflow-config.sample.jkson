@@ -1,3 +1,25 @@
+/*
+ * Welcome to Partyflow! This is a Jankson file... sort of. Jankson is a modification of JSON
+ * that allows "quirks", such as:
+ * - unquoted keys (when unambiguous)
+ * - omitting commas
+ * - omitting the root object braces
+ * - comments
+ * 
+ * Partyflow extends Jankson with two new kinds of elements; shell arrays and nest strings.
+ * A nest string, delineated with parentheses () and primarily seen in other files than this
+ * one, are generally used for JEXL expressions. They're useful as you don't have to escape quotes
+ * or other delimiters inside them; the string's ending is unambiguous.
+ * 
+ * A shell array, delinated with angle brackets <>, is shorthand for an array of strings that
+ * has shell-like splitting semantics. For example, the following two are equivalent:
+ * [ "foo" "bar" "baz" "this one has spaces" ]
+ * <foo bar baz "this one has spaces">
+ * 
+ * Together, these new string types make working with Partyflow configuration and data files
+ * much easier and more intuitive, even if at first they're weird and out-of-place.
+ */
+
 // Many of these settings can also be changed in the admin panel.
 http: {
 	bind: "0.0.0.0"
@@ -102,3 +124,7 @@ formats: {
 	// installation. https://git.sleeping.town/unascribed/Partyflow/wiki/qaac-Installation
 	qaac: <env WINEPREFIX=/opt/qaac wine /opt/qaac/x86/qaac.exe>
 }
+
+// kate: hl c
+// vi: set ft=c
+// -*- mode: c -*-
