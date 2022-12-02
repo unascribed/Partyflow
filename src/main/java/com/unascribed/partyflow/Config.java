@@ -19,6 +19,8 @@
 
 package com.unascribed.partyflow;
 
+import java.util.Map;
+
 import com.unascribed.asyncsimplelog.AsyncSimpleLog.LogLevel;
 
 public final class Config {
@@ -72,6 +74,8 @@ public final class Config {
 		public String[] ffmpeg;
 		public String[] magickConvert;
 		public int maxTranscodes;
+		
+		public Map<String, String[]> altcmds;
 	}
 
 	public FormatsSection formats;
@@ -84,9 +88,6 @@ public final class Config {
 		public boolean allowEncumberedFormats;
 		
 		public String aacMode;
-		
-		public String[] fdkaac;
-		public String[] qaac;
 	}
 
 }

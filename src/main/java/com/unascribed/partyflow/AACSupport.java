@@ -1,3 +1,22 @@
+/*
+ * This file is part of Partyflow.
+ *
+ * Partyflow is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * Partyflow is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public
+ * License along with Partyflow.
+ *
+ * If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package com.unascribed.partyflow;
 
 import java.io.IOException;
@@ -18,7 +37,7 @@ public class AACSupport {
 				testAltcmd(0, "qaac", "--check");
 			} else if ("fdkaac".equals(Partyflow.config.formats.aacMode)) {
 				testAltcmd(1, "fdkaac", "--help");
-			} else if ("ffmpeg".equals(Partyflow.config.formats.aacMode)) {
+			} else if ("ffmpeg-fdk".equals(Partyflow.config.formats.aacMode)) {
 				try {
 					var ffm = Commands.ffmpeg("-encoders")
 							.redirectErrorStream(true)
@@ -34,8 +53,10 @@ public class AACSupport {
 				} catch (IOException e) {
 					log.warn("FFmpeg seems to be broken, couldn't execute it to test for libfdk_aac support", e);
 				}
-			} else {
+			} else if ("none".equals(Partyflow.config.formats.aacMode)) {
 				log.info("AAC support is disabled");
+			} else {
+				log.info("Unknown AAC support mode {} - this will only work if you've modified the format definitions", Partyflow.config.formats.aacMode);
 			}
 		});
 	}

@@ -15,6 +15,8 @@ repositories {
 sourceCompatibility = 17
 targetCompatibility = 17
 
+archivesBaseName = 'Partyflow'
+
 dependencies {
 	implementation('org.eclipse.jetty:jetty-server:11.0.11') {
 		exclude group: 'org.slf4j'
@@ -37,10 +39,29 @@ dependencies {
 	implementation 'org.apache.commons:commons-jexl3:3.2.1'
 }
 
-license {
-	matching('**/org/slf4j/impl/**') {
-		header = file('headers/asyncsimplelog.txt')
+jar {
+	sourceSets.main.runtimeClasspath.each {
+		if (it.isFile()) {
+			from(zipTree(it)) {
+				exclude 'META-INF/NOTICE*'
+				exclude 'META-INF/CHANGES'
+				exclude 'META-INF/DEPENDENCIES'
+				exclude 'META-INF/README*'
+				exclude 'META-INF/LICENSE*'
+				exclude 'META-INF/mailcap.default'
+				exclude '/module-info.class'
+			}
+		}
 	}
+	from 'LICENSE'
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+	
+	manifest.attributes (
+		'Main-Class': 'com.unascribed.partyflow.Partyflow'
+	)
+}
+
+license {
 	matching('**/com/unascribed/random/**') {
 		header = file('headers/cc0.txt')
 	}
@@ -49,6 +70,9 @@ license {
 	}
 	matching('**/com/overzealous/**') {
 		header = file('headers/remark.txt')
+	}
+	matching('**/blue/endless/jankson/**') {
+		header = file('headers/jankson.txt')
 	}
 	header = file('headers/partyflow.txt')
 	

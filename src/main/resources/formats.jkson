@@ -119,7 +119,7 @@ download {
 		type: "audio/x-m4a; codecs=mp4a.40.2"
 		args: <-f ipod '-codec:a libfdk_aac' -vbr:a 5 -movflags +faststart>
 		suggestWhen: (isApple(userAgent))
-		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg")
+		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg-fdk")
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
@@ -234,7 +234,7 @@ stream {
 		type: "audio/mp4; codecs=mp4a.40.2"
 		args: <-f mp4 -codec:a libfdk_aac -b:a 88k -cutoff 18k>
 		direct: false // MP4 muxer can't stream
-		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg")
+		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg-fdk")
 		sizeEstimate: (kbps(88))
 	}
 	mp4-aac-88@fdkaac {

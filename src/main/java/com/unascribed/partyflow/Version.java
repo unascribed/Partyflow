@@ -23,8 +23,8 @@ public class Version {
 
 	// almost semver
 	public static final int MAJOR = 0;
-	public static final int MINOR = 0;
-	public static final int PATCH = 1;
+	public static final int MINOR = 1;
+	public static final int PATCH = 0;
 	public static final String APPENDIX = "";
 	public static final String BUILD = "";
 

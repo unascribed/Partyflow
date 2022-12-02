@@ -42,7 +42,7 @@ database {
 }
 security {
 	// Used to secure session cookies. Should be set to something long and random; if null, an
-	// appropriate value will be generated for you.
+	// appropriate value will be generated for you on run and stored in this file.
 	sessionSecret: null
 	// If true, some additional protections will be activated that rely on the site being served
 	// over HTTPS. (This has to be done at a reverse proxy; Partyflow itself does not support SSL.)
@@ -68,9 +68,8 @@ storage {
 	publicUrlPattern: "files/{}"
 }
 programs {
-	// Separate command arguments must be separate strings. Using some form of sandboxing (e.g.
-	// unshare) is recommended in production. All files will be in /tmp/partyflow/work (or whatever
-	// your platform's default temp directory is)
+	// Using some form of sandboxing (e.g. unshare) is recommended in production. All files will be
+	// in /tmp/partyflow/work (or whatever your platform's default temp directory is)
 	
 	// Used to process audio.
 	// {} will be replaced with "mpeg" or "probe" depending on which program is needed.
@@ -84,6 +83,23 @@ programs {
 	// The maximum number of FFmpeg processes that will be run simultaneously. If set to 0, uses
 	// the number of CPU threads.
 	maxTranscodes: 0
+	
+	altcmds: {
+		// altcmds must accept WAV data from stdin and output audio in a format FFmpeg can understand
+		// to stdout. These are used to support codecs that FFmpeg doesn't have good support for.
+		
+		
+		
+		// AAC encoders - not required for Partyflow to work. See "aacMode" in formats below
+		// for more info.
+		
+		// Available in many distros. Just install it. You may need to enable a "contrib" repository,
+		// as FDK-AAC is open source but not free software.
+		fdkaac: <fdkaac>
+		// qaac requires proprietary non-redistributable Apple components, and as such, requires special
+		// installation. https://git.sleeping.town/unascribed/Partyflow/wiki/qaac-Installation
+		qaac: <env WINEPREFIX=/opt/qaac wine /opt/qaac/x86/qaac.exe>
+	}
 }
 formats {
 	// Specify the path to a formats.jkson to use custom file formats, or null to use the built-ins.
@@ -110,17 +126,10 @@ formats {
 	
 	// Possible values:
 	// - none: Do not offer AAC (recommended)
-	// - ffmpeg: Use libfdk_aac in ffmpeg (requires a custom build)
 	// - fdkaac: Use the fdkaac command-line tool (easiest)
 	// - qaac: Use qaac with Apple's CoreAudio in Wine (hardest, best quality)
+	// - ffmpeg-fdk: Use libfdk_aac in ffmpeg (requires a custom build)
 	aacMode: "none"
-	
-	// Available in many distros. Just install it. You may need to enable a "contrib" repository,
-	// as FDK-AAC is open source but not free software.
-	fdkaac: <fdkaac>
-	// qaac requires proprietary non-redistributable Apple components, and as such, requires special
-	// installation. https://git.sleeping.town/unascribed/Partyflow/wiki/qaac-Installation
-	qaac: <env WINEPREFIX=/opt/qaac wine /opt/qaac/x86/qaac.exe>
 }
 
 // kate: hl c
