@@ -1,5 +1,5 @@
 "use strict";
-if (!window.crypto) {
+if (!window.crypto || !window.crypto.subtle) {
 	document.getElementById("no-crypto-warning").style.display = 'block';
 } else {
 	// WHY CAN'T I JUST DO toString(16)

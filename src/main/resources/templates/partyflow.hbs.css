@@ -13,7 +13,7 @@ body {
 	padding-bottom: 112px;
 	font-family: sans-serif;
 }
-a:link, a:link:visited {
+a:link, a:visited {
 	color: #00B0FF;
 }
 
@@ -200,7 +200,7 @@ button.subdued:hover, button.subdued:focus {
 }
 button.disabled {
 	opacity: 0.5;
-	cursor: not-allowed !important:
+	cursor: not-allowed !important;
 }
 
 button:not([class^='ql-']) img {
@@ -545,10 +545,11 @@ button.player-control {
 .volicon path {
 	transition: opacity 0.4s;
 }
-.volicon.high .muted,
-.volicon.medium .vol2, .volicon.medium .muted,
-.volicon.low .vol2, .volicon.low .vol1, .volicon.low .muted,
-.volicon.muted .vol2, .volicon.muted .vol1 {
+.volicon.danger .muted, .volicon.danger .vol2,
+.volicon.high .muted, .volicon.high .danger,
+.volicon.medium .vol2, .volicon.medium .muted, .volicon.medium .danger,
+.volicon.low .vol2, .volicon.low .vol1, .volicon.low .muted, .volicon.low .danger,
+.volicon.muted .vol2, .volicon.muted .vol1, .volicon.muted .danger {
 	opacity: 0;
 }
 
@@ -718,6 +719,35 @@ button.player-control {
 	background-color: #BBDEFB;
 	border-color: #64B5F6;
 }
+
+.formats .format {
+	position: relative;
+	transition: filter 0.4s;
+}
+.formats .format:before {
+	content: "";
+	filter: invert(100%);
+	position: absolute;
+	top: -4px; left: 0; right: 0; bottom: -4px;
+	background-image: url({{root}}static/download.svg), url({{root}}static/lossy.png);
+	background-repeat: no-repeat;
+	background-size: 128px 128px, contain;
+	background-position: 107% 35%, left center;
+	opacity: 0.1;
+}
+.formats .format.lossless:before {
+	background-image: url({{root}}static/download.svg), url({{root}}static/lossless.png);
+}
+.formats .format.uncompressed:before {
+	background-image: url({{root}}static/download.svg), url({{root}}static/uncompressed.png);
+}
+.formats .format:hover, .formats .format:focus {
+	filter: brightness(115%);
+}
+.formats .format:active {
+	filter: brightness(125%);
+}
+
 #tracks {
 	max-width: 512px;
 }

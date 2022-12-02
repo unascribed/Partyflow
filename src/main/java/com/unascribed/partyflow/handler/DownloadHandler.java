@@ -126,6 +126,7 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 				String icon = tf.icon();
 				String mimetype = tf.mimeType();
 				String size = formatBytes((long)tf.estimateSize(_duration, masterSize));
+				String clazz = tf.uncompressed() ? " uncompressed" : tf.lossless() ? " lossless" : "";
 			};
 			MustacheHandler.serveTemplate(req, res, "download.hbs.html", new Object() {
 				String title = _title;

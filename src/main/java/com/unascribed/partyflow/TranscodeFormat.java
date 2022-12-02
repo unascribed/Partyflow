@@ -56,7 +56,7 @@ public record TranscodeFormat(
 		String name, Usage usage, String displayName, String description, String icon, int ytdlPriority,
 		String fileExtension, String mimeType, ImmutableList<String> args,
 		String altcmd, ImmutableList<String> altcmdargs,
-		BooleanSupplier availableWhen, Predicate<UserData> suggestWhen, boolean direct, boolean cache,
+		BooleanSupplier availableWhen, Predicate<UserData> suggestWhen, boolean direct, boolean cache, boolean lossless, boolean uncompressed,
 		ToDoubleFunction<TrackData> sizeEstimator,
 		ImmutableMap<String, Function<ReplayGainData, String>> replaygain,
 		ImmutableList<Shortcut> shortcuts
@@ -204,9 +204,11 @@ public record TranscodeFormat(
 							.map(ele -> ((JsonPrimitive)ele).asString())
 							.collect(ImmutableList.toImmutableList());;
 				}
+
+				boolean lossless = jo.getBoolean("lossless", false);
+				boolean uncompressed = jo.getBoolean("uncompressed", false);
 				
-				
-				out.add(new TranscodeFormat(name, usage, displayName, description, icon, ytdlPriority, ext, type, args, altcmd, altcmdargs, availableWhen, suggestWhen, direct, cache, sizeEstimate, replaygain, ImmutableList.of()));
+				out.add(new TranscodeFormat(name, usage, displayName, description, icon, ytdlPriority, ext, type, args, altcmd, altcmdargs, availableWhen, suggestWhen, direct, cache, lossless, uncompressed, sizeEstimate, replaygain, ImmutableList.of()));
 			}
 		}
 		formats = out.build();
@@ -264,6 +266,7 @@ public record TranscodeFormat(
 				String name = tf.publicName();
 				String mimetype = tf.mimeType();
 				String ytdl_label = "$$ytdl-hack-"+tf.ytdlPriority()+"kbps_"+tf.publicName();
+				boolean lossless = tf.lossless();
 			};
 		});
 	}

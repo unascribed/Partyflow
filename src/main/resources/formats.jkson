@@ -1,3 +1,14 @@
+/*
+ * This is the Partyflow formats definition file. Everything related to the
+ * formats offered for download and streaming is all laid bare here.
+ *
+ * Overriding this file is an ADVANCED FEATURE and should be USED WITH CAUTION.
+ * 
+ * WARNING: There are many places in Partyflow documentation and strings that
+ * assume the default formats. Making large changes here will result in those
+ * becoming incorrect, and may result in the laws of reality breaking down.
+ */
+
 @defs {
 	replaygain {
 		formatRGGain: ((i) -> {string:format('%.2f dB', (-18 - i))})
@@ -19,7 +30,7 @@
 		}
 	}
 	suggestWhen {
-		isApple: ((s) -> { s.contains('Macintosh') || s.contains('iPhone') })
+		isApple: ((s) -> { s.contains('Macintosh') || s.contains('iPhone') || s.contains('iPad') })
 		isAndroid: ((s) -> { !isWindows(s) && s.contains('Android') })
 		isLinux: ((s) -> { !isAndroid(s) && s.contains('Linux') })
 		isWindows: ((s) -> { s.contains('Windows') })
@@ -53,6 +64,7 @@ download {
 		ext: "flac"
 		type: "audio/flac"
 		args: <-f flac -codec:a flac>
+		lossless: true
 		suggestWhen: (true)
 		availableWhen: (lossless)
 		sizeEstimate: (master)
@@ -60,12 +72,13 @@ download {
 	}
 	alac {
 		name: "Apple Lossless"
-		description: "iTunes lossless format"
+		description: "Apple iTunes lossless format"
 		ytdlPriority: 99998
 		icon: "alac.svg"
 		ext: "m4a"
 		type: "audio/x-m4a; codecs=alac"
 		args: <-f ipod -codec:a alac -movflags +faststart>
+		lossless: true
 		suggestWhen: (isApple(userAgent))
 		availableWhen: (lossless)
 		sizeEstimate: (master * 1.02)
@@ -73,7 +86,7 @@ download {
 	}
 	ogg-opus-128 {
 		name: "Opus"
-		description: "Current best lossy codec - smallest file"
+		description: "Most efficient format, needs recent players/OS"
 		ytdlPriority: 1280
 		icon: "opus.svg"
 		ext: "opus"
@@ -86,7 +99,7 @@ download {
 	}
 	ogg-vorbis-192 {
 		name: "Ogg Vorbis"
-		description: "Common free codec"
+		description: "Common free format on Android/Linux"
 		ytdlPriority: 192
 		icon: "vorbis.svg"
 		ext: "ogg"
@@ -99,7 +112,7 @@ download {
 	}
 	aac-vbr@ffmpeg {
 		name: "AAC"
-		description: "Common lossy codec on iOS/macOS"
+		description: "Common format on iOS/macOS"
 		ytdlPriority: 128
 		icon: "aac.svg"
 		ext: "m4a"
@@ -112,7 +125,7 @@ download {
 	}
 	aac-vbr@fdkaac {
 		name: "AAC"
-		description: "Common lossy codec on iOS/macOS"
+		description: "Common format on iOS/macOS"
 		ytdlPriority: 128
 		icon: "aac.svg"
 		ext: "m4a"
@@ -127,7 +140,7 @@ download {
 	}
 	aac-vbr@qaac {
 		name: "AAC"
-		description: "Common lossy codec on iOS/macOS"
+		description: "Common format on iOS/macOS"
 		ytdlPriority: 128
 		icon: "aac.svg"
 		ext: "m4a"
@@ -142,7 +155,7 @@ download {
 	}
 	mp3-v1 {
 		name: "MP3 V1"
-		description: "Highly compatible variable bitrate, usually the best choice"
+		description: "Highly compatible and fairly efficient"
 		ytdlPriority: 321
 		icon: "mp3.svg"
 		ext: "mp3"
@@ -170,12 +183,14 @@ download {
 	}
 	wav {
 		name: "WAV"
-		description: "Raw WAV data - extremely large. Prefer FLAC."
+		description: "Standard raw audio data - very large, prefer FLAC"
 		ytdlPriority: 999
 		icon: "wav.svg"
 		ext: "wav"
 		type: "audio/wav"
 		args: <-vn -f wav>
+		lossless: true
+		uncompressed: true
 		suggestWhen: (false)
 		// uncompressed audio is trivial to create and is a waste of space to cache
 		cache: false
@@ -185,12 +200,14 @@ download {
 	}
 	aiff {
 		name: "AIFF"
-		description: "Raw AIFF data - extremely large. Prefer FLAC."
+		description: "Alternative raw audio data - very large, prefer FLAC"
 		ytdlPriority: 998
 		icon: "wav.svg"
 		ext: "aiff"
 		type: "audio/aiff"
 		args: <-vn -f aiff>
+		lossless: true
+		uncompressed: true
 		suggestWhen: (false)
 		cache: false
 		direct: true

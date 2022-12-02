@@ -41,7 +41,6 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import com.google.common.base.Splitter.MapSplitter;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.google.common.net.UrlEscapers;
@@ -120,7 +119,7 @@ public class SimpleHandler {
 	private static final MultipartConfigElement MP_CFG = new MultipartConfigElement(TEMP_DIR.getAbsolutePath(),
 			512L*M, 2*G, 2*M);
 
-	private static final MapSplitter URLENCODED_SPLITTER = Splitter.on('&').withKeyValueSeparator('=');
+	private static final Splitter URLENCODED_SPLITTER = Splitter.on('&');
 
 	public interface Any {
 		/**
@@ -291,10 +290,19 @@ public class SimpleHandler {
 
 	protected static Map<String, String> parseUrlEncoded(String str) {
 		try {
-			Map<String, String> params = URLENCODED_SPLITTER.split(str);
-			Map<String, String> decodedParams = Maps.newHashMapWithExpectedSize(params.size());
-			for (Map.Entry<String, String> en : params.entrySet()) {
-				decodedParams.put(URLDecoder.decode(en.getKey(), "UTF-8"), URLDecoder.decode(en.getValue(), "UTF-8"));
+			Iterable<String> params = URLENCODED_SPLITTER.split(str);
+			Map<String, String> decodedParams = Maps.newHashMap();
+			for (String s : params) {
+				int eq = s.indexOf('=');
+				String k, v;
+				if (eq != -1) {
+					k = s.substring(0, eq);
+					v = s.substring(eq+1);
+				} else {
+					k = s;
+					v = "";
+				}
+				decodedParams.put(URLDecoder.decode(k, "UTF-8"), URLDecoder.decode(v, "UTF-8"));
 			}
 		return decodedParams;
 		} catch (UnsupportedEncodingException e) {

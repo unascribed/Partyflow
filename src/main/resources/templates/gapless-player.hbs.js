@@ -77,11 +77,15 @@
 	const loudness = Number(data.loudness);
 	const relativeLoudness = REFERENCE_LEVEL-loudness;
 	console.info("Album gain: "+relativeLoudness.toFixed(2)+" ("+REFERENCE_LEVEL+"dB reference level)");
-	const rgPercent = Math.pow(10, relativeLoudness/10)
+	let rgPercent = Math.pow(10, relativeLoudness/10)
+	if (!AudioContext && rgPercent > 1) {
+		rgPercent = 1;
+		console.warn("Can't make audio louder than 100% without Web Audio API, ignoring gain.");
+	}
 
 	function rg() {
 		if (localStorage.getItem("replaygain") === "off") return 1;
-		return rgPercent > 1 ? 1 : rgPercent;
+		return rgPercent;
 	}
 
 	const formats = JSON.parse(data.formats);
@@ -110,8 +114,29 @@
 			ele.querySelector(".track-duration").textContent = formatTime(track.length);
 		}
 	});
+	let maxVolume = 1;
 	const audio = new Audio();
-	audio.volume = Number(localStorage.getItem("volume") || 1) * rg();
+	
+	let setVolume = (v) => {
+		if (v > 1) v = 1;
+		audio.volume = v;
+	};
+	let getVolume = () => audio.volume;
+	
+	if (AudioContext) {
+		maxVolume = 1.5;
+		const ctx = new AudioContext();
+		const src = ctx.createMediaElementSource(audio);
+		const gain = ctx.createGain();
+		src.connect(gain).connect(ctx.destination);
+		setVolume = (v) => {
+			gain.gain.value = v;
+			audio.dispatchEvent(new CustomEvent("volumechange"));
+		};
+		getVolume = () => gain.gain.value;
+	}
+	
+	setVolume(Number(localStorage.getItem("volume") || 1) * rg());
 	let selectedFormat = null;
 	for (let i = 0; i < formats.length; i++) {
 		const fmt = formats[i];
@@ -120,8 +145,8 @@
 			try {
 				await new Promise((resolve, reject) => {
 					const audio = new Audio();
-					// do decode testing with a track rather than the gapless file, as it's faster
-					audio.src = "{{root}}transcode/track/"+firstTrack.slug+"?format="+fmt.name;
+					// __testtrack is one second of silence
+					audio.src = "{{root}}transcode/track/__testtrack?format="+fmt.name;
 					audio.addEventListener("canplay", () => {
 						resolve(audio);
 					});
@@ -197,7 +222,10 @@
 		let p = y/bcr.height;
 		if (p < 0) p = 0;
 		if (p > 1) p = 1;
-		audio.volume = (1-p)*rg();
+		p = 1-p;
+		p *= maxVolume;
+		if (maxVolume > 1 && Math.abs(p-1) < 0.05) p = 1; // snap to 100%
+		setVolume(p*rg());
 	}
 	trackName.textContent = currentTrack.title;
 	window.addEventListener("mouseup", (e) => {
@@ -226,11 +254,11 @@
 		if (mouseDownInVolbar) dragVolbar(e.clientY);
 	});
 	voldrop.addEventListener("click", (e) => {
-		if (audio.volume === 0) {
-			audio.volume = storedVolume;
+		if (getVolume() === 0) {
+			setVolume(storedVolume);
 		} else {
-			storedVolume = audio.volume;
-			audio.volume = 0;
+			storedVolume = getVolume();
+			setVolume(0);
 		}
 	});
 	voldropContents.addEventListener("click", (e) => {
@@ -252,12 +280,12 @@
 			replaygain.classList.remove("replaygain-off");
 			replaygain.classList.add("replaygain");
 			localStorage.setItem("replaygain", "on");
-			audio.volume *= rgPercent;
+			setVolume(getVolume() * rgPercent);
 		} else {
 			replaygain.classList.remove("replaygain");
 			replaygain.classList.add("replaygain-off");
 			localStorage.setItem("replaygain", "off");
-			audio.volume /= rgPercent;
+			setVolume(getVolume() / rgPercent);
 		}
 	});
 	updateSkipState();
@@ -344,15 +372,18 @@
 		updateBuffered();
 	}
 	function updateVolume() {
-		let v = audio.volume/rg();
+		let v = getVolume()/rg();
 		let clazz = "high";
-		if (v <= 0)  {
+		if (v < 0.01)  {
 			clazz = "muted";
 		} else if (v <= 1/3) {
 			clazz = "low";
 		} else if (v <= 2/3) {
 			clazz = "medium";
+		} else if (v > 1.2) {
+			clazz = "danger";
 		}
+		volicon.classList.remove("danger");
 		volicon.classList.remove("high");
 		volicon.classList.remove("medium");
 		volicon.classList.remove("low");
@@ -363,7 +394,7 @@
 			suffix = "";
 		}
 		voldrop.title = "Volume: "+Math.floor(v*100)+"%"+suffix;
-		volbarPosition.style.width = (v*100)+"%";
+		volbarPosition.style.width = ((v/maxVolume)*100)+"%";
 		localStorage.setItem("volume", String(v));
 	}
 	audio.addEventListener("progress", updateBuffered);

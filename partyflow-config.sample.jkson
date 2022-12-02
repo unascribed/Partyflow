@@ -87,6 +87,8 @@ programs {
 }
 formats {
 	// Specify the path to a formats.jkson to use custom file formats, or null to use the built-ins.
+	// This is an advanced feature and should be used with caution. You can obtain the built-in file
+	// at https://git.sleeping.town/unascribed/Partyflow/src/branch/trunk/src/main/resources/formats.jkson
 	definitions: null
 
 	// If true, uncompressed formats such as WAV and AIFF will be offered. These are a waste of
@@ -97,13 +99,13 @@ formats {
 	// If true, lossless formats such as ALAC and FLAC will be offered.
 	allowLosslessFormats: true
 	// If true, MP3 downloads will be offered.
-	// Does not affect streaming formats; 128kbps MP3 will always be offered.
+	// Does not affect streaming formats; 112kbps MP3 will always be offered.
 	allowMP3: true
 	// If true, proprietary patent-encumbered formats such as AAC will be offered.
 	// This option can be DANGEROUS and if you're sufficiently large may result in the MPEG-LA trying
 	// to seek rent from you for daring to use their bad formats. Only turn on if you really need
-	// it and are willing to accept this risk. Note that your FFmpeg must be built with libfdk_aac
-	// support; the native aac encoder is very low quality and therefore unsupported by Partyflow.
+	// it and are willing to accept this risk. See below for supported AAC encoders - the AAC encoder
+	// built-in to FFmpeg is unacceptable quality and not supported.
 	allowEncumberedFormats: false
 	
 	// Possible values:

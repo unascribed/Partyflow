@@ -61,7 +61,7 @@ CREATE TABLE `transcodes` (
 	`format`          VARCHAR(255) NOT NULL,
 	`file`            VARCHAR(255) NOT NULL,
 	`track_id`        BIGINT,
-	`release_id`      BIGINT NOT NULL,
+	`release_id`      BIGINT,
 	`created_at`      TIMESTAMP NOT NULL,
 	`last_downloaded` TIMESTAMP NOT NULL
 );

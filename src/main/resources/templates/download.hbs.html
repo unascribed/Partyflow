@@ -17,7 +17,7 @@
 			Based on your platform and common use, we suggest the following formats:
 			<div class="formats recommended">
 				{{#suggested_formats}}
-				<a class="format" href="{{download_url}}?format={{name}}" style="background-image: url({{root}}static/{{icon}})">
+				<a class="format{{clazz}}" href="{{download_url}}?format={{name}}" style="background-image: url({{root}}static/{{icon}})">
 					<span class="name">{{display_name}}</span>
 					<span class="size">~{{{size}}}</span>
 					<span class="desc">{{description}}</span>
@@ -29,7 +29,7 @@
 			quality.
 			<div class="formats">
 				{{#other_formats}}
-				<a class="format" href="{{download_url}}?format={{name}}" style="background-image: url({{root}}static/{{icon}})">
+				<a class="format{{clazz}}" href="{{download_url}}?format={{name}}" style="background-image: url({{root}}static/{{icon}})">
 					<span class="name">{{display_name}}</span>
 					<span class="size">~{{{size}}}</span>
 					<span class="desc">{{description}}</span>
