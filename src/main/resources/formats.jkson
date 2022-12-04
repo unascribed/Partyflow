@@ -115,7 +115,7 @@ download {
 		sizeEstimate: (kbps(160))
 		replaygain: (generic)
 	}
-	aac-vbr@ffmpeg {
+	aac-192@ffmpeg {
 		name: "AAC"
 		subtitle: "~192kbps"
 		description: "Common format on iOS/macOS"
@@ -129,7 +129,7 @@ download {
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
-	aac-vbr@fdkaac {
+	aac-192@fdkaac {
 		name: "AAC"
 		subtitle: "~192kbps"
 		description: "Common format on iOS/macOS"
@@ -145,7 +145,7 @@ download {
 		sizeEstimate: (kbps(192))
 		replaygain: (generic)
 	}
-	aac-vbr@qaac {
+	aac-160@qaac {
 		name: "AAC"
 		subtitle: "~160kbps"
 		description: "Common format on iOS/macOS"
@@ -162,8 +162,12 @@ download {
 		replaygain: (generic)
 	}
 	mp3-v1 {
-		name: "MP3"
-		subtitle: "V1 (~220kbps)"
+		// Saying V0 here is TECHNICALLY LYING, but "MP3 V0" has become the term
+		// for VBR MP3 and therefore is what people expect to see. V0 is way
+		// higher quality than necessary. Someone who cares about this will
+		// notice 220kbps and go "hmm wait a second"
+		name: "MP3 V0"
+		subtitle: "~220kbps"
 		description: "Highly compatible and fairly efficient"
 		ytdlPriority: 321
 		icon: "mp3.svg"
