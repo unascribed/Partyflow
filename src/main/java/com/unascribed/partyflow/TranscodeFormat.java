@@ -109,7 +109,7 @@ public record TranscodeFormat(
 
 	public record Shortcut(TranscodeFormat source, ImmutableList<String> args) {}
 	
-	public static void load(JsonObject obj) {
+	public static void load(JsonObject obj, JsonObject addn) {
 		var engine = new Engine(new JexlBuilder()
 				.strict(true)
 				.namespaces(Map.of(
@@ -120,6 +120,24 @@ public record TranscodeFormat(
 						)));
 		Table<String, String, JexlExpression> defs = HashBasedTable.create();
 		Table<String, String, Map<String, JexlExpression>> mapDefs = HashBasedTable.create();
+		scanDefs(obj, engine, defs, mapDefs);
+		if (addn != null) scanDefs(addn, engine, defs, mapDefs);
+		var availableWhenCtx = new MapContext(new HashMap<>(defs.row("availableWhen")));
+		availableWhenCtx.set("config", Partyflow.config);
+		ImmutableList.Builder<TranscodeFormat> out = ImmutableList.builder();
+		scanFormats(obj, engine, defs, mapDefs, availableWhenCtx, out);
+		if (addn != null) scanFormats(addn, engine, defs, mapDefs, availableWhenCtx, out);
+		formats = out.build();
+		var formatsByPublicNameBldr = ImmutableMultimap.<String, TranscodeFormat>builder();
+		formats.stream()
+			.map(tf -> Map.entry(tf.publicName(), tf))
+			.forEach(formatsByPublicNameBldr::put);
+		formatsByPublicName = formatsByPublicNameBldr.build();
+		formatsByName = TranscodeFormat.formats.stream().collect(ImmutableMap.toImmutableMap(TranscodeFormat::name, f -> f));
+	}
+	
+	private static void scanDefs(JsonObject obj, Engine engine, Table<String, String, JexlExpression> defs, Table<String, String, Map<String, JexlExpression>> mapDefs) {
+		if (obj.getObject("@defs") == null) return;
 		for (var en : obj.getObject("@defs").entrySet()) {
 			for (var en2 : ((JsonObject)en.getValue()).entrySet()) {
 				if (en2.getValue() instanceof JsonObject jo) {
@@ -133,11 +151,13 @@ public record TranscodeFormat(
 				}
 			}
 		}
-		var availableWhenCtx = new MapContext(new HashMap<>(defs.row("availableWhen")));
-		availableWhenCtx.set("config", Partyflow.config);
-		ImmutableList.Builder<TranscodeFormat> out = ImmutableList.builder();
+	}
+	
+	private static void scanFormats(JsonObject obj, Engine engine, Table<String, String, JexlExpression> defs, Table<String, String, Map<String, JexlExpression>> mapDefs, MapContext availableWhenCtx, ImmutableList.Builder<TranscodeFormat> out) {
 		for (Usage usage : Usage.values()) {
-			for (var en : obj.getObject(usage.name().toLowerCase(Locale.ROOT)).entrySet()) {
+			var child = obj.getObject(usage.name().toLowerCase(Locale.ROOT));
+			if (child == null) continue;
+			for (var en : child.entrySet()) {
 				JsonObject jo = (JsonObject)en.getValue();
 				String name = en.getKey();
 				String displayName = jo.get(String.class, "name");
@@ -212,13 +232,6 @@ public record TranscodeFormat(
 				out.add(new TranscodeFormat(name, subtitle, usage, displayName, description, icon, ytdlPriority, ext, type, args, altcmd, altcmdargs, availableWhen, suggestWhen, direct, cache, lossless, uncompressed, sizeEstimate, replaygain, ImmutableList.of()));
 			}
 		}
-		formats = out.build();
-		var formatsByPublicNameBldr = ImmutableMultimap.<String, TranscodeFormat>builder();
-		formats.stream()
-			.map(tf -> Map.entry(tf.publicName(), tf))
-			.forEach(formatsByPublicNameBldr::put);
-		formatsByPublicName = formatsByPublicNameBldr.build();
-		formatsByName = TranscodeFormat.formats.stream().collect(ImmutableMap.toImmutableMap(TranscodeFormat::name, f -> f));
 	}
 
 	private static JexlExpression createExpr(Engine engine, String info, JsonElement expr) {

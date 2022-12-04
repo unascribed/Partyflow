@@ -81,6 +81,7 @@ public final class Config {
 	public FormatsSection formats;
 	public static final class FormatsSection {
 		public String definitions;
+		public String additionalDefinitions;
 		
 		public boolean allowUncompressedFormats;
 		public boolean allowLosslessFormats;

@@ -175,7 +175,11 @@ public class Partyflow {
 				fname = config.formats.definitions;
 			}
 			JsonObject obj = jkson.load(fname, formatsStr);
-			TranscodeFormat.load(obj);
+			JsonObject addn = null;
+			if (config.formats.additionalDefinitions != null) {
+				addn = jkson.load(config.formats.additionalDefinitions, Files.asCharSource(new File(config.formats.additionalDefinitions), Charsets.UTF_8).read());
+			}
+			TranscodeFormat.load(obj, addn);
 			log.info("Loaded {} transcode formats ({} available)", TranscodeFormat.formats.size(), TranscodeFormat.formats.stream()
 					.filter(TranscodeFormat::available)
 					.count());

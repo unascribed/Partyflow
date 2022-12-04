@@ -106,6 +106,9 @@ formats {
 	// This is an advanced feature and should be used with caution. You can obtain the built-in file
 	// at https://git.sleeping.town/unascribed/Partyflow/src/branch/trunk/src/main/resources/formats.jkson
 	definitions: null
+	// If you only want to add new definitions, it's overkill to replace the whole formats file. A file
+	// specified here will have its formats merged with the builtins (or the above definitions file).
+	additionalDefinitions: null
 
 	// If true, uncompressed formats such as WAV and AIFF will be offered. These are a waste of
 	// bandwidth - FLAC is a better choice, but people often expect WAV to be an option. To avoid

@@ -92,6 +92,10 @@ as a reference, as it's a fairly complex format.
 If you need to add non-FFmpeg programs, you can add arbitrarily-named altcmds into the config in the
 same place as fdkaac and qaac, and utilize them within your custom format definitions file.
 
+If you simply want to add new formats rather than changing or removing existing ones, then you can
+set `additionalDefinitions` instead, which will add additional formats on top of those already
+defined. The format is the same.
+
 ## Enabling AAC support
 FFmpeg has a built-in AAC encoder, but it is comically awful. As Partyflow is supposed to ship with
 good defaults for audio encoding, it flat out does not support it. Instead, you will need to do one
