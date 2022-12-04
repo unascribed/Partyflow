@@ -103,8 +103,8 @@ programs {
 }
 formats {
 	// Specify the path to a formats.jkson to use custom file formats, or null to use the built-ins.
-	// This is an advanced feature and should be used with caution. You can obtain the built-in file
-	// at https://git.sleeping.town/unascribed/Partyflow/src/branch/trunk/src/main/resources/formats.jkson
+	// This is an advanced feature and should be used with caution. If the given file does not exist,
+	// then the built-in format definitions will be written to it.
 	definitions: null
 	// If you only want to add new definitions, it's overkill to replace the whole formats file. A file
 	// specified here will have its formats merged with the builtins (or the above definitions file).
@@ -117,8 +117,8 @@ formats {
 	allowUncompressedFormats: false
 	// If true, lossless formats such as ALAC and FLAC will be offered.
 	allowLosslessFormats: true
-	// If true, MP3 downloads will be offered.
-	// Does not affect streaming formats; 112kbps MP3 will always be offered.
+	// If true, MP3 downloads will be offered. MP3 is the most popular audio format and people usually
+	// expect its presence. Does not affect streaming formats; ~128kbps MP3 will always be offered.
 	allowMP3: true
 	// If true, proprietary patent-encumbered formats such as AAC will be offered.
 	// This option can be DANGEROUS and if you're sufficiently large may result in the MPEG-LA trying
@@ -127,12 +127,22 @@ formats {
 	// built-in to FFmpeg is unacceptable quality and not supported.
 	allowEncumberedFormats: false
 	
+	// If true, then MP3 formats will be recommended. People generally expect to see MP3 files, as it's
+	// the most popular format. If you want to discourage their usage without outright disabling them,
+	// then you can turn this off.
+	recommendMP3: true
+	
 	// Possible values:
 	// - none: Do not offer AAC (recommended)
 	// - fdkaac: Use the fdkaac command-line tool (easiest)
 	// - qaac: Use qaac with Apple's CoreAudio in Wine (hardest, best quality)
 	// - ffmpeg-fdk: Use libfdk_aac in ffmpeg (requires a custom build)
 	aacMode: "none"
+}
+
+custom {
+	// If you're writing your own formats file, then you can put extra config options here for usage by
+	// your JEXL expressions. Adding new options to the other sections (except altcmds) won't work.
 }
 
 // kate: hl c

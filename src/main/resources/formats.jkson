@@ -39,6 +39,7 @@
 			var v = m.find() ? int:parseInt(m.group(1)) : 0;
 			return v;
 		})
+		mp3: (config.formats.recommendMP3)
 	}
 	availableWhen {
 		uncompressed: (config.formats.allowUncompressedFormats)
@@ -174,7 +175,7 @@ download {
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
 		args: <-f mp3 -id3v2_version 3 -codec:a libmp3lame -q:a 1>
-		suggestWhen: (true)
+		suggestWhen: (mp3)
 		availableWhen: (mp3)
 		sizeEstimate: (kbps(220))
 		replaygain: (generic)
@@ -190,7 +191,7 @@ download {
 		ext: "mp3"
 		type: "audio/mpeg; codecs=mp3"
 		args: <-f mp3 -codec:a libmp3lame -b:a 320k>
-		suggestWhen: (true)
+		suggestWhen: (mp3)
 		availableWhen: (mp3)
 		sizeEstimate: (kbps(320))
 		replaygain: (generic)
@@ -242,37 +243,6 @@ stream {
 		availableWhen: (true)
 		sizeEstimate: (kbps(72))
 	}
-	mp4-aac-88@ffmpeg {
-		ytdlPriority: 3
-		ext: "mp4"
-		type: "audio/mp4; codecs=mp4a.40.2"
-		args: <-f mp4 -codec:a libfdk_aac -b:a 88k -cutoff 18k>
-		direct: false // MP4 muxer can't stream
-		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg-fdk")
-		sizeEstimate: (kbps(88))
-	}
-	mp4-aac-88@fdkaac {
-		ytdlPriority: 3
-		ext: "mp4"
-		type: "audio/mp4; codecs=mp4a.40.2"
-		altcmd: "fdkaac"
-		altcmdargs: <-b 88 -f 2 - -o ->
-		args: <-f mp4 -codec:a copy>
-		direct: false
-		availableWhen: (encumbered && config.formats.aacMode == "fdkaac")
-		sizeEstimate: (kbps(88))
-	}
-	mp4-aac-88@qaac {
-		ytdlPriority: 3
-		ext: "mp4"
-		type: "audio/mp4; codecs=mp4a.40.2"
-		altcmd: "qaac"
-		altcmdargs: <--adts -v 88 - -o ->
-		args: <-f mp4 -codec:a copy>
-		direct: false
-		availableWhen: (encumbered && config.formats.aacMode == "qaac")
-		sizeEstimate: (kbps(88))
-	}
 	ogg-vorbis-96 {
 		ytdlPriority: 2
 		ext: "ogg"
@@ -282,15 +252,46 @@ stream {
 		availableWhen: (true)
 		sizeEstimate: (kbps(96))
 	}
-	mp3-112 {
+	mp4-aac-112@qaac {
+		ytdlPriority: 3
+		ext: "mp4"
+		type: "audio/mp4; codecs=mp4a.40.2"
+		altcmd: "qaac"
+		altcmdargs: <--adts -v 112 - -o ->
+		args: <-f mp4 -codec:a copy>
+		direct: false
+		availableWhen: (encumbered && config.formats.aacMode == "qaac")
+		sizeEstimate: (kbps(88))
+	}
+	mp4-aac-112@ffmpeg {
+		ytdlPriority: 3
+		ext: "mp4"
+		type: "audio/mp4; codecs=mp4a.40.2"
+		args: <-f mp4 -codec:a libfdk_aac -b:a 112k -cutoff 18k>
+		direct: false // MP4 muxer can't stream
+		availableWhen: (encumbered && config.formats.aacMode == "ffmpeg-fdk")
+		sizeEstimate: (kbps(112))
+	}
+	mp4-aac-112@fdkaac {
+		ytdlPriority: 3
+		ext: "mp4"
+		type: "audio/mp4; codecs=mp4a.40.2"
+		altcmd: "fdkaac"
+		altcmdargs: <-b 112 -f 2 -w 18000 - -o ->
+		args: <-f mp4 -codec:a copy>
+		direct: false
+		availableWhen: (encumbered && config.formats.aacMode == "fdkaac")
+		sizeEstimate: (kbps(112))
+	}
+	mp3-128 {
 		ytdlPriority: 1
 		ext: "mp3"
 		// specifying codecs=mp3 is technically redundant, but makes browsers happy
 		type: "audio/mpeg; codecs=mp3"
-		args: <-f mp3 -codec:a libmp3lame -b:a 112k>
+		args: <-f mp3 -codec:a libmp3lame -b:a 128k>
 		direct: true
 		availableWhen: (true)
-		sizeEstimate: (kbps(112))
+		sizeEstimate: (kbps(128))
 	}
 }
 

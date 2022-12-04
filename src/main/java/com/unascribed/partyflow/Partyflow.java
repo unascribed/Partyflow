@@ -38,6 +38,7 @@ import java.sql.Statement;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.ConcurrentMap;
@@ -45,6 +46,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
 import javax.crypto.spec.SecretKeySpec;
 
 import jakarta.servlet.ServletException;
@@ -97,6 +100,7 @@ import com.google.common.net.UrlEscapers;
 
 import blue.endless.jankson.Jankson;
 import blue.endless.jankson.JsonObject;
+import blue.endless.jankson.JsonPrimitive;
 import blue.endless.jankson.api.DeserializationException;
 import blue.endless.jankson.api.SyntaxError;
 
@@ -154,6 +158,7 @@ public class Partyflow {
 			log.error("Failed to load partyflow-config.jkson: syntax error {} in partyflow-config.jkson\n{}", e.getLineMessage().replaceFirst("^Errored ", ""), e.getMessage());
 			return;
 		}
+		config.custom = unwrap(config.custom);
 		AsyncSimpleLog.setMinLogLevel(config.logger.level);
 		AsyncSimpleLog.setAnsi(config.logger.color);
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.eclipse\\.jetty"));
@@ -171,7 +176,13 @@ public class Partyflow {
 				formatsStr = Resources.toString(ClassLoader.getSystemResource("formats.jkson"), Charsets.UTF_8);
 				fname = "<built-in>/formats.jkson";
 			} else {
-				formatsStr = Files.asCharSource(new File(config.formats.definitions), Charsets.UTF_8).read();
+				var f = new File(config.formats.definitions);
+				if (!f.exists()) {
+					log.info("Copying built-in format definitions to {}", config.formats.definitions);
+					Files.createParentDirs(f);
+					Resources.asByteSource(ClassLoader.getSystemResource("formats.jkson")).copyTo(Files.asByteSink(f));
+				}
+				formatsStr = Files.asCharSource(f, Charsets.UTF_8).read();
 				fname = config.formats.definitions;
 			}
 			JsonObject obj = jkson.load(fname, formatsStr);
@@ -367,6 +378,24 @@ public class Partyflow {
 				log.debug("Pruned {} expired CSRF tokens", removed);
 			}
 		}, 15, 15, TimeUnit.MINUTES);
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static Map.Entry<String, Object> unwrap(Map.Entry<?, ?> o) {
+		return (Map.Entry<String, Object>)unwrap((Object)o);
+	}
+	
+	private static Object unwrap(Object o) {
+		if (o instanceof Map.Entry<?, ?> en) {
+			return Map.entry(String.valueOf(en.getKey()), unwrap(en.getValue()));
+		} else if (o instanceof JsonObject obj) {
+			return obj.entrySet().stream()
+				.map(Partyflow::unwrap)
+				.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+		} else if (o instanceof JsonPrimitive jp) {
+			return jp.getValue();
+		}
+		return o;
 	}
 
 	private static Handler setHeader(String header, String value) {

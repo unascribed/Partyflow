@@ -88,7 +88,11 @@ public final class Config {
 		public boolean allowMP3;
 		public boolean allowEncumberedFormats;
 		
+		public boolean recommendMP3;
+		
 		public String aacMode;
 	}
+	
+	public Object custom;
 
 }

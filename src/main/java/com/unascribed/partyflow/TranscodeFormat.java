@@ -64,12 +64,42 @@ public record TranscodeFormat(
 	
 	private static final Logger log = LoggerFactory.getLogger(TranscodeFormat.class);
 	
-	public boolean available() { return availableWhen().getAsBoolean(); }
-	public boolean suggested(String userAgent) { return suggestWhen.test(new UserData(userAgent)); }
-	public double estimateSize(long duration, long master) {
-		return sizeEstimator().applyAsDouble(new TrackData(duration, duration/48000D, master));
+	private static class LoggableException extends RuntimeException {
+		public LoggableException(String msg) { super(msg); }
 	}
 	
+	public boolean available() {
+		try {
+			return availableWhen().getAsBoolean();
+		} catch (Throwable t) {
+			handleJexlError("availableWhen", t);
+			return false;
+		}
+	}
+	public boolean suggested(String userAgent) {
+		try {
+			return suggestWhen.test(new UserData(userAgent));
+		} catch (Throwable t) {
+			handleJexlError("suggestWhen", t);
+			return false;
+		}
+	}
+	public double estimateSize(long duration, long master) {
+		try {
+			return sizeEstimator().applyAsDouble(new TrackData(duration, duration/48000D, master));
+		} catch (Throwable t) {
+			handleJexlError("estimateSize", t);
+			return 0;
+		}
+	}
+	
+	private void handleJexlError(String script, Throwable t) {
+		if (t instanceof LoggableException) {
+			log.error("Unexpected error while evaluating JEXL expression {}.availableWhen: {}", name, t.getMessage());
+		} else {
+			log.error("Unexpected error while evaluating JEXL expression {}.availableWhen", name, t);
+		}
+	}
 	/**
 	 * @return the name of this TranscodeFormat without its private @ suffix
 	 */
@@ -179,6 +209,7 @@ public record TranscodeFormat(
 				var sizeEstimateExpr = createExpr(engine, name+".sizeEstimate", jo.get("sizeEstimate"));
 				ToDoubleFunction<TrackData> sizeEstimate = (data) -> {
 					var ctx = new MapContext(new HashMap<>(defs.row("sizeEstimate")));
+					ctx.set("config", Partyflow.config);
 					ctx.set("durationSecs", data.durationSecs());
 					ctx.set("durationSamples", data.durationSamples());
 					ctx.set("master", data.master());
@@ -188,6 +219,7 @@ public record TranscodeFormat(
 				var suggestWhenExpr = createExpr(engine, name+".suggestWhen", jo.containsKey("suggestWhen") ? jo.get("suggestWhen") : JsonPrimitive.of("false"));
 				Predicate<UserData> suggestWhen = (data) -> {
 					var ctx = new MapContext(new HashMap<>(defs.row("suggestWhen")));
+					ctx.set("config", Partyflow.config);
 					ctx.set("userAgent", data.userAgent());
 					return evaluate(name+".suggestWhen", suggestWhenExpr, ctx, Boolean.class);
 				};
@@ -210,6 +242,7 @@ public record TranscodeFormat(
 							var expr = entry.getValue();
 							return (data) -> {
 								var ctx = new MapContext(new HashMap<>(defs.row("replaygain")));
+								ctx.set("config", Partyflow.config);
 								ctx.set("albumLoudness", data.albumLoudness());
 								ctx.set("trackLoudness", data.trackLoudness());
 								ctx.set("albumPeak", data.albumPeak());
@@ -253,12 +286,19 @@ public record TranscodeFormat(
 	}
 
 	private static <T> T evaluate(String info, JexlExpression expr, JexlContext ctx, Class<T> clazz) {
+		Object res = expr;
 		try {
-			Object res = expr;
 			while (res instanceof JexlExpression e) {
 				res = e.evaluate(ctx);
 			}
+			if (res == null) {
+				throw new LoggableException("Expected "+clazz.getSimpleName()+", got null");
+			}
 			return clazz.cast(res);
+		} catch (LoggableException e) {
+			throw e;
+		} catch (ClassCastException e) {
+			throw new LoggableException("Expected "+clazz.getSimpleName()+", got "+res.getClass().getSimpleName());
 		} catch (Throwable t) {
 			throw new RuntimeException("Exception while processing expression for "+info, t);
 		}
