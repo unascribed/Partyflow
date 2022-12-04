@@ -48,7 +48,6 @@ with customizable colors.
 ## The ugly 😦
 
 - Needs a logo that isn't just 🎉 from Twemoji
-- For some reason parallel transcodes just don't work
 - If you're logged in as admin it's not possible to view a release/track as a normal user
 - Could probably use an API of some form?
 

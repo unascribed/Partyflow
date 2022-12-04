@@ -63,8 +63,11 @@ download {
 		icon: "flac.svg"
 		ext: "flac"
 		type: "audio/flac"
-		args: <-f flac -codec:a flac>
+		args: <-f flac -codec:a copy>
 		lossless: true
+		// The master format is FLAC, so it's trivial to generate this and wasteful to cache
+		direct: true
+		cache: false
 		suggestWhen: (true)
 		availableWhen: (lossless)
 		sizeEstimate: (master)
@@ -86,6 +89,7 @@ download {
 	}
 	ogg-opus-128 {
 		name: "Opus"
+		subtitle: "~128kbps"
 		description: "Most efficient format, needs recent players/OS"
 		ytdlPriority: 1280
 		icon: "opus.svg"
@@ -97,21 +101,23 @@ download {
 		sizeEstimate: (kbps(128))
 		replaygain: (opus)
 	}
-	ogg-vorbis-192 {
+	ogg-vorbis-160 {
 		name: "Ogg Vorbis"
+		subtitle: "~160kbps"
 		description: "Common free format on Android/Linux"
-		ytdlPriority: 192
+		ytdlPriority: 160
 		icon: "vorbis.svg"
 		ext: "ogg"
 		type: "audio/ogg; codecs=vorbis"
-		args: <-f ogg -codec:a libvorbis -q:a 6>
+		args: <-f ogg -codec:a libvorbis -q:a 5>
 		suggestWhen: (isLinux(userAgent) || isAndroid(userAgent))
 		availableWhen: (true)
-		sizeEstimate: (kbps(192))
+		sizeEstimate: (kbps(160))
 		replaygain: (generic)
 	}
 	aac-vbr@ffmpeg {
 		name: "AAC"
+		subtitle: "~192kbps"
 		description: "Common format on iOS/macOS"
 		ytdlPriority: 128
 		icon: "aac.svg"
@@ -125,6 +131,7 @@ download {
 	}
 	aac-vbr@fdkaac {
 		name: "AAC"
+		subtitle: "~192kbps"
 		description: "Common format on iOS/macOS"
 		ytdlPriority: 128
 		icon: "aac.svg"
@@ -140,6 +147,7 @@ download {
 	}
 	aac-vbr@qaac {
 		name: "AAC"
+		subtitle: "~160kbps"
 		description: "Common format on iOS/macOS"
 		ytdlPriority: 128
 		icon: "aac.svg"
@@ -154,7 +162,8 @@ download {
 		replaygain: (generic)
 	}
 	mp3-v1 {
-		name: "MP3 V1"
+		name: "MP3"
+		subtitle: "V1 (~220kbps)"
 		description: "Highly compatible and fairly efficient"
 		ytdlPriority: 321
 		icon: "mp3.svg"
@@ -169,7 +178,8 @@ download {
 	// I would make this 256 or so, but "320" is a magic Good Number to some.
 	// people who care should be getting MP3 V1 already
 	mp3-320 {
-		name: "MP3 320"
+		name: "MP3"
+		subtitle: "320kbps"
 		description: "Plays just about anywhere, but inefficient"
 		ytdlPriority: 320
 		icon: "mp3.svg"

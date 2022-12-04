@@ -722,7 +722,18 @@ button.player-control {
 
 .formats .format {
 	position: relative;
-	transition: filter 0.4s;
+	transition: filter 0.4s, opacity 1s;
+}
+.formats .format:after {
+	transition: opacity 1s;
+	content: "";
+	position: absolute;
+	top: -4px; left: -4px; right: -4px; bottom: -4px;
+	pointer-events: none;
+	opacity: 0;
+	color: #FFF;
+	background: #013B;
+	border-radius: 8px;
 }
 .formats .format:before {
 	content: "";
@@ -746,6 +757,34 @@ button.player-control {
 }
 .formats .format:active {
 	filter: brightness(125%);
+}
+.formats .format .note {
+	font-size: 14px;
+	font-weight: bold;
+	opacity: 0.5;
+}
+
+.download.preparing .format {
+	opacity: 0.5;
+	pointer-events: none;
+	cursor: not-allowed;
+}
+.download.preparing .format.preparing {
+	opacity: 1;
+}
+.download.preparing .format.preparing:after {
+	content: "Preparing your download…";
+	background-image: url({{root}}static/spinner.svg);
+	background-position: center 12px;
+	background-repeat: no-repeat;
+	background-size: 32px;
+	text-align: center;
+	padding-top: 44px;
+	opacity: 1;
+}
+.download.preparing .format.preparing.done::after {
+	content: "Done";
+	background-image: url(/static/check.svg);
 }
 
 #tracks {

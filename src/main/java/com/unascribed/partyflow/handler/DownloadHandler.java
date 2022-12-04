@@ -141,6 +141,7 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 			Function<TranscodeFormat, Object> munger = tf -> new Object() {
 				String name = tf.publicName();
 				String display_name = tf.displayName();
+				String subtitle = tf.subtitle();
 				String description = tf.description();
 				String icon = tf.icon();
 				String mimetype = tf.mimeType();

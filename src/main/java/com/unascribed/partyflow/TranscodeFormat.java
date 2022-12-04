@@ -53,7 +53,7 @@ import blue.endless.jankson.JsonObject;
 import blue.endless.jankson.JsonPrimitive;
 
 public record TranscodeFormat(
-		String name, Usage usage, String displayName, String description, String icon, int ytdlPriority,
+		String name, String subtitle, Usage usage, String displayName, String description, String icon, int ytdlPriority,
 		String fileExtension, String mimeType, ImmutableList<String> args,
 		String altcmd, ImmutableList<String> altcmdargs,
 		BooleanSupplier availableWhen, Predicate<UserData> suggestWhen, boolean direct, boolean cache, boolean lossless, boolean uncompressed,
@@ -141,6 +141,7 @@ public record TranscodeFormat(
 				JsonObject jo = (JsonObject)en.getValue();
 				String name = en.getKey();
 				String displayName = jo.get(String.class, "name");
+				String subtitle = jo.get(String.class, "subtitle");
 				String description = jo.get(String.class, "description");
 				String icon = jo.get(String.class, "icon");
 				int ytdlPriority = jo.getInt("ytdlPriority", 0);
@@ -208,7 +209,7 @@ public record TranscodeFormat(
 				boolean lossless = jo.getBoolean("lossless", false);
 				boolean uncompressed = jo.getBoolean("uncompressed", false);
 				
-				out.add(new TranscodeFormat(name, usage, displayName, description, icon, ytdlPriority, ext, type, args, altcmd, altcmdargs, availableWhen, suggestWhen, direct, cache, lossless, uncompressed, sizeEstimate, replaygain, ImmutableList.of()));
+				out.add(new TranscodeFormat(name, subtitle, usage, displayName, description, icon, ytdlPriority, ext, type, args, altcmd, altcmdargs, availableWhen, suggestWhen, direct, cache, lossless, uncompressed, sizeEstimate, replaygain, ImmutableList.of()));
 			}
 		}
 		formats = out.build();

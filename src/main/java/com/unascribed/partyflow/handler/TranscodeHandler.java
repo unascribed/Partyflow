@@ -138,6 +138,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 		if (masterQuery == null) {
 			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Kind must be one of "+Joiner.on(", ").join(QUERIES_BY_KIND.keySet()));
 		}
+		boolean prepare = query.containsKey("prepare");
 		String formatString = query.get("format");
 		TranscodeFormat format = TranscodeFormat.byPublicName(formatString)
 				.orElseThrow(() -> new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+formatString));
@@ -147,6 +148,12 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			if ("release-zip".equals(kind)) {
 				if (!format.usage().canDownload()) {
 					throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Format "+formatString+" is not valid for ZIP download");
+				}
+				if (prepare && !format.cache()) {
+					res.setStatus(HTTP_204_NO_CONTENT);
+					res.setHeader("Transcode-Status", "DIRECT");
+					res.getOutputStream().close();
+					return;
 				}
 				record CollectResult(TranscodeResult tr, boolean isNew, long trackId, String master, File directFile) {}
 				List<File> tmpFiles = Collections.synchronizedList(new ArrayList<>());
@@ -179,6 +186,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 							}
 						}
 					}
+					boolean allCached = true;
 					try (PreparedStatement ps = c.prepareStatement("SELECT "
 								+ "`master`, `title`, "
 								+ "`track_id`, `loudness`, `peak`, `art`, "
@@ -219,6 +227,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 												false, trackId, master, null);
 									}));
 								} else {
+									allCached = false;
 									String shortcutSource;
 									Shortcut shortcut;
 									if (fr instanceof FoundShortcut fs) {
@@ -266,6 +275,13 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 							}
 						}
 						results.add(cr);
+					}
+					
+					if (prepare) {
+						res.setHeader("Transcode-Status", allCached ? "CACHED" : "FRESH");
+						res.setStatus(HTTP_204_NO_CONTENT);
+						res.getOutputStream().close();
+						return;
 					}
 	
 					String filename = creator+" - "+releaseTitle+".zip";
@@ -364,21 +380,33 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			TranscodeFindResult findRes = findExistingTranscode(c, !head, kind, slug, format, master);
 			if (findRes instanceof FoundTranscode ft) {
 				res.setHeader("Transcode-Status", "CACHED");
-				res.sendRedirect(Partyflow.resolveBlob(ft.blob()));
+				if (prepare) {
+					res.setStatus(HTTP_204_NO_CONTENT);
+					res.getOutputStream().close();
+					res.setHeader("Transcode-Result", Partyflow.resolveBlob(ft.blob()));
+				} else {
+					res.sendRedirect(Partyflow.resolveBlob(ft.blob()));
+				}
 				return;
 			} else if (findRes instanceof FoundShortcut fs) {
 				shortcut = fs.shortcut();
 				shortcutSource = fs.srcBlob();
 			}
-			if (head) {
+			if (head && !prepare) {
 				res.setStatus(HTTP_204_NO_CONTENT);
 				res.setHeader("Transcode-Status", "UNAVAILABLE");
 				res.setHeader("Comment", "Transcodes are not performed in response to HEAD requests");
 				res.getOutputStream().close();
 				return;
 			}
-			boolean direct = format.direct() && master != TESTTRACK_MASTER;
+			boolean direct = !prepare && format.direct() && master != TESTTRACK_MASTER;
 			boolean cache = format.cache();
+			if (prepare && !cache) {
+				res.setStatus(HTTP_204_NO_CONTENT);
+				res.setHeader("Transcode-Status", "DIRECT");
+				res.getOutputStream().close();
+				return;
+			}
 			if (direct) {
 				log.debug("Streaming {} from master...", format);
 			} else if (shortcut == null) {
@@ -448,7 +476,13 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			}
 			if (!direct) {
 				res.setHeader("Transcode-Status", fshortcut != null ? "SHORTCUT" : "FRESH");
-				res.sendRedirect(Partyflow.resolveBlob(blobNameRes));
+				if (prepare) {
+					res.setStatus(HTTP_204_NO_CONTENT);
+					res.getOutputStream().close();
+					res.setHeader("Transcode-Result", Partyflow.resolveBlob(blobNameRes));
+				} else {
+					res.sendRedirect(Partyflow.resolveBlob(blobNameRes));
+				}
 			}
 		} catch (SQLException | InterruptedException | ExecutionException e) {
 			throw new ServletException(e);

@@ -13,12 +13,19 @@
 			<div class="title"><span class="preamble">Download</span> {{title}}</div>
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{creator}}</div>
+			<noscript>
+				<p>
+					<b>Downloads may have to be encoded on-the-fly. Please be patient if clicking a button
+					doesn't immediately start a download.</b>
+				</p>
+			</noscript>
 			<h2>Recommended formats</h2>
 			Based on your platform and common use, we suggest the following formats:
 			<div class="formats recommended">
 				{{#suggested_formats}}
 				<a class="format{{clazz}}" href="{{download_url}}?format={{name}}" style="background-image: url({{root}}static/{{icon}})">
 					<span class="name">{{display_name}}</span>
+					<span class="note">{{subtitle}}</span>
 					<span class="size">~{{{size}}}</span>
 					<span class="desc">{{description}}</span>
 				</a>
@@ -31,6 +38,7 @@
 				{{#other_formats}}
 				<a class="format{{clazz}}" href="{{download_url}}?format={{name}}" style="background-image: url({{root}}static/{{icon}})">
 					<span class="name">{{display_name}}</span>
+					<span class="note">{{subtitle}}</span>
 					<span class="size">~{{{size}}}</span>
 					<span class="desc">{{description}}</span>
 				</a>
@@ -38,6 +46,51 @@
 			</div>
 		</div>
 	</div>
+	<script>
+		document.querySelectorAll(".formats .format").forEach((e) => {
+			e.addEventListener("click", (ev) => {
+				document.querySelector(".download").classList.add("preparing");
+				e.classList.add("preparing");
+				ev.preventDefault();
+				let xhr = new XMLHttpRequest();
+				xhr.addEventListener("loadend", () => {
+					let time = 0;
+					let instant = false;
+					let res = xhr.getResponseHeader("Transcode-Result");
+					if (res !== null) {
+						window.location = res;
+					} else {
+						let status = xhr.getResponseHeader("Transcode-Status");
+						if (status !== null) {
+							if (status === "DIRECT") {
+								// add an artificial delay since this prepare request didn't do anything
+								time = 5000;
+							}
+							if (status === "CACHED") instant = true;
+							window.location = e.href;
+						} else {
+							console.error(xhr.status);
+						}
+					}
+					setTimeout(() => {
+						function finish() {
+							document.querySelector(".download").classList.remove("preparing");
+							e.classList.remove("preparing");
+							e.classList.remove("done");
+						}
+						if (instant) {
+							finish();
+						} else {
+							e.classList.add("done");
+							setTimeout(finish, 1000);
+						}
+					}, time);
+				});
+				xhr.open("HEAD", e.href+'&prepare');
+				xhr.send();
+			});
+		});
+	</script>
 	{{> _footer.hbs.html}}
 </body>
 </html>
