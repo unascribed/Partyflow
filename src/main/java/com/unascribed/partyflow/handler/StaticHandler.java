@@ -21,8 +21,12 @@ package com.unascribed.partyflow.handler;
 
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
-import java.net.URLConnection;
+import java.util.zip.GZIPInputStream;
+
+import org.eclipse.jetty.http.HttpHeader;
+import org.eclipse.jetty.server.Request;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,39 +36,62 @@ import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 
-import com.google.common.io.ByteStreams;
-
 public class StaticHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
-		URL u = ClassLoader.getSystemResource("static/"+path);
-		if (u != null) {
-			URLConnection conn = u.openConnection();
-			String mime;
-			if (path.endsWith(".svg")) {
-				mime = "image/svg+xml";
-			} else if (path.endsWith(".js")) {
-				mime = "application/javascript";
-			} else if (path.endsWith(".css")) {
-				mime = "text/css";
+		if (path.endsWith(".gz")) {
+			res.sendError(HTTP_404_NOT_FOUND);
+			return;
+		}
+		var encodings = ((Request)req).getHttpFields().getQualityCSV(HttpHeader.ACCEPT_ENCODING);
+		URL gz = ClassLoader.getSystemResource("static/"+path+".gz");
+		URL raw = ClassLoader.getSystemResource("static/"+path);
+		
+		String mime = "application/octet-stream";
+		Long len;
+		InputStream in;
+		if (gz != null) {
+			var conn = gz.openConnection();
+			conn.setDoInput(!head);
+			if (encodings.contains("gzip")) {
+				len = conn.getContentLengthLong();
+				res.setHeader("Content-Encoding", "gzip");
+				in = head ? null : conn.getInputStream();
 			} else {
-				mime = conn.getContentType();
+				len = null;
+				in = head ? null : new GZIPInputStream(conn.getInputStream());
 			}
-			res.setHeader("Content-Type", mime);
-			res.setHeader("Content-Length", Long.toString(conn.getContentLengthLong()));
-			if ("quine.zip".equals(path)) {
-				res.setHeader("Content-Disposition", "attachment; filename=Partyflow-src-v"+Version.FULL+".zip");
-			}
-			res.setStatus(HTTP_200_OK);
-			if (!head) {
-				conn.connect();
-				ByteStreams.copy(conn.getInputStream(), res.getOutputStream());
-			}
-			res.getOutputStream().close();
+		} else if (raw != null) {
+			var conn = raw.openConnection();
+			conn.setDoInput(!head);
+			len = conn.getContentLengthLong();
+			in = head ? null : conn.getInputStream();
 		} else {
 			res.sendError(HTTP_404_NOT_FOUND);
+			return;
+		}
+		if (path.endsWith(".svg")) {
+			mime = "image/svg+xml";
+		} else if (path.endsWith(".js")) {
+			mime = "application/javascript";
+		} else if (path.endsWith(".css")) {
+			mime = "text/css";
+		} else if (path.endsWith(".png")) {
+			mime = "image/png";
+		}
+		if ("quine.zip".equals(path)) {
+			res.setHeader("Content-Disposition", "attachment; filename=Partyflow-src-v"+Version.FULL+".zip");
+		}
+		res.setHeader("Content-Type", mime);
+		if (len != null) res.setHeader("Content-Length", Long.toString(len));
+		if (in != null) {
+			try (in; var out = res.getOutputStream()) {
+				in.transferTo(out);
+			}
+		} else {
+			res.getOutputStream().close();
 		}
 	}
 

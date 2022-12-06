@@ -79,14 +79,47 @@ license {
 	include '**/*.java'
 }
 
+import com.unascribed.partyflow.TweakableGZIPOutputStream
+
 task sourceZip(type: Zip) {
-	destinationDirectory = file('src/main/resources/static')
+	dependsOn processResources
+	destinationDirectory = file('build/resources/main/static')
 	archiveBaseName = 'quine'
 	reproducibleFileOrder = true
+	entryCompression = 'stored'
 	file('.gitignore').eachLine { exclude(it) }
 	exclude '.git'
-	from(file('.')) {
+	from(file('.')) {}
+}
+
+task precompressStaticResources {
+	dependsOn sourceZip
+	doLast {
+		def files = [file('build/resources/main/static')]
+		def nextFiles = []
+		while (!files.empty) {
+			for (def infile : files) {
+				if (infile.directory) {
+					for (def child : infile.listFiles()) {
+						nextFiles.add(child)
+					}
+				} else if (!infile.getName().endsWith(".png")) {
+					def outfile = new File(infile.toString()+".gz")
+					infile.withInputStream { in ->
+						outfile.withOutputStream { out ->
+							new TweakableGZIPOutputStream(out).level(9).withCloseable { cout ->
+								in.transferTo(cout)
+							}
+						}
+					}
+					infile.delete()
+				}
+			}
+			files.clear()
+			files.addAll(nextFiles)
+			nextFiles.clear()
+		}
 	}
 }
 
-tasks.processResources.dependsOn sourceZip
+processResources.finalizedBy precompressStaticResources

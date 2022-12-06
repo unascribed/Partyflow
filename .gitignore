@@ -10,5 +10,6 @@ partyflow-config.jkson
 /build
 /bin
 /files
-src/main/resources/static/quine.zip
 /addnformats.jkson
+/buildSrc/build
+/buildSrc/.gradle
