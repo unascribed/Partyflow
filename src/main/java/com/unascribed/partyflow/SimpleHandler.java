@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -125,45 +126,45 @@ public class SimpleHandler {
 		/**
 		 * @return {@code true} to suppress default behavior
 		 */
-		boolean any(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
+		boolean any(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException;
 	}
 
 	public interface Get {
-		void get(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
+		void get(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException;
 	}
 	public interface Post {
-		void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
+		void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException;
 	}
 	public interface Head {
-		void head(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
+		void head(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException;
 	}
 	public interface Put {
-		void put(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
+		void put(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException;
 	}
 	public interface Options {
 		/**
 		 * @return {@code true} to suppress default behavior
 		 */
-		boolean options(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
+		boolean options(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException;
 	}
 	public interface Delete {
-		void delete(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException;
+		void delete(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException;
 	}
 
 	public interface GetOrHead extends Get, Head {
 		@Override
-		default void get(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+		default void get(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 			getOrHead(path, req, res, false);
 		}
 		@Override
-		default void head(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+		default void head(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 			getOrHead(path, req, res, true);
 		}
-		void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head) throws IOException, ServletException;
+		void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head) throws IOException, ServletException, SQLException;
 	}
 	public interface MultipartPost extends Post {
 		@Override
-		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 			if (req.getContentType().startsWith("multipart/form-data;")) {
 				MultiPartFormInputStream mpfis = new MultiPartFormInputStream(req.getInputStream(), req.getContentType(), MP_CFG, TEMP_DIR);
 				try {
@@ -185,11 +186,11 @@ public class SimpleHandler {
 				res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
 			}
 		}
-		void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data) throws IOException, ServletException;
+		void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data) throws IOException, ServletException, SQLException;
 	}
 	public interface UrlEncodedPost extends Post {
 		@Override
-		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 			if (req.getContentType().equals("application/x-www-form-urlencoded")) {
 				byte[] bys;
 				try {
@@ -207,11 +208,11 @@ public class SimpleHandler {
 				res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
 			}
 		}
-		void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException;
+		void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException, SQLException;
 	}
 	public interface UrlEncodedOrMultipartPost extends UrlEncodedPost, MultipartPost {
 		@Override
-		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 			if (req.getContentType().equals("application/x-www-form-urlencoded")) {
 				UrlEncodedPost.super.post(path, req, res);
 			} else if (req.getContentType().startsWith("multipart/form-data;")) {
@@ -228,11 +229,15 @@ public class SimpleHandler {
 		@Override
 		public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response)
 				throws IOException, ServletException {
-			SimpleHandler.this.handle(target, request, response);
+			try {
+				SimpleHandler.this.handle(target, request, response);
+			} catch (SQLException e) {
+				throw new ServletException(e);
+			}
 		}
 	};
 
-	public void handle(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException {
+	public void handle(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 		if (this instanceof Any) {
 			if (((Any)this).any(path, req, res)) return;
 		}

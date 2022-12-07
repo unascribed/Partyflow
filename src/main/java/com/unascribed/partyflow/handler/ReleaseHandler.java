@@ -67,11 +67,11 @@ import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
+import com.unascribed.partyflow.data.Queries;
 import com.unascribed.partyflow.ThreadPools;
 import com.unascribed.partyflow.TranscodeFormat;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
@@ -101,7 +101,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		Map<String, String> query = parseQuery(req);
@@ -116,7 +116,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						+ "WHERE `slug` = ? AND (`published` = true"+suffix+");")) {
 					ps.setString(1, slugs);
 					if (s != null) {
-						ps.setInt(2, s.userId);
+						ps.setInt(2, s.userId());
 					}
 					try (ResultSet rs = ps.executeQuery()) {
 						// slug is UNIQUE, we don't need to handle more than one row
@@ -153,7 +153,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 								}
 							}
 							res.setStatus(HTTP_200_OK);
-							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId;
+							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId();
 							String _descriptionMd;
 							String desc = rs.getString("description");
 							if (_editable) {
@@ -200,7 +200,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						"SELECT `title`, `subtitle`, `published`, `art` FROM `releases` "
 						+ "WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setString(1, m.group(1));
-					ps.setInt(2, s.userId);
+					ps.setInt(2, s.userId());
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
 							MustacheHandler.serveTemplate(req, res, "add-track.hbs.html", new Object() {
@@ -227,7 +227,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 	}
 
 	@Override
-	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException {
+	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException, SQLException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		if ("/delete".equals(m.group(2))) {
@@ -246,7 +246,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				long releaseId;
 				try (PreparedStatement ps = c.prepareStatement("SELECT `release_id`, `art`, `concat_master` FROM `releases` WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setString(1, slugs);
-					ps.setInt(2, s.userId);
+					ps.setInt(2, s.userId());
 					try (ResultSet rs = ps.executeQuery()) {
 						// slug is UNIQUE, we don't need to handle more than one row
 						if (rs.first()) {
@@ -285,13 +285,18 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						}
 					}
 				}
-				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `releases` WHERE `release_id` = ?;"
-						+ "DELETE FROM `tracks` WHERE `release_id` = ?; DELETE FROM `transcodes` WHERE `release_id` = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `transcodes` WHERE `release_id` = ?;")) {
 					ps.setLong(1, releaseId);
-					ps.setLong(2, releaseId);
-					ps.setLong(3, releaseId);
 					ps.executeUpdate();
 					res.sendRedirect(Partyflow.config.http.path+"releases");
+				}
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `tracks` WHERE `release_id` = ?;")) {
+					ps.setLong(1, releaseId);
+					ps.executeUpdate();
+				}
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `releases` WHERE `release_id` = ?;")) {
+					ps.setLong(1, releaseId);
+					ps.executeUpdate();
 				}
 			} catch (SQLException e) {
 				throw new ServletException(e);
@@ -314,7 +319,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 				try (PreparedStatement ps = c.prepareStatement("UPDATE `releases` SET `published` = ?"+midfix+" WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setBoolean(1, published);
 					ps.setString(2, slug);
-					ps.setInt(3, s.userId);
+					ps.setInt(3, s.userId());
 					if (ps.executeUpdate() >= 1) {
 						res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug));
 					} else {
@@ -333,7 +338,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 
 	@Override
 	public void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		if ("/edit".equals(m.group(2))) {
@@ -390,7 +395,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						"SELECT `published` FROM `releases` "
 						+ "WHERE `slug` = ? AND `user_id` = ?;")) {
 					ps.setString(1, m.group(1));
-					ps.setInt(2, s.userId);
+					ps.setInt(2, s.userId());
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
 							published = rs.getBoolean("published");
@@ -400,23 +405,11 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 						}
 					}
 				}
-				String slug = published ? m.group(1) : Partyflow.sanitizeSlug(title);
-				if (!Objects.equal(slug, m.group(1))) {
-					try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM `releases` WHERE `slug` = ?;")) {
-						int i = 0;
-						String suffix = "";
-						while (true) {
-							if (i > 0) {
-								suffix = "-"+(i+1);
-							}
-							ps.setString(1, slug+suffix);
-							try (ResultSet rs = ps.executeQuery()) {
-								if (!rs.first()) break;
-							}
-							i++;
-						}
-						slug = slug+suffix;
-					}
+				String slug;
+				if (published) {
+					slug = m.group(1);
+				} else {
+					slug = Queries.findSlug("releases", Partyflow.sanitizeSlug(title));
 				}
 				String midfix = data.getPart("publish") != null ? ", `published` = true, `published_at` = NOW()" : "";
 				String extraCols = artPath != null ? "`art` = ?," : "";
@@ -432,7 +425,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					}
 					ps.setString(i++, description);
 					ps.setString(i++, m.group(1));
-					ps.setInt(i++, s.userId);
+					ps.setInt(i++, s.userId());
 					ps.executeUpdate();
 				}
 				if (data.getPart("addTrack") != null) {
@@ -467,7 +460,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 					int releaseId;
 					try (PreparedStatement ps = c.prepareStatement("SELECT `release_id` FROM `releases` WHERE `slug` = ? AND `user_id` = ?;")) {
 						ps.setString(1, m.group(1));
-						ps.setInt(2, s.userId);
+						ps.setInt(2, s.userId());
 						try (ResultSet rs = ps.executeQuery()) {
 							// slug is UNIQUE, we don't need to handle more than one row
 							if (rs.first()) {
@@ -617,22 +610,7 @@ public class ReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncod
 								}
 							}
 						}
-						String slug = Partyflow.sanitizeSlug(td.title);
-						try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM `tracks` WHERE `slug` = ?;")) {
-							int i = 0;
-							String suffix = "";
-							while (true) {
-								if (i > 0) {
-									suffix = "-"+(i+1);
-								}
-								ps.setString(1, slug+suffix);
-								try (ResultSet rs = ps.executeQuery()) {
-									if (!rs.first()) break;
-								}
-								i++;
-							}
-							slug = slug+suffix;
-						}
+						String slug = Queries.findSlug("tracks", Partyflow.sanitizeSlug(td.title));
 						lastSlug = slug;
 						try (PreparedStatement ps = c.prepareStatement(
 								"INSERT INTO `tracks` (`release_id`, `title`, `subtitle`, `slug`, `master`, `description`, `track_number`, `loudness`, `peak`, `duration`, `lyrics`, `created_at`, `last_updated`) "

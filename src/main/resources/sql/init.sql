@@ -1,8 +1,10 @@
 CREATE TABLE `meta` (
 	`name` VARCHAR(255) PRIMARY KEY,
-	`value` CLOB NOT NULL
+	`value` {{clob}} NOT NULL
 );
+--
 INSERT INTO `meta` (`name`, `value`) VALUES ('data_version', '0');
+--
 INSERT INTO `meta` (`name`, `value`) VALUES ('site_description', '
 <h1>Welcome to Partyflow!</h1>
 <p>
@@ -21,7 +23,7 @@ INSERT INTO `meta` (`name`, `value`) VALUES ('site_description', '
 	You can change what this homepage says in the admin panel.
 </p>
 ');
-
+--
 CREATE TABLE `releases` (
 	`release_id`    BIGINT AUTO_INCREMENT PRIMARY KEY,
 	`user_id`       BIGINT NOT NULL,
@@ -30,7 +32,7 @@ CREATE TABLE `releases` (
 	`slug`          VARCHAR(255) NOT NULL UNIQUE,
 	`published`     BOOLEAN NOT NULL,
 	`art`           VARCHAR(255),
-	`description`   CLOB NOT NULL,
+	`description`   {{clob}} NOT NULL,
 	`created_at`    TIMESTAMP NOT NULL,
 	`last_updated`  TIMESTAMP NOT NULL,
 	`published_at`  TIMESTAMP,
@@ -38,6 +40,7 @@ CREATE TABLE `releases` (
 	`loudness`      INT,
 	`peak`          INT
 );
+--
 CREATE TABLE `tracks` (
 	`track_id`     BIGINT AUTO_INCREMENT PRIMARY KEY,
 	`release_id`   BIGINT NOT NULL,
@@ -46,8 +49,8 @@ CREATE TABLE `tracks` (
 	`slug`         VARCHAR(255) NOT NULL UNIQUE,
 	`art`          VARCHAR(255),
 	`master`       VARCHAR(255) NOT NULL,
-	`description`  CLOB NOT NULL,
-	`lyrics`       CLOB,
+	`description`  {{clob}} NOT NULL,
+	`lyrics`       {{clob}},
 	`created_at`   TIMESTAMP NOT NULL,
 	`last_updated` TIMESTAMP NOT NULL,
 	`track_number` INT NOT NULL,
@@ -55,6 +58,7 @@ CREATE TABLE `tracks` (
 	`loudness`     INT NOT NULL,
 	`peak`         INT NOT NULL
 );
+--
 CREATE TABLE `transcodes` (
 	`transcode_id`    BIGINT AUTO_INCREMENT PRIMARY KEY,
 	`master`          VARCHAR(255) NOT NULL,
@@ -65,6 +69,7 @@ CREATE TABLE `transcodes` (
 	`created_at`      TIMESTAMP NOT NULL,
 	`last_downloaded` TIMESTAMP NOT NULL
 );
+--
 CREATE TABLE `users` (
 	`user_id`      BIGINT AUTO_INCREMENT PRIMARY KEY,
 	`username`     VARCHAR(255) NOT NULL UNIQUE,
@@ -74,46 +79,61 @@ CREATE TABLE `users` (
 	`created_at`   TIMESTAMP NOT NULL,
 	`last_login`   TIMESTAMP
 );
+--
 CREATE TABLE `sessions` (
 	`session_id`   UUID PRIMARY KEY,
 	`user_id`      BIGINT NOT NULL,
 	`expires`      TIMESTAMP NOT NULL
 );
 
+--
 CREATE INDEX `tracks_release_index`
 	ON `tracks` (`release_id`);
+--
 CREATE INDEX `releases_user_index`
 	ON `releases` (`user_id`);
+--
 CREATE INDEX `transcodes_master_index`
 	ON `transcodes` (`master`);
+--
 
 CREATE INDEX `tracks_number_index`
 	ON `tracks` (`track_number`);
+--
 
 CREATE INDEX `transcodes_format_index`
 	ON `transcodes` (`format`);
+--
 CREATE INDEX `transcodes_last_downloaded_index`
 	ON `transcodes` (`last_downloaded`);
+--
 CREATE INDEX `transcodes_release_id_index`
 	ON `transcodes` (`release_id`);
+--
 CREATE INDEX `transcodes_track_id_index`
 	ON `transcodes` (`track_id`);
+--
 
 CREATE INDEX `sessions_expires_index`
 	ON `sessions` (`expires`);
+--
 
 ALTER TABLE `tracks` ADD CONSTRAINT `tracks_releases`
 	FOREIGN KEY (`release_id`) REFERENCES `releases`
 	ON DELETE CASCADE;
+--
 ALTER TABLE `transcodes` ADD CONSTRAINT `transcodes_releases`
 	FOREIGN KEY (`release_id`) REFERENCES `releases`
 	ON DELETE CASCADE;
+--
 ALTER TABLE `transcodes` ADD CONSTRAINT `transcodes_tracks`
 	FOREIGN KEY (`track_id`) REFERENCES `tracks`
 	ON DELETE CASCADE;
+--
 ALTER TABLE `releases` ADD CONSTRAINT `releases_users`
 	FOREIGN KEY (`user_id`) REFERENCES `users`
 	ON DELETE CASCADE;
+--
 ALTER TABLE `sessions` ADD CONSTRAINT `sessions_users`
 	FOREIGN KEY (`user_id`) REFERENCES `users`
 	ON DELETE CASCADE;

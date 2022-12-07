@@ -21,9 +21,6 @@ package com.unascribed.partyflow.handler;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 
@@ -45,6 +42,8 @@ import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SimpleHandler.MultipartPost;
+import com.unascribed.partyflow.data.Queries;
+import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
@@ -59,7 +58,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Session session = SessionHelper.getSession(req);
 		if (session != null) {
 			res.setStatus(HTTP_200_OK);
@@ -71,7 +70,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 
 	@Override
 	public void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Session session = SessionHelper.getSession(req);
 		if (session != null) {
 			String csrf = data.getPartAsString("csrf", 64);
@@ -102,37 +101,9 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 				});
 				return;
 			}
-			try (Connection c = Partyflow.sql.getConnection()) {
-				String slug = Partyflow.sanitizeSlug(title);
-				try (PreparedStatement s = c.prepareStatement("SELECT 1 FROM releases WHERE slug = ?;")) {
-					int i = 0;
-					String suffix = "";
-					while (true) {
-						if (i > 0) {
-							suffix = "-"+(i+1);
-						}
-						s.setString(1, slug+suffix);
-						try (ResultSet rs = s.executeQuery()) {
-							if (!rs.first()) break;
-						}
-						i++;
-					}
-					slug = slug+suffix;
-				}
-				try (PreparedStatement s = c.prepareStatement(
-						"INSERT INTO `releases` (`user_id`, `title`, `subtitle`, `slug`, `description`, `published`, `created_at`, `last_updated`) "
-						+ "VALUES (?, ?, ?, ?, ?, FALSE, NOW(), NOW());")) {
-					s.setInt(1, session.userId);
-					s.setString(2, title);
-					s.setString(3, subtitle);
-					s.setString(4, slug);
-					s.setString(5, "");
-					s.executeUpdate();
-				}
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
-			} catch (SQLException e) {
-				throw new ServletException(e);
-			}
+			String slug = Queries.findSlug("releases", Partyflow.sanitizeSlug(title));
+			QReleases.create(slug, session.userId(), title, subtitle, "");
+			res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
 		} else {
 			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
 		}

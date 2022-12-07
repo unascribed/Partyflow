@@ -21,35 +21,31 @@ package com.unascribed.partyflow.handler;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.Map;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.SimpleHandler;
-import com.unascribed.partyflow.SimpleHandler.UrlEncodedPost;
-import com.unascribed.partyflow.data.QSessions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class LogoutHandler extends SimpleHandler implements UrlEncodedPost {
+import com.unascribed.partyflow.SessionHelper;
+import com.unascribed.partyflow.SimpleHandler;
+import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.SimpleHandler.Get;
+
+public class AdminHandler extends SimpleHandler implements Get {
+
+	private static final Logger log = LoggerFactory.getLogger(AdminHandler.class);
 
 	@Override
-	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException, SQLException {
-		Session session = SessionHelper.getSession(req);
-		if (session == null) {
-			res.sendRedirect(Partyflow.config.http.path);
+	public void get(String path, HttpServletRequest req, HttpServletResponse res)
+			throws IOException, ServletException, SQLException {
+		Session s = SessionHelper.getSession(req);
+		if (s == null || !s.admin()) {
+			res.sendError(403);
 			return;
 		}
-		String csrf = params.get("csrf");
-		if (!Partyflow.isCsrfTokenValid(session, csrf)) {
-			res.sendRedirect(Partyflow.config.http.path);
-			return;
-		}
-		QSessions.destroy(session.sessionId());
-		SessionHelper.clearSessionCookie(res);
-		res.sendRedirect(Partyflow.config.http.path);
 	}
 
 }

@@ -126,7 +126,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Map<String, String> query = parseQuery(req);
 		Iterator<String> split = SLASH_SPLITTER.split(path).iterator();
 		String kind = split.next();
@@ -170,7 +170,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 							+ "FROM `releases` JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
 							+ "WHERE `releases`.`slug` = ? AND (`releases`.`published` = true OR "+permissionQuery+");")) {
 						ps.setString(1, slug);
-						if (s != null) ps.setInt(2, s.userId);
+						if (s != null) ps.setInt(2, s.userId());
 						try (ResultSet rs = ps.executeQuery()) {
 							if (rs.first()) {
 								releaseArt = rs.getString("art");
@@ -348,7 +348,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			} else {
 				try (PreparedStatement ps = c.prepareStatement(masterQuery.replace("{}", permissionQuery))) {
 					ps.setString(1, slug);
-					if (s != null) ps.setInt(2, s.userId);
+					if (s != null) ps.setInt(2, s.userId());
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
 							master = rs.getString("master");
@@ -556,7 +556,7 @@ public class TranscodeHandler extends SimpleHandler implements GetOrHead {
 			masterBlob = Partyflow.storage.getBlob(Partyflow.storageContainer, src);
 			if (masterBlob == null) {
 				log.error("Master for {} {} is missing!", kind, slug);
-				return null;
+				return new TranscodeResult(null, 0, null);
 			}
 		}
 		File tmpFile = cache ? File.createTempFile("transcode-", "."+fmt.fileExtension(), WORK_DIR) : null;

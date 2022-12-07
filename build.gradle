@@ -25,10 +25,9 @@ dependencies {
 	implementation('org.apache.jclouds.driver:jclouds-slf4j:2.5.0') {
 		transitive = false
 	}
-	implementation 'org.apache.jclouds.api:filesystem:2.5.0'
+	
 	implementation 'blue.endless:jankson:1.2.1'
 	implementation 'com.google.guava:guava:31.1-jre'
-	implementation 'com.h2database:h2:2.1.214'
 	implementation 'com.github.spullara.mustache.java:compiler:0.9.10'
 	implementation 'org.slf4j:slf4j-api:1.7.36'
 	implementation 'com.unascribed:asyncsimplelog:4.6.1'
@@ -37,6 +36,14 @@ dependencies {
 	implementation 'org.commonmark:commonmark:0.19.0'
 	implementation 'org.slf4j:jcl-over-slf4j:1.7.36'
 	implementation 'org.apache.commons:commons-jexl3:3.2.1'
+	
+	// Storage drivers
+	implementation 'org.apache.jclouds.api:filesystem:2.5.0'
+	implementation 'org.apache.jclouds.api:s3:2.5.0'
+	
+	// Database drivers
+	implementation 'com.h2database:h2:2.1.214'
+	implementation 'org.mariadb.jdbc:mariadb-java-client:3.1.0'	
 }
 
 jar {

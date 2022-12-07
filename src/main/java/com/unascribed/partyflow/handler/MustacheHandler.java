@@ -20,6 +20,7 @@
 package com.unascribed.partyflow.handler;
 
 import java.io.IOException;
+import java.sql.SQLException;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,7 +61,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 	}
 
 	@Override
-	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head) throws IOException, ServletException {
+	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head) throws IOException, ServletException, SQLException {
 		if (contextComputer == null) {
 			serveTemplate(req, res, template);
 		} else {
@@ -68,7 +69,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		}
 	}
 
-	public static void serveTemplate(HttpServletRequest req, HttpServletResponse res, String path, Object... context) throws IOException, ServletException {
+	public static void serveTemplate(HttpServletRequest req, HttpServletResponse res, String path, Object... context) throws IOException, ServletException, SQLException {
 		if (path.endsWith(".html")) {
 			res.setHeader("Content-Type", "text/html; charset=utf-8");
 		} else if (path.endsWith(".css")) {
@@ -81,9 +82,9 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		Session session = SessionHelper.getSession(req);
 		arr[1] = new Object() {
 			boolean loggedIn = session != null;
-			boolean admin = session != null && session.admin;
-			String username = session == null ? null : session.username;
-			String displayName = session == null ? null : session.displayName;
+			boolean admin = session != null && session.admin();
+			String username = session == null ? null : session.username();
+			String displayName = session == null ? null : session.displayName();
 			String csrf = session != null ? Partyflow.allocateCsrfToken(session) : null;
 		};
 		System.arraycopy(context, 0, arr, 2, context.length);

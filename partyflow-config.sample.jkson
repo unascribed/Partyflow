@@ -35,10 +35,25 @@ logger {
 	color: true
 }
 database {
-	// The only valid option right now is "h2", which is similar to SQLite
+	// Valid options are h2 and mariadb.
 	driver: "h2"
-	// .mv.db suffix is added automatically
-	file: "./partyflow"
+	
+	// An embedded pure Java database comparable to SQLite. Great for easy small deployments.
+	// No configuration required - works out of the box.
+	h2 {
+		// .mv.db suffix is added automatically
+		file: "./partyflow"
+	}
+	
+	// A mature and fast external database server. Support is still experimental.
+	// MySQL should also work but is not supported.
+	mariadb {
+		host: "localhost"
+		port: 3306
+		user: "user"
+		pass: "p4ssw0rd!"
+		db: "partyflow"
+	}
 }
 security {
 	// Used to secure session cookies. Should be set to something long and random; if null, an
@@ -47,25 +62,51 @@ security {
 	// If true, some additional protections will be activated that rely on the site being served
 	// over HTTPS. (This has to be done at a reverse proxy; Partyflow itself does not support SSL.)
 	https: false
-	// N. Scrypt work factor. Higher values are slower, which increases security in the event of a
-	// database leak. Exponential; 17 is 2x the work of 16.
-	scryptCpu: 16
-	// r. Scrypt memory factor. Increases memory usage when hashing passwords. Linear; 17 is 6.25%
-	// more work than 16.
-	scryptMemory: 16
-	// p. Scrypt parallelization factor. Values greater than 1 allow parallelization; Partyflow's
-	// scrypt implementation (and in fact, most normal scrypt implementations) do not parallelize,
-	// so setting this >1 basically just weakens your hashes. Linear; 1 is 1 core, 2 is 2 cores.
-	scryptParallelization: 1
+	
+	// Advanced tuning of the underlying password hashing algorithm.
+	scrypt {
+		// N. Scrypt work factor. Higher values are slower, which increases security in the event of a
+		// database leak. Exponential; 17 is 2x the work of 16.
+		cpu: 16
+		// r. Scrypt memory factor. Increases memory usage when hashing passwords. Linear; 17 is 6.25%
+		// more work than 16.
+		memory: 16
+		// p. Scrypt parallelization factor. Values greater than 1 allow parallelization; Partyflow's
+		// scrypt implementation (and in fact, most normal scrypt implementations) do not parallelize,
+		// so setting this >1 basically just weakens your hashes. Linear; 1 is 1 core, 2 is 2 cores.
+		parallelization: 1
+	}
 }
 storage {
-	// The only valid option right now is "fs" - support for S3, Swift, etc, will be added later
+	// Valid options are fs and s3.
 	driver: "fs"
-	dir: "./files"
+	
+	// Stores files on your local filesystem.
+	fs {
+		// The directory to store files in.
+		dir: "./files"
+	}
+	
+	// Stores files on any S3-compatible remote storage provider.
+	s3 {
+		// The endpoint of the service you use.
+		endpoint: "https://s3.wasabisys.com"
+		// The name of the bucket to store files in.
+		bucket: "partyflow-example"
+		// The access key ID, for authentication. Sometimes called "client id" or "username".
+		accessKeyId: "ACCESS_KEY_ID"
+		// The secret access key, for authentication. Sometimes called "client secret" or "password".
+		secretAccessKey: "SECRET_ACCESS_KEY"
+	}
+	
 	// If this isn't an absolute URL, it will be resolved relative to http.path
 	// If this is an absolute path, it will be resolved relative to the domain
 	// {} will be replaced with the file path
+	// The default will serve files through Partyflow, which is inefficient when using remote hosting.
+	// In that case, you should set this to your bucket's URL, Cloudfront host, bunny.net pull zone, whatever.
 	publicUrlPattern: "files/{}"
+	// For example, a direct Wasabi config would look like this:
+	//publicUrlPattern: "https://BUCKET_NAME.s3.wasabisys.com/{}"
 }
 programs {
 	// Using some form of sandboxing (e.g. unshare) is recommended in production. All files will be

@@ -57,9 +57,9 @@ import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.SimpleHandler.UrlEncodedOrMultipartPost;
+import com.unascribed.partyflow.data.Queries;
 import com.unascribed.partyflow.TranscodeFormat;
 
-import com.google.common.base.Objects;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 
@@ -74,7 +74,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		Map<String, String> query = parseQuery(req);
@@ -93,13 +93,13 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
 					ps.setString(1, trackSlug);
 					if (s != null) {
-						ps.setInt(2, s.userId);
+						ps.setInt(2, s.userId());
 					}
 					try (ResultSet rs = ps.executeQuery()) {
 						// slug is UNIQUE, we don't need to handle more than one row
 						if (rs.first()) {
 							res.setStatus(HTTP_200_OK);
-							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId;
+							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId();
 							String _descriptionMd;
 							String desc = rs.getString("tracks.description");
 							if (_editable) {
@@ -164,7 +164,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
 					ps.setString(1, trackSlug);
 					if (s != null) {
-						ps.setInt(2, s.userId);
+						ps.setInt(2, s.userId());
 					}
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
@@ -199,7 +199,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 	}
 
 	@Override
-	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException {
+	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException, SQLException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		if ("/delete".equals(m.group(2))) {
@@ -222,7 +222,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
 						+ "WHERE `tracks`.`slug` = ? AND `releases`.`user_id` = ?;")) {
 					ps.setString(1, slugs);
-					ps.setInt(2, s.userId);
+					ps.setInt(2, s.userId());
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
 							trackId = rs.getLong("track_id");
@@ -250,9 +250,12 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						}
 					}
 				}
-				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `transcodes` WHERE `track_id` = ?; DELETE FROM `tracks` WHERE `track_id` = ?;")) {
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `transcodes` WHERE `track_id` = ?;")) {
 					ps.setLong(1, trackId);
-					ps.setLong(2, trackId);
+					ps.executeUpdate();
+				}
+				try (PreparedStatement ps = c.prepareStatement("DELETE FROM `tracks` WHERE `track_id` = ?;")) {
+					ps.setLong(1, trackId);
 					ps.executeUpdate();
 				}
 				ReleaseHandler.regenerateAlbumFile(releaseId);
@@ -270,7 +273,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 	@Override
 	public void multipartPost(String path, HttpServletRequest req,
 			HttpServletResponse res, MultipartData data)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		if ("/edit".equals(m.group(2))) {
@@ -329,7 +332,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 							+ "JOIN `releases` ON `tracks`.`release_id` = `releases`.`release_id` "
 						+ "WHERE `tracks`.`slug` = ? AND `releases`.`user_id` = ?;")) {
 					ps.setString(1, m.group(1));
-					ps.setInt(2, s.userId);
+					ps.setInt(2, s.userId());
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
 							published = rs.getBoolean("published");
@@ -339,23 +342,11 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						}
 					}
 				}
-				String slug = published ? m.group(1) : Partyflow.sanitizeSlug(title);
-				if (!Objects.equal(slug, m.group(1))) {
-					try (PreparedStatement ps = c.prepareStatement("SELECT 1 FROM `tracks` WHERE `slug` = ?;")) {
-						int i = 0;
-						String suffix = "";
-						while (true) {
-							if (i > 0) {
-								suffix = "-"+(i+1);
-							}
-							ps.setString(1, slug+suffix);
-							try (ResultSet rs = ps.executeQuery()) {
-								if (!rs.first()) break;
-							}
-							i++;
-						}
-						slug = slug+suffix;
-					}
+				String slug;
+				if (published) {
+					slug = m.group(1);
+				} else {
+					slug = Queries.findSlug("releases", Partyflow.sanitizeSlug(title));
 				}
 				String extraCols = artPath != null ? "`art` = ?," : "";
 				try (PreparedStatement ps = c.prepareStatement(

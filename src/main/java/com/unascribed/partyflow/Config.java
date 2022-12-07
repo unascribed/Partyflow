@@ -44,28 +44,66 @@ public final class Config {
 	public DatabaseSection database;
 	public static final class DatabaseSection {
 		public enum DatabaseDriver {
-			h2
+			h2("CLOB"),
+			mariadb("TEXT"),
+			;
+			private final String clob;
+			DatabaseDriver(String clob) { this.clob = clob; }
+
+			public String clob() { return clob; }
 		}
 		public DatabaseDriver driver;
-		public String file;
+
+		public H2Section h2;
+		public static final class H2Section {
+			public String file;
+		}
+		
+		public MariaDBSection mariadb;
+		public static final class MariaDBSection {
+			public String host;
+			public int port;
+			public String user;
+			public String pass;
+			public String db;
+		}
+		
 	}
 
 	public SecuritySection security;
 	public static final class SecuritySection {
 		public String sessionSecret;
 		public boolean https;
-		public int scryptCpu;
-		public int scryptMemory;
-		public int scryptParallelization;
+		
+		public ScryptSection scrypt;
+		public static final class ScryptSection {
+			public int cpu;
+			public int memory;
+			public int parallelization;
+		}
 	}
 
 	public StorageSection storage;
 	public static final class StorageSection {
 		public enum StorageDriver {
-			fs
+			fs, s3
 		}
 		public StorageDriver driver;
-		public String dir;
+
+		public FsSection fs;
+		public static final class FsSection {
+			public String dir;
+		}
+		
+		public S3Section s3;
+		public static final class S3Section {
+			public String endpoint;
+			public String bucket;
+			public String accessKeyId;
+			public String secretAccessKey;
+		}
+		
+		
 		public String publicUrlPattern;
 	}
 

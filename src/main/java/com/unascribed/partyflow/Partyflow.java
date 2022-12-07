@@ -48,6 +48,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import javax.annotation.Detainted;
+import javax.annotation.Tainted;
 import javax.crypto.spec.SecretKeySpec;
 
 import jakarta.servlet.ServletException;
@@ -68,10 +70,14 @@ import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
 import org.jclouds.filesystem.reference.FilesystemConstants;
+import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+import org.mariadb.jdbc.MariaDbPoolDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.asyncsimplelog.AsyncSimpleLog;
+import com.unascribed.partyflow.Config.DatabaseSection.DatabaseDriver;
+import com.unascribed.partyflow.Config.StorageSection.StorageDriver;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.handler.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.DownloadHandler;
@@ -91,6 +97,7 @@ import com.unascribed.random.RandomXoshiro256StarStar;
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
@@ -162,6 +169,9 @@ public class Partyflow {
 		AsyncSimpleLog.setMinLogLevel(config.logger.level);
 		AsyncSimpleLog.setAnsi(config.logger.color);
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.eclipse\\.jetty"));
+		AsyncSimpleLog.ban(Pattern.compile("^org\\.mariadb\\.jdbc\\.client\\.socket\\.impl\\.Packet(Writer|Reader)$"));
+		AsyncSimpleLog.ban(Pattern.compile("^org\\.mariadb\\.jdbc\\.client\\.impl\\.StandardClient$"));
+		AsyncSimpleLog.ban(Pattern.compile("^jclouds\\.(wire|headers|signature)$"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
 		
 		if (config.formats.allowEncumberedFormats) {
@@ -214,9 +224,21 @@ public class Partyflow {
 		byte[] sessionSecretBytes = config.security.sessionSecret.getBytes(Charsets.UTF_8);
 		sessionSecret = new SecretKeySpec(sessionSecretBytes, "RAW");
 
+		String dbId = "(?)";
 		try {
-			String url = "jdbc:h2:"+UrlEscapers.urlPathSegmentEscaper().escape(config.database.file).replace("%2F", "/");
-			sql = JdbcConnectionPool.create(url, "", "");
+			var pesc = UrlEscapers.urlPathSegmentEscaper();
+			var esc = UrlEscapers.urlFormParameterEscaper();
+			if (config.database.driver == DatabaseDriver.h2) {
+				dbId = "(h2)"+config.database.h2.file+".db.mv";
+				sql = JdbcConnectionPool.create("jdbc:h2:"+pesc.escape(config.database.h2.file).replace("%2F", "/"), "", "");
+			} else if (config.database.driver == DatabaseDriver.mariadb) {
+				var c = config.database.mariadb;
+				sql = new MariaDbPoolDataSource("jdbc:mariadb://"+pesc.escape(c.host)+":"+c.port+"/"+pesc.escape(c.db)+"?user="+esc.escape(c.user)+"&password="+esc.escape(c.pass)+"&autoReconnect=true");
+				c.pass = null;
+				dbId = "(mariadb)"+c.host+":"+c.port+"/"+c.db;
+			} else {
+				throw new IllegalArgumentException("Unknown database driver");
+			}
 			try (Connection c = sql.getConnection()) {
 				try (Statement s = c.createStatement()) {
 					int dataVersion;
@@ -229,9 +251,9 @@ public class Partyflow {
 							}
 						}
 					} catch (SQLException e) {
-						if (e.getMessage() != null && e.getMessage().contains("not found")) {
+						if (e.getMessage() != null && (e.getMessage().contains("not found") || e.getMessage().contains("doesn't exist"))) {
 							log.info("Initializing database...");
-							s.execute(new String(Resources.toByteArray(ClassLoader.getSystemResource("sql/init.sql")), Charsets.UTF_8));
+							exec(s, ClassLoader.getSystemResource("sql/init.sql"));
 							dataVersion = 0;
 						} else {
 							throw e;
@@ -245,7 +267,7 @@ public class Partyflow {
 						URL upgrade = ClassLoader.getSystemResource("sql/upgrade_to_"+(dataVersion+1)+".sql");
 						if (upgrade != null) {
 							log.info("Upgrading database from v{} to v{}...", dataVersion, dataVersion+1);
-							s.execute(new String(Resources.toByteArray(upgrade), Charsets.UTF_8));
+							exec(s, upgrade);
 							dataVersion++;
 						} else {
 							break;
@@ -257,24 +279,35 @@ public class Partyflow {
 			log.error("Failed to load init.sql off classpath", e);
 		} catch (SQLException e) {
 			if (e.getCause() != null && e.getCause() instanceof IllegalStateException && e.getCause().getMessage().contains("file is locked")) {
-				log.error("Failed to open the database at {}.mv.db: The file is in use.\n"
-						+ "Close any other instances of Partyflow or database editors and try again", config.database.file);
+				log.error("Failed to open the database at {}: The file is in use.\n"
+						+ "Close any other instances of Partyflow or database editors and try again", dbId);
 			} else {
-				log.error("Failed to open database at {}.mv.db", config.database.file, e);
+				log.error("Failed to open database at {}", dbId, e);
 			}
 			return;
 		}
-		log.info("Opened database at {}.mv.db", config.database.file);
+		log.info("Opened database at {}", dbId);
 
-		File f = new File(config.storage.dir).getAbsoluteFile();
-		f.mkdirs();
-		Properties bsProps = new Properties();
-		bsProps.setProperty(FilesystemConstants.PROPERTY_BASEDIR, f.getParent());
-		storage = ContextBuilder.newBuilder("filesystem")
-				.overrides(bsProps)
-				.build(BlobStoreContext.class)
-				.getBlobStore();
-		storageContainer = f.getName();
+		if (config.storage.driver == StorageDriver.fs) {
+			File f = new File(config.storage.fs.dir).getAbsoluteFile();
+			f.mkdirs();
+			Properties bsProps = new Properties();
+			bsProps.setProperty(FilesystemConstants.PROPERTY_BASEDIR, f.getParent());
+			storage = ContextBuilder.newBuilder("filesystem")
+					.overrides(bsProps)
+					.build(BlobStoreContext.class)
+					.getBlobStore();
+			storageContainer = f.getName();
+		} else if (config.storage.driver == StorageDriver.s3) {
+			var c = config.storage.s3;
+			storage = ContextBuilder.newBuilder("s3")
+					.credentials(c.accessKeyId, c.secretAccessKey)
+					.modules(ImmutableList.of(new SLF4JLoggingModule()))
+					.endpoint(c.endpoint)
+					.build(BlobStoreContext.class)
+					.getBlobStore();
+			storageContainer = c.bucket;
+		}
 		log.info("Prepared storage");
 
 		String majorJavaVer;
@@ -380,6 +413,14 @@ public class Partyflow {
 		}, 15, 15, TimeUnit.MINUTES);
 	}
 	
+	private static void exec(Statement s, URL res) throws SQLException, IOException {
+		for (var q : Resources.toString(res, Charsets.UTF_8)
+				.replace("{{clob}}", config.database.driver.clob())
+				.split("\n--\n")) {
+			s.execute(q);
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	private static Map.Entry<String, Object> unwrap(Map.Entry<?, ?> o) {
 		return (Map.Entry<String, Object>)unwrap((Object)o);
@@ -420,14 +461,14 @@ public class Partyflow {
 		synchronized (secureRand) {
 			token = randomString(secureRand, 32);
 		}
-		csrfTokens.put(s.sessionId+":"+token, System.currentTimeMillis()+(30*60*1000));
+		csrfTokens.put(s.sessionId()+":"+token, System.currentTimeMillis()+(30*60*1000));
 		return token;
 	}
 
 	public static boolean isCsrfTokenValid(Session s, String token) {
 		if (token == null) return false;
 		if (s == null) return false;
-		Long l = csrfTokens.get(s.sessionId+":"+token);
+		Long l = csrfTokens.get(s.sessionId()+":"+token);
 		return l != null && l > System.currentTimeMillis();
 	}
 
@@ -454,7 +495,7 @@ public class Partyflow {
 	private static final Pattern ILLEGAL = Pattern.compile("[?/#&;\\\\=\\^\\[\\]%]+");
 	private static final Pattern SPACE = Pattern.compile("[\\p{Space}]+");
 
-	public static String sanitizeSlug(String name) {
+	public static @Detainted String sanitizeSlug(@Tainted String name) {
 		if ("__testtrack".equals(name)) return "___testtrack";
 		String s = Normalizer.normalize(name, Form.NFC);
 		s = SPACE.matcher(s).replaceAll("-");
@@ -472,7 +513,7 @@ public class Partyflow {
 	}
 
 	public static String resolveBlob(String blob) {
-		if (config.storage.publicUrlPattern.startsWith("/")) {
+		if (config.storage.publicUrlPattern.startsWith("/") || config.storage.publicUrlPattern.startsWith("http://") || config.storage.publicUrlPattern.startsWith("https://")) {
 			return config.storage.publicUrlPattern.replace("{}", blob);
 		} else {
 			return config.http.path+config.storage.publicUrlPattern.replace("{}", blob);

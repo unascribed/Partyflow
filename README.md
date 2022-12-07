@@ -15,7 +15,7 @@ with customizable colors.
 ## The good 😃
 
 - In-browser setup
-- Embedded H2SQL database
+- Can use an embedded H2SQL database or connect to MariaDB
 - Album and track art
 - Creating releases
 - Adding tracks
@@ -28,7 +28,7 @@ with customizable colors.
 - yt-dlp integration (e.g. download FLACs directly from yt-dlp)
 - All names can contain arbitrary Unicode
 - Automatic AGPL compliance
-- Local filesystem storage
+- Abstracted storage backend; currently supports S3 and local filesystem
 - Volumes above 100%
 - Automatic extraction and organization of existing metadata from uploaded masters
 
@@ -38,18 +38,16 @@ with customizable colors.
 - No way to make new accounts
 - No way to pay for releases
 - Color customization is still WIP
-- No external database support (MariaDB planned)
 - Can't set the release date on releases to the past (for backcatalog)
 - Can't override templates or static files
 - No translation support
-- Remote storage (e.g. S3)
 - No automatic pruning of old transcodes that haven't been downloaded lately
 
 ## The ugly 😦
 
 - Needs a logo that isn't just 🎉 from Twemoji
 - If you're logged in as admin it's not possible to view a release/track as a normal user
-- Could probably use an API of some form?
+- Could probably use an API of some form? (code is being refactored to make this possible)
 
 # Running it
 If you're okay with it being unfinished as described above, here's what you need to do to run it:
@@ -66,9 +64,12 @@ The resultant JAR will be in `build/libs`.
 Copy `partyflow-config.sample.jkson` to `partyflow-config.jkson` in the directory you intend to run
 Partyflow in. Edit it to your liking; it's well-commented.
 
+**The config format is not yet stable.** If you update Partyflow, your config may no longer work in
+the new version due to reorganization. If you have issues, start over from the current example.
+
 ## 3. Run it
-Run the Partyflow jar with Java 17 in the same directory as the configuration. An H2SQL database
-will be automatically created and initialized at the location in the config.
+Run the Partyflow jar with Java 17 in the same directory as the configuration. The database will be
+automatically initialized as described in the config.
 
 ## 4. Set it up
 A secret key is printed in the log if Partyflow is started with no defined admin users. Navigating

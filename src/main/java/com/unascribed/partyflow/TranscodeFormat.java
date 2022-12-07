@@ -29,6 +29,9 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.ToDoubleFunction;
+
+import javax.annotation.Nonnull;
+
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlContext;
 import org.apache.commons.jexl3.JexlExpression;
@@ -114,7 +117,7 @@ public record TranscodeFormat(
 		return name();
 	}
 	
-	public static ImmutableList<TranscodeFormat> formats;
+	public static ImmutableList<@Nonnull TranscodeFormat> formats;
 	public static ImmutableMultimap<String, TranscodeFormat> formatsByPublicName;
 	public static ImmutableMap<String, TranscodeFormat> formatsByName;
 

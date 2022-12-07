@@ -21,7 +21,6 @@ package com.unascribed.partyflow.handler;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -75,7 +74,7 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Iterator<String> split = SLASH_SPLITTER.split(path).iterator();
 		String _kind = split.next();
 		String _slug = split.next();
@@ -84,85 +83,81 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Kind must be one of "+Joiner.on(", ").join(QUERIES_BY_KIND.keySet()));
 		}
 		Session s = SessionHelper.getSession(req);
-		try (Connection c = Partyflow.sql.getConnection()) {
-			String _title;
-			String _subtitle;
-			String _creator;
-			String _art;
-			long _duration;
-			List<String> masters = new ArrayList<>();
-			String permissionQuery = (s == null ? "false" : "`releases`.`user_id` = ?");
-			try (PreparedStatement ps = c.prepareStatement(masterQuery.replace("{}", permissionQuery))) {
-				ps.setString(1, _slug);
-				if (s != null) ps.setInt(2, s.userId);
-				try (ResultSet rs = ps.executeQuery()) {
-					if (rs.first()) {
-						_title = rs.getString("title");
-						_subtitle = rs.getString("subtitle");
-						_creator = rs.getString("creator");
-						_art = rs.getString("art") == null ? rs.getString("fallback_art") : rs.getString("art");
-						long duration = rs.getLong("duration");
-						if (rs.wasNull()) {
-							try (PreparedStatement ps2 = c.prepareStatement("SELECT `duration`, `master` FROM `tracks` WHERE `release_id` = ?;")) {
-								ps2.setLong(1, rs.getLong("release_id"));
-								try (ResultSet rs2 = ps2.executeQuery()) {
-									while (rs2.next()) {
-										duration += rs2.getLong("duration");
-										masters.add(rs2.getString("master"));
-									}
+		String _title;
+		String _subtitle;
+		String _creator;
+		String _art;
+		long _duration;
+		List<String> masters = new ArrayList<>();
+		String permissionQuery = (s == null ? "false" : "`releases`.`user_id` = ?");
+		try (var c = Partyflow.sql.getConnection(); var ps = c.prepareStatement(masterQuery.replace("{}", permissionQuery))) {
+			ps.setString(1, _slug);
+			if (s != null) ps.setInt(2, s.userId());
+			try (ResultSet rs = ps.executeQuery()) {
+				if (rs.first()) {
+					_title = rs.getString("title");
+					_subtitle = rs.getString("subtitle");
+					_creator = rs.getString("creator");
+					_art = rs.getString("art") == null ? rs.getString("fallback_art") : rs.getString("art");
+					long duration = rs.getLong("duration");
+					if (rs.wasNull()) {
+						try (PreparedStatement ps2 = c.prepareStatement("SELECT `duration`, `master` FROM `tracks` WHERE `release_id` = ?;")) {
+							ps2.setLong(1, rs.getLong("release_id"));
+							try (ResultSet rs2 = ps2.executeQuery()) {
+								while (rs2.next()) {
+									duration += rs2.getLong("duration");
+									masters.add(rs2.getString("master"));
 								}
 							}
-						} else {
-							masters.add(rs.getString("master"));
 						}
-						_duration = duration;
 					} else {
-						res.sendError(HTTP_404_NOT_FOUND);
-						return;
+						masters.add(rs.getString("master"));
 					}
+					_duration = duration;
+				} else {
+					res.sendError(HTTP_404_NOT_FOUND);
+					return;
 				}
 			}
-			long masterSize = masters.stream()
-					.unordered().parallel()
-					.map(blob -> Partyflow.storage.blobMetadata(Partyflow.storageContainer, blob))
-					.filter(Objects::nonNull)
-					.map(BlobMetadata::getSize)
-					.filter(Objects::nonNull)
-					.reduce((a, b) -> a + b)
-					.orElse(0L);
-			List<TranscodeFormat> otherFormats = TranscodeFormat.formats.stream()
-					.filter(tf -> tf.available() && tf.usage().canDownload())
-					.collect(Collectors.toCollection(ArrayList::new));
-			String ua = Strings.nullToEmpty(req.getHeader("User-Agent"));
-			List<TranscodeFormat> suggestedFormats = otherFormats.stream()
-					.filter(tf -> tf.suggested(ua))
-					.toList();
-			otherFormats.removeAll(suggestedFormats);
-			Function<TranscodeFormat, Object> munger = tf -> new Object() {
-				String name = tf.publicName();
-				String display_name = tf.displayName();
-				String subtitle = tf.subtitle();
-				String description = tf.description();
-				String icon = tf.icon();
-				String mimetype = tf.mimeType();
-				String size = formatBytes((long)tf.estimateSize(_duration, masterSize));
-				String clazz = tf.uncompressed() ? " uncompressed" : tf.lossless() ? " lossless" : "";
-			};
-			MustacheHandler.serveTemplate(req, res, "download.hbs.html", new Object() {
-				String title = _title;
-				String subtitle = _subtitle;
-				String creator = _creator;
-				String kind = _kind;
-				String kinds = "release".equals(kind) ? "releases" : "track";
-				String slug = _slug;
-				String art = Partyflow.resolveArt(_art);
-				String download_url = Partyflow.config.http.path+"transcode/"+("release".equals(kind) ? "release-zip" : "track")+"/"+slug;
-				List<Object> other_formats = otherFormats.stream().map(munger).toList();
-				List<Object> suggested_formats = suggestedFormats.stream().map(munger).toList();
-			});
-		} catch (SQLException e) {
-			throw new ServletException(e);
 		}
+		long masterSize = masters.stream()
+				.unordered().parallel()
+				.map(blob -> Partyflow.storage.blobMetadata(Partyflow.storageContainer, blob))
+				.filter(Objects::nonNull)
+				.map(BlobMetadata::getSize)
+				.filter(Objects::nonNull)
+				.reduce((a, b) -> a + b)
+				.orElse(0L);
+		List<TranscodeFormat> otherFormats = TranscodeFormat.formats.stream()
+				.filter(tf -> tf.available() && tf.usage().canDownload())
+				.collect(Collectors.toCollection(ArrayList::new));
+		String ua = Strings.nullToEmpty(req.getHeader("User-Agent"));
+		List<TranscodeFormat> suggestedFormats = otherFormats.stream()
+				.filter(tf -> tf.suggested(ua))
+				.toList();
+		otherFormats.removeAll(suggestedFormats);
+		Function<TranscodeFormat, Object> munger = tf -> new Object() {
+			String name = tf.publicName();
+			String display_name = tf.displayName();
+			String subtitle = tf.subtitle();
+			String description = tf.description();
+			String icon = tf.icon();
+			String mimetype = tf.mimeType();
+			String size = formatBytes((long)tf.estimateSize(_duration, masterSize));
+			String clazz = tf.uncompressed() ? " uncompressed" : tf.lossless() ? " lossless" : "";
+		};
+		MustacheHandler.serveTemplate(req, res, "download.hbs.html", new Object() {
+			String title = _title;
+			String subtitle = _subtitle;
+			String creator = _creator;
+			String kind = _kind;
+			String kinds = "release".equals(kind) ? "releases" : "track";
+			String slug = _slug;
+			String art = Partyflow.resolveArt(_art);
+			String download_url = Partyflow.config.http.path+"transcode/"+("release".equals(kind) ? "release-zip" : "track")+"/"+slug;
+			List<Object> other_formats = otherFormats.stream().map(munger).toList();
+			List<Object> suggested_formats = suggestedFormats.stream().map(munger).toList();
+		});
 	}
 	
 	private static String formatBytes(double bytes) {

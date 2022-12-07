@@ -22,9 +22,6 @@ package com.unascribed.partyflow;
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 
@@ -34,6 +31,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.unascribed.partyflow.data.QSessions;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.io.BaseEncoding;
@@ -42,24 +41,11 @@ public class SessionHelper {
 
 	private static final Object NOT_LOGGED_IN = new Object();
 
-	public static class Session {
-		public final UUID sessionId;
-		public final int userId;
-		public final String username;
-		public final String displayName;
-		public final boolean admin;
-		private Session(UUID sessionId, int userId, String username, String displayName, boolean admin) {
-			this.sessionId = sessionId;
-			this.userId = userId;
-			this.username = username;
-			this.displayName = displayName;
-			this.admin = admin;
-		}
-	}
+	public record Session(UUID sessionId, int userId, String username, String displayName, boolean admin) {}
 
 	private static final Splitter SEMICOLON_SPLITTER = Splitter.on(';').trimResults();
 
-	public static @Nullable Session getSession(HttpServletRequest req) throws ServletException {
+	public static @Nullable Session getSession(HttpServletRequest req) throws ServletException, SQLException {
 		Object cache = req.getAttribute(SessionHelper.class.getName()+".cache");
 		if (cache == NOT_LOGGED_IN) {
 			return null;
@@ -86,25 +72,12 @@ public class SessionHelper {
 								mac.update(sessionId.toString().getBytes(Charsets.UTF_8));
 								byte[] hmac = mac.doFinal();
 								if (MessageDigest.isEqual(hmac, theirHmac)) {
-									try (Connection c = Partyflow.sql.getConnection()) {
-										try (PreparedStatement ps = c.prepareStatement(
-												"SELECT `sessions`.`user_id`, `users`.`display_name`, `users`.`username`, `users`.`admin` FROM `sessions` "
-												+ "JOIN `users` ON `users`.`user_id` = `sessions`.`user_id` "
-												+ "WHERE `session_id` = ? AND `expires` > NOW();")) {
-											ps.setString(1, sessionId.toString());
-											try (ResultSet rs = ps.executeQuery()) {
-												if (rs.first()) {
-													int uid = rs.getInt("user_id");
-													Session s = new Session(sessionId, uid, rs.getString("users.username"), rs.getString("users.display_name"), rs.getBoolean("users.admin"));
-													req.setAttribute(SessionHelper.class.getName()+".cache", s);
-													return s;
-												} else {
-													break;
-												}
-											}
-										}
-									} catch (SQLException e) {
-										throw new ServletException(e);
+									Session s = QSessions.get(sessionId);
+									if (s != null) {
+										req.setAttribute(SessionHelper.class.getName()+".cache", s);
+										return s;
+									} else {
+										break;
 									}
 								} else {
 									break;
@@ -133,6 +106,19 @@ public class SessionHelper {
 
 	public static String getCookieOptions() {
 		return (Partyflow.config.security.https ? "Secure;" : "")+"Path="+Partyflow.config.http.path+";HttpOnly;";
+	}
+
+	public static String buildCookie(UUID sessionId, int days) {
+		try {
+			Mac mac = Mac.getInstance("HmacSHA512");
+			mac.init(Partyflow.sessionSecret);
+			mac.update(sessionId.toString().getBytes(Charsets.UTF_8));
+			String b64Mac = BaseEncoding.base64Url().encode(mac.doFinal());
+			String maxAge = days == 0 ? "" : "Max-Age="+(days*24*60*60)+";";
+			return getCookieName()+"="+sessionId+"$"+b64Mac+";"+maxAge+getCookieOptions();
+		} catch (NoSuchAlgorithmException | InvalidKeyException e) {
+			throw new AssertionError(e);
+		}
 	}
 
 }

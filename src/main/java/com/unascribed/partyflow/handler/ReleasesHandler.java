@@ -42,7 +42,7 @@ public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
-			throws IOException, ServletException {
+			throws IOException, ServletException, SQLException {
 		Session s = SessionHelper.getSession(req);
 		try (Connection c = Partyflow.sql.getConnection()) {
 			String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
@@ -51,7 +51,7 @@ public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 					+ " JOIN `users` ON `users`.`user_id` = `releases`.`user_id`"
 					+ " WHERE `published` = true"+suffix+";")) {
 				if (s != null) {
-					ps.setInt(1, s.userId);
+					ps.setInt(1, s.userId());
 				}
 				try (ResultSet rs = ps.executeQuery()) {
 					List<Object> li = Lists.newArrayList();

@@ -20,42 +20,24 @@
 package com.unascribed.partyflow.handler;
 
 import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.data.QMeta;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SimpleHandler;
 
 public class IndexHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
-	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
-			throws IOException, ServletException {
-		String def = "<div class=\"message error\">missingno.</div>";
-		String siteDescription;
-		try (Connection c = Partyflow.sql.getConnection()) {
-			try (Statement s = c.createStatement()) {
-				try (ResultSet rs = s.executeQuery("SELECT `value` FROM `meta` WHERE `name` = 'site_description';")) {
-					if (rs.first()) {
-						siteDescription = rs.getString("value");
-					} else {
-						siteDescription = def;
-					}
-				}
-			}
-		} catch (SQLException e) {
-			throw new ServletException(e);
-		}
+	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head) throws IOException, ServletException, SQLException {
+		var desc = QMeta.getSiteDescription();
 		MustacheHandler.serveTemplate(req, res, "index.hbs.html", new Object() {
-			String site_description = siteDescription;
+			String site_description = desc;
 		});
 	}
 
