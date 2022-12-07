@@ -1,4 +1,6 @@
-# <img src="logo.png" alt="Partyflow!" height="64"/>
+<img src="src/main/resources/static/logo.svg" height="180" align="right"/>
+
+# Partyflow
 Partyflow is a self-hostable music release manager (think Bandcamp) with a built-in on-demand
 transcoder, written in Java 17. The media formats it offers are customizable, but it ships with a
 large collection of pre-defined formats tuned to provide the best balance between filesize and audio
@@ -45,9 +47,9 @@ with customizable colors.
 
 ## The ugly 😦
 
-- Needs a logo that isn't just 🎉 from Twemoji
 - If you're logged in as admin it's not possible to view a release/track as a normal user
 - Could probably use an API of some form? (code is being refactored to make this possible)
+- Windows support currently broken due to usage of /dev/zero and some other stuff
 
 # Running it
 If you're okay with it being unfinished as described above, here's what you need to do to run it:
