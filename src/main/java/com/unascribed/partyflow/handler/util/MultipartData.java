@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.handler.util;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,6 +25,8 @@ import java.util.List;
 import org.eclipse.jetty.server.MultiPartFormInputStream;
 
 import jakarta.servlet.http.Part;
+
+import com.unascribed.partyflow.Partyflow;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;

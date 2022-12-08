@@ -92,6 +92,11 @@ import com.unascribed.partyflow.handler.SetupHandler;
 import com.unascribed.partyflow.handler.StaticHandler;
 import com.unascribed.partyflow.handler.TrackHandler;
 import com.unascribed.partyflow.handler.TranscodeHandler;
+import com.unascribed.partyflow.handler.api.v1.LoginApi;
+import com.unascribed.partyflow.handler.api.v1.WhoAmIApi;
+import com.unascribed.partyflow.handler.util.PartyflowErrorHandler;
+import com.unascribed.partyflow.handler.util.PathResolvingHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.random.RandomXoshiro256StarStar;
 
 import com.google.common.base.Charsets;
@@ -169,9 +174,9 @@ public class Partyflow {
 		AsyncSimpleLog.setMinLogLevel(config.logger.level);
 		AsyncSimpleLog.setAnsi(config.logger.color);
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.eclipse\\.jetty"));
-		AsyncSimpleLog.ban(Pattern.compile("^org\\.mariadb\\.jdbc\\.client\\.socket\\.impl\\.Packet(Writer|Reader)$"));
-		AsyncSimpleLog.ban(Pattern.compile("^org\\.mariadb\\.jdbc\\.client\\.impl\\.StandardClient$"));
-		AsyncSimpleLog.ban(Pattern.compile("^jclouds\\.(wire|headers|signature)$"));
+		AsyncSimpleLog.ban(Pattern.compile("^org\\.mariadb\\.jdbc\\.client"));
+		AsyncSimpleLog.ban(Pattern.compile("^jclouds\\."));
+		AsyncSimpleLog.ban(Pattern.compile("^org\\.jclouds\\.(http|rest)\\.internal"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
 		
 		if (config.formats.allowEncumberedFormats) {
@@ -350,7 +355,10 @@ public class Partyflow {
 				handler("transcode/", new TranscodeHandler()),
 				handler("download/", new DownloadHandler()),
 				handler("static/", new StaticHandler()),
-				handler("files/", new FilesHandler())
+				handler("files/", new FilesHandler()),
+				
+				handler("api/v1/login", new LoginApi()),
+				handler("api/v1/whoami", new WhoAmIApi())
 			);
 		server.setHandler(hc);
 		server.setErrorHandler(new PartyflowErrorHandler());

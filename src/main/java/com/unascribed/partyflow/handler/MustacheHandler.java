@@ -30,10 +30,10 @@ import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.MustacheFactory;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
 import com.google.common.base.Function;
 

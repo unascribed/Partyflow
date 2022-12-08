@@ -86,6 +86,10 @@ license {
 	include '**/*.java'
 }
 
+compileJava {
+	options.compilerArgs += "-parameters"
+}
+
 import com.unascribed.partyflow.TweakableGZIPOutputStream
 
 task sourceZip(type: Zip) {

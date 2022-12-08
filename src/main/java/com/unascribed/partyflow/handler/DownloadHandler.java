@@ -41,10 +41,11 @@ import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.TranscodeFormat;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;

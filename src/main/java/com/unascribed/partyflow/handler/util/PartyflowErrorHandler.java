@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.handler.util;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -33,6 +33,7 @@ import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.handler.MustacheHandler;
 import com.unascribed.partyflow.handler.UserVisibleException;
 
@@ -40,6 +41,8 @@ public class PartyflowErrorHandler extends ErrorHandler {
 
 	private static final Logger log = LoggerFactory.getLogger("ErrorHandler");
 
+	public record JsonError(boolean error, int code, String message, String magicString) {}
+	
 	@Override
 	public void handle(String target, Request baseRequest, HttpServletRequest req, HttpServletResponse res)
 			throws IOException, ServletException {
@@ -63,14 +66,25 @@ public class PartyflowErrorHandler extends ErrorHandler {
 				}
 				if (uve != null) {
 					res.setStatus(uve.getCode());
-					MustacheHandler.serveTemplate(req, res, "user-error.hbs.html", new Object() {
-						int code = uve.getCode();
-						String codeMsg = HttpStatus.getMessage(uve.getCode());
-						String msg = uve.getMessage();
-					});
+					if (req.getAttribute("partyflow.isApi") == Boolean.TRUE) {
+						res.setStatus(uve.getCode());
+						ApiHandler.serve(req, res, new JsonError(true, uve.getCode(), uve.getMessage(), null));
+						return;
+					} else {
+						MustacheHandler.serveTemplate(req, res, "user-error.hbs.html", new Object() {
+							int code = uve.getCode();
+							String codeMsg = HttpStatus.getMessage(uve.getCode());
+							String msg = uve.getMessage();
+						});
+					}
 					return;
 				} else {
 					log.warn("An error occurred while handling a request to {}\nMagic string, for log searching: {}", baseRequest.getRequestURI(), magic, cause);
+					if (req.getAttribute("partyflow.isApi") == Boolean.TRUE) {
+						res.setStatus(res.getStatus());
+						ApiHandler.serve(req, res, new JsonError(true, res.getStatus(), HttpStatus.getMessage(res.getStatus()), magic));
+						return;
+					}
 				}
 			}
 			MustacheHandler.serveTemplate(req, res, template, new Object() {

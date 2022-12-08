@@ -29,10 +29,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.SimpleHandler.Get;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.Get;
 
 public class AdminHandler extends SimpleHandler implements Get {
 
@@ -42,7 +43,11 @@ public class AdminHandler extends SimpleHandler implements Get {
 	public void get(String path, HttpServletRequest req, HttpServletResponse res)
 			throws IOException, ServletException, SQLException {
 		Session s = SessionHelper.getSession(req);
-		if (s == null || !s.admin()) {
+		if (s == null) {
+			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+			return;
+		}
+		if (!s.admin()) {
 			res.sendError(403);
 			return;
 		}

@@ -17,36 +17,21 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.api.v1;
 
-import jakarta.servlet.ServletException;
+import java.sql.SQLException;
+import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.handler.UserVisibleException;
+import com.unascribed.partyflow.handler.util.ApiHandler;
 
-import org.eclipse.jetty.http.HttpStatus;
-
-public class UserVisibleException extends ServletException {
-
-	private final int code;
-	private final String message;
-
-	public UserVisibleException(int code) {
-		super(code+" - "+HttpStatus.getMessage(code));
-		this.code = code;
-		this.message = HttpStatus.getMessage(code);
-	}
+public class WhoAmIApi extends ApiHandler {
 	
-	public UserVisibleException(int code, String message) {
-		super(code+" - "+HttpStatus.getMessage(code)+" ("+message+")");
-		this.code = code;
-		this.message = message;
-	}
-
-	public int getCode() {
-		return code;
-	}
-
-	@Override
-	public String getMessage() {
-		return message;
+	public record WhoAmIResponse(boolean sessionValid, String name, String username) {}
+	
+	public static WhoAmIResponse invoke(Session session)
+			throws UserVisibleException, SQLException {
+		if (session == null) return new WhoAmIResponse(false, null, null);
+		return new WhoAmIResponse(true, session.displayName(), session.username());
 	}
 
 }

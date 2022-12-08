@@ -32,9 +32,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.Version;
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
 public class StaticHandler extends SimpleHandler implements GetOrHead {
 

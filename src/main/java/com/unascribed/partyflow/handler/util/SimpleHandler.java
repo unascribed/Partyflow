@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.handler.util;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +39,9 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.MultiPartFormInputStream;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+
+import com.unascribed.partyflow.Partyflow;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;

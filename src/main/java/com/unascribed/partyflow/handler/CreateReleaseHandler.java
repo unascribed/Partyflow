@@ -36,15 +36,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Commands;
-import com.unascribed.partyflow.MultipartData;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.SimpleHandler;
-import com.unascribed.partyflow.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.data.Queries;
+import com.unascribed.partyflow.handler.util.MultipartData;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.data.QReleases;
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;

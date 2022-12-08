@@ -19,8 +19,9 @@
 
 package com.unascribed.partyflow.handler;
 
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.data.QMeta;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -28,8 +29,6 @@ import java.sql.SQLException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import com.unascribed.partyflow.SimpleHandler;
 
 public class IndexHandler extends SimpleHandler implements GetOrHead {
 

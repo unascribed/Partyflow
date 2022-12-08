@@ -34,9 +34,9 @@ import org.jclouds.blobstore.domain.BlobAccess;
 import org.jclouds.blobstore.options.GetOptions;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SimpleHandler;
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
-import com.unascribed.partyflow.SimpleHandler.Options;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.handler.util.SimpleHandler.Options;
 
 import com.google.common.io.ByteStreams;
 

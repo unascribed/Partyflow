@@ -24,27 +24,21 @@ import java.net.URLDecoder;
 import java.sql.SQLException;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SimpleHandler;
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
-import com.unascribed.partyflow.SimpleHandler.UrlEncodedPost;
-import com.unascribed.partyflow.data.QSessions;
-import com.unascribed.partyflow.data.QUsers;
+import com.unascribed.partyflow.handler.api.v1.LoginApi;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
 
-import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;
 import com.google.common.hash.Hashing;
 
 public class LoginHandler extends SimpleHandler implements GetOrHead, UrlEncodedPost {
-
-	private static final CharMatcher HEX = CharMatcher.anyOf("0123456789abcdef");
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
@@ -69,30 +63,19 @@ public class LoginHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 			passwordSha512 = Hashing.sha512().hashString(URLDecoder.decode(params.get("password"), "UTF-8"), Charsets.UTF_8).toString();
 		} else {
 			passwordSha512 = URLDecoder.decode(params.get("hashed-password"), "UTF-8").toLowerCase(Locale.ROOT);
-			if (passwordSha512.length() != 128 || !HEX.matchesAllOf(passwordSha512)) {
-				res.setStatus(HTTP_400_BAD_REQUEST);
-				MustacheHandler.serveTemplate(req, res, "login.hbs.html", new Object() {
-					String error = "Hashed password is invalid";
-				});
-				return;
-			}
 		}
-		// TODO this sucks - should we have a separate login id or maybe email?
-		String name = Partyflow.sanitizeSlug(params.get("name"));
-		var au = QUsers.findForAuth(name);
-		if (!au.verify(passwordSha512)) {
-			res.setStatus(HTTP_401_UNAUTHORIZED);
+		try {
+			boolean remember = params.containsKey("remember");
+			var ar = LoginApi.invoke(params.get("name"), passwordSha512, remember);
+			res.setHeader("Set-Cookie", SessionHelper.buildCookie(ar.token(), remember ? 365 : 0));
+			res.sendRedirect(Partyflow.config.http.path);
+		} catch (UserVisibleException uve) {
+			res.setStatus(uve.getCode());
 			MustacheHandler.serveTemplate(req, res, "login.hbs.html", new Object() {
-				String error = "Username or password incorrect";
+				String error = uve.getMessage();
 			});
 			return;
 		}
-		QUsers.updateLastLogin(au.userId());
-		UUID sessionId = UUID.randomUUID();
-		boolean remember = params.containsKey("remember");
-		QSessions.create(au.userId(), sessionId, remember ? 365 : 7);
-		res.setHeader("Set-Cookie", SessionHelper.buildCookie(sessionId, remember ? 365 : 0));
-		res.sendRedirect(Partyflow.config.http.path);
 	}
 
 }

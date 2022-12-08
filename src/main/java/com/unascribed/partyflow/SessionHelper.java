@@ -25,9 +25,9 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
 import java.util.UUID;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.crypto.Mac;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -36,6 +36,7 @@ import com.unascribed.partyflow.data.QSessions;
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.io.BaseEncoding;
+import com.google.common.io.ByteStreams;
 
 public class SessionHelper {
 
@@ -44,56 +45,68 @@ public class SessionHelper {
 	public record Session(UUID sessionId, int userId, String username, String displayName, boolean admin) {}
 
 	private static final Splitter SEMICOLON_SPLITTER = Splitter.on(';').trimResults();
-
-	public static @Nullable Session getSession(HttpServletRequest req) throws ServletException, SQLException {
-		Object cache = req.getAttribute(SessionHelper.class.getName()+".cache");
+	
+	public static @Nullable Session getSession(HttpServletRequest req) throws SQLException {
+		Object cache = req.getAttribute("partyflow.sessionCache");
 		if (cache == NOT_LOGGED_IN) {
 			return null;
 		} else if (cache instanceof Session) {
 			return (Session)cache;
 		}
-		String cookies = req.getHeader("Cookie");
-		if (cookies != null) {
-			for (String cookie : SEMICOLON_SPLITTER.split(cookies)) {
-				int eqIdx = cookie.indexOf('=');
-				if (eqIdx != -1) {
-					String key = cookie.substring(0, eqIdx);
-					if (getCookieName().equals(key)) {
-						String value = cookie.substring(eqIdx+1);
-						int dIdx = value.indexOf('$');
-						if (dIdx != -1) {
-							String sessionIdStr = value.substring(0, dIdx);
-							UUID sessionId = UUID.fromString(sessionIdStr);
-							String theirHmacStr = value.substring(dIdx+1);
-							byte[] theirHmac = BaseEncoding.base64Url().decode(theirHmacStr);
-							try {
-								Mac mac = Mac.getInstance("HmacSHA512");
-								mac.init(Partyflow.sessionSecret);
-								mac.update(sessionId.toString().getBytes(Charsets.UTF_8));
-								byte[] hmac = mac.doFinal();
-								if (MessageDigest.isEqual(hmac, theirHmac)) {
-									Session s = QSessions.get(sessionId);
-									if (s != null) {
-										req.setAttribute(SessionHelper.class.getName()+".cache", s);
-										return s;
-									} else {
-										break;
-									}
-								} else {
-									break;
-								}
-							} catch (NoSuchAlgorithmException | InvalidKeyException e) {
-								throw new AssertionError(e);
-							} catch (IllegalArgumentException e) {
-								break;
-							}
+		String token = "";
+		if (req.getAttribute("partyflow.isApi") == Boolean.TRUE) {
+			var auth = req.getHeader("Authorization");
+			if (auth != null && auth.startsWith("Bearer ")) {
+				token = auth.substring(7);
+			}
+		} else {
+			String cookies = req.getHeader("Cookie");
+			if (cookies != null) {
+				for (String cookie : SEMICOLON_SPLITTER.split(cookies)) {
+					int eqIdx = cookie.indexOf('=');
+					if (eqIdx != -1) {
+						String key = cookie.substring(0, eqIdx);
+						if (getCookieName().equals(key)) {
+							token = cookie.substring(eqIdx+1);
+							break;
 						}
 					}
 				}
 			}
 		}
-		req.setAttribute(SessionHelper.class.getName()+".cache", NOT_LOGGED_IN);
+		if (token.startsWith("pf_")) {
+			try {
+				byte[] data = BaseEncoding.base64Url().decode(token.substring(3));
+				if (data.length == 16+32) {
+					var badi = ByteStreams.newDataInput(data);
+					UUID sessionId = new UUID(badi.readLong(), badi.readLong());
+					byte[] theirHmac = new byte[256/8];
+					badi.readFully(theirHmac);
+					byte[] hmac = hmac(sessionId);
+					if (MessageDigest.isEqual(hmac, theirHmac)) {
+						Session s = QSessions.get(sessionId);
+						if (s != null) {
+							req.setAttribute("partyflow.sessionCache", s);
+							return s;
+						}
+					}
+				}
+			} catch (IllegalArgumentException e) {}
+		}
+		req.setAttribute("partyflow.sessionCache", NOT_LOGGED_IN);
 		return null;
+	}
+
+	private static byte[] hmac(UUID sessionId) {
+		try {
+			Mac mac = Mac.getInstance("HmacSHA3-256");
+			mac.init(Partyflow.sessionSecret);
+			mac.update(sessionId.toString().getBytes(Charsets.UTF_8));
+			byte[] hmac = mac.doFinal();
+			return hmac;
+		} catch (NoSuchAlgorithmException | InvalidKeyException e) {
+			throw new AssertionError(e);
+		}
 	}
 
 	public static void clearSessionCookie(HttpServletResponse res) {
@@ -108,17 +121,17 @@ public class SessionHelper {
 		return (Partyflow.config.security.https ? "Secure;" : "")+"Path="+Partyflow.config.http.path+";HttpOnly;";
 	}
 
-	public static String buildCookie(UUID sessionId, int days) {
-		try {
-			Mac mac = Mac.getInstance("HmacSHA512");
-			mac.init(Partyflow.sessionSecret);
-			mac.update(sessionId.toString().getBytes(Charsets.UTF_8));
-			String b64Mac = BaseEncoding.base64Url().encode(mac.doFinal());
-			String maxAge = days == 0 ? "" : "Max-Age="+(days*24*60*60)+";";
-			return getCookieName()+"="+sessionId+"$"+b64Mac+";"+maxAge+getCookieOptions();
-		} catch (NoSuchAlgorithmException | InvalidKeyException e) {
-			throw new AssertionError(e);
-		}
+	public static @Nonnull String buildToken(UUID sessionId) {
+		var bado = ByteStreams.newDataOutput();
+		bado.writeLong(sessionId.getMostSignificantBits());
+		bado.writeLong(sessionId.getLeastSignificantBits());
+		bado.write(hmac(sessionId));
+		return "pf_"+BaseEncoding.base64Url().encode(bado.toByteArray());
+	}
+	
+	public static String buildCookie(String token, int days) {
+		String maxAge = days == 0 ? "" : "Max-Age="+(days*24*60*60)+";";
+		return getCookieName()+"="+token+";"+maxAge+getCookieOptions();
 	}
 
 }

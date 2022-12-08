@@ -32,9 +32,9 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SimpleHandler;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
 import com.google.common.collect.Lists;
 

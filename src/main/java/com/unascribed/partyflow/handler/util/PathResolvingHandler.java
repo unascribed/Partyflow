@@ -17,9 +17,10 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.handler.util;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,14 +30,23 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.HandlerWrapper;
 
+import com.unascribed.partyflow.Partyflow;
+
 public class PathResolvingHandler extends HandlerWrapper {
 
-	private final boolean directory;
-	private final String path;
+	private final Pattern pattern;
 
 	public PathResolvingHandler(String path, Handler delegate) {
-		this.path = path;
-		directory = path.endsWith("/");
+		if (path.contains("{}")) {
+			int idx = path.indexOf("{}");
+			String l = Pattern.quote(path.substring(0, idx));
+			String r = Pattern.quote(path.substring(idx+2));
+			this.pattern = Pattern.compile(l+"([^/]*)"+r);
+		} else if (path.endsWith("/")) {
+			this.pattern = Pattern.compile(Pattern.quote(path)+"(.*)");
+		} else {
+			this.pattern = Pattern.compile(Pattern.quote(path)+"()");
+		}
 		setHandler(delegate);
 	}
 
@@ -52,14 +62,9 @@ public class PathResolvingHandler extends HandlerWrapper {
 			return;
 		}
 		String target = _target.substring(Partyflow.config.http.path.length());
-		if (directory) {
-			if (target.startsWith(path)) {
-				super.handle(target.substring(path.length()), baseRequest, req, res);
-			}
-		} else {
-			if (target.equals(path)) {
-				super.handle(target.substring(path.length()), baseRequest, req, res);
-			}
+		var m = pattern.matcher(target);
+		if (m.matches()) {
+			super.handle(m.group(1), baseRequest, req, res);
 		}
 	}
 
