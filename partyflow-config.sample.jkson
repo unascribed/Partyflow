@@ -16,7 +16,6 @@
  * much easier and more intuitive, even if at first they're weird and out-of-place.
  */
 
-// Many of these settings can also be changed in the admin panel.
 http {
 	bind: "0.0.0.0"
 	port: 3000
@@ -41,7 +40,7 @@ database {
 	// An embedded pure Java database comparable to SQLite. Great for easy small deployments.
 	// No configuration required - works out of the box.
 	h2 {
-		// .mv.db suffix is added automatically
+		// .mv.db suffix is added automatically - a .trace.db will also appear alongside
 		file: "./partyflow"
 	}
 	

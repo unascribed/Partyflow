@@ -15,6 +15,7 @@ with customizable colors.
 # Project state
 
 ## The good 😃
+(What's currently working)
 
 - In-browser setup
 - Can use an embedded H2SQL database or connect to MariaDB
@@ -35,6 +36,7 @@ with customizable colors.
 - Automatic extraction and organization of existing metadata from uploaded masters
 
 ## The bad 📝
+(What still needs work)
 
 - No admin page
 - No way to make new accounts
@@ -46,10 +48,15 @@ with customizable colors.
 - No automatic pruning of old transcodes that haven't been downloaded lately
 
 ## The ugly 😦
+(Assorted notes about things needing improvement)
 
 - If you're logged in as admin it's not possible to view a release/track as a normal user
-- Could probably use an API of some form? (code is being refactored to make this possible)
-- Windows support currently broken due to usage of /dev/zero and some other stuff
+- Halfway through a refactor to move business logic into *Api classes that also expose a JSON HTTP API
+- Halfway through a refactor to put all SQL queries in one place for ease of reference
+- Windows support is currently broken due to usage of /dev/zero and some other stuff
+- All the SQL queries need to be confirmed to be compatible with MariaDB; I've tested a major number but not quite all
+- Some stuff needs to get migrated to use Jetty APIs instead of pointlessly reimplementing it, like query strings
+- All the booleans under "formats" should get moved into the database and controlled from the admin UI
 
 # Running it
 If you're okay with it being unfinished as described above, here's what you need to do to run it:
