@@ -28,6 +28,7 @@ public class WhoAmIApi extends ApiHandler {
 	
 	public record WhoAmIResponse(boolean sessionValid, String name, String username) {}
 	
+	@GET
 	public static WhoAmIResponse invoke(Session session)
 			throws UserVisibleException, SQLException {
 		if (session == null) return new WhoAmIResponse(false, null, null);

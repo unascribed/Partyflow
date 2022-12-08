@@ -19,17 +19,23 @@
 
 package com.unascribed.partyflow.handler.util;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.ElementType.RECORD_COMPONENT;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Modifier;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
@@ -41,10 +47,9 @@ import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.handler.UserVisibleException;
 import com.unascribed.partyflow.handler.util.PartyflowErrorHandler.JsonError;
-import com.unascribed.partyflow.handler.util.SimpleHandler.Get;
-import com.unascribed.partyflow.handler.util.SimpleHandler.Post;
-
+import com.unascribed.partyflow.handler.util.SimpleHandler.Any;
 import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -61,32 +66,40 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public abstract class ApiHandler extends SimpleHandler implements Get, Post {
+public abstract class ApiHandler extends SimpleHandler implements Any {
 	
 	private static final Logger log = LoggerFactory.getLogger(ApiHandler.class);
 	
 	private static final Pattern JSON_PATTERN = Pattern.compile("application/json;\\s+charset=utf-8", Pattern.CASE_INSENSITIVE);
+	private static final Joiner COMMA_JOINER = Joiner.on(", ");
 	
-	@Documented
-	@Target({ElementType.RECORD_COMPONENT, ElementType.PARAMETER})
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface Header {
+	@Documented @Target({RECORD_COMPONENT, PARAMETER}) @Retention(RUNTIME)
+	protected @interface Header {
 		String value();
 	}
-	
-	@Documented
-	@Target(ElementType.PARAMETER)
-	@Retention(RetentionPolicy.RUNTIME)
-	public @interface RequestPath {}
+
+	@Documented @Target(PARAMETER) @Retention(RUNTIME)
+	protected @interface RequestPath {}
+
+	@Documented @Target(METHOD) @Retention(RUNTIME)
+	protected @interface GET {}
+	@Documented @Target(METHOD) @Retention(RUNTIME)
+	protected @interface POST {}
+	@Documented @Target(METHOD) @Retention(RUNTIME)
+	protected @interface PUT {}
+	@Documented @Target(METHOD) @Retention(RUNTIME)
+	protected @interface DELETE {}
+	@Documented @Target(METHOD) @Retention(RUNTIME)
+	protected @interface PATCH {}
 	
 	private static final ThreadLocal<Jankson> jkson = ThreadLocal.withInitial(() -> Jankson.builder()
 			.build());
 	
 	private interface ParamMapper {
-		Object map(String path, HttpServletRequest req, JsonObject body) throws MissingParameterException, SQLException;
+		Object map(String path, HttpServletRequest req, JsonObject body) throws MissingParameterException, SQLException, IOException;
 	}
 
-	private record Invocation(ImmutableSet<String> paramNames, ImmutableList<ParamMapper> mappers, MethodHandle invoker, boolean isVoid) {}
+	private record Invocation(String verb, ImmutableSet<String> paramNames, ImmutableList<ParamMapper> mappers, MethodHandle invoker, boolean isVoid, boolean wantsJson) {}
 	
 	private record NoMatchingInvocation(boolean error, int code, String message, List<? extends List<String>> options) {}
 	private record UnexpectedParameters(boolean error, int code, String message, List<String> got, List<String> expected) {}
@@ -104,16 +117,26 @@ public abstract class ApiHandler extends SimpleHandler implements Get, Post {
 		}
 	}
 	
-	private final List<Invocation> invocations;
-	private final boolean canAcceptGet;
-	private final boolean canAcceptPost;
+	private final ImmutableSet<String> verbs;
+	private final ImmutableList<Invocation> invocations;
+	private final boolean canAcceptNonJson;
 	
 	public ApiHandler() {
+		ImmutableSet.Builder<String> verbsTmp = ImmutableSet.builder();
 		ImmutableList.Builder<Invocation> invocationsTmp = ImmutableList.builder();
+		boolean canAcceptNonJsonTmp = false;
 		boolean foundAnything = false;
 		for (var m : getClass().getMethods()) {
-			if (m.getName().equals("invoke") && (m.getReturnType() == void.class || m.getReturnType().isRecord())) {
+			if (Modifier.isStatic(m.getModifiers()) && (m.getReturnType() == void.class || m.getReturnType().isRecord())) {
+				String verb = null;
+				if (m.isAnnotationPresent(GET.class)) verb = "GET";
+				else if (m.isAnnotationPresent(POST.class)) verb = "POST";
+				else if (m.isAnnotationPresent(PUT.class)) verb = "PUT";
+				else if (m.isAnnotationPresent(DELETE.class)) verb = "DELETE";
+				else if (m.isAnnotationPresent(PATCH.class)) verb = "PATCH";
+				else continue;
 				foundAnything = true;
+				boolean wantsJson = true;
 				ImmutableList.Builder<ParamMapper> mappers = ImmutableList.builder();
 				ImmutableSet.Builder<String> paramNames = ImmutableSet.builder();
 				for (var p : m.getParameters()) {
@@ -129,6 +152,10 @@ public abstract class ApiHandler extends SimpleHandler implements Get, Post {
 						mappers.add((path, req, body) -> path);
 					} else if (p.getType() == Session.class) {
 						mappers.add((path, req, body) -> SessionHelper.getSession(req));
+					} else if (p.getType() == InputStream.class) {
+						mappers.add((path, req, body) -> req.getInputStream());
+						wantsJson = false;
+						canAcceptNonJsonTmp = true;
 					} else {
 						var nullable = p.isAnnotationPresent(Nullable.class);
 						var type = p.getParameterizedType();
@@ -149,57 +176,69 @@ public abstract class ApiHandler extends SimpleHandler implements Get, Post {
 					}
 				}
 				try {
-					invocationsTmp.add(new Invocation(paramNames.build(), mappers.build(), MethodHandles.publicLookup().unreflect(m), m.getReturnType() == void.class));
+					verbsTmp.add(verb);
+					invocationsTmp.add(new Invocation(verb, paramNames.build(), mappers.build(),
+							MethodHandles.publicLookup().unreflect(m), m.getReturnType() == void.class, wantsJson));
 				} catch (IllegalAccessException e) {
 					throw new AssertionError(e);
 				}
 			}
 		}
 		if (!foundAnything) {
-			throw new AbstractMethodError("ApiHandler implementations must specify a static invoke method");
+			throw new AbstractMethodError("ApiHandler implementations must specify at least one public static method annotated with an HTTP verb");
 		}
+		verbs = verbsTmp.build();
 		invocations = invocationsTmp.build();
-		canAcceptGet = invocations.stream().anyMatch(i -> i.paramNames.isEmpty());
-		canAcceptPost = invocations.stream().anyMatch(i -> !i.paramNames.isEmpty());
+		canAcceptNonJson = canAcceptNonJsonTmp;
 	}
 	
 	@Override
-	public void get(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
+	public boolean any(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 		req.setAttribute("partyflow.isApi", true);
-		if (!canAcceptGet) throw new UserVisibleException(HTTP_405_METHOD_NOT_ALLOWED);
-		invoke(path, req, res, null);
-	}
-	
-	@Override
-	public void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
-		req.setAttribute("partyflow.isApi", true);
-		if (!canAcceptPost) throw new UserVisibleException(HTTP_405_METHOD_NOT_ALLOWED);
-		if (req.getContentType() == null || !JSON_PATTERN.matcher(req.getContentType()).matches()) {
+		String verb = req.getMethod().toUpperCase(Locale.ROOT);
+		if ("OPTIONS".equals(verb)) {
+			res.setHeader("Allow", "OPTIONS, "+COMMA_JOINER.join(verbs));
+			res.setStatus(HTTP_204_NO_CONTENT);
+			res.getOutputStream().close();
+			return true;
+		}
+		if (!verbs.contains(verb)) throw new UserVisibleException(HTTP_405_METHOD_NOT_ALLOWED);
+		boolean isJson = req.getContentType() != null && JSON_PATTERN.matcher(req.getContentType()).matches();
+		JsonObject params;
+		if ((!isJson && canAcceptNonJson) || "GET".equals(verb)) {
+			params = new JsonObject();
+			parseQuery(req).forEach((k, v) -> params.put(k, v == null ? null : switch (v) {
+				case "" -> JsonPrimitive.TRUE;
+				case "true" -> JsonPrimitive.TRUE;
+				case "false" -> JsonPrimitive.FALSE;
+				default -> JsonPrimitive.of(v);
+			}));
+		} else if (!isJson) {
 			res.setStatus(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
 			serve(req, res, new JsonError(true, 415, "Content-Type must be 'application/json; charset=utf-8'", null));
-			return;
+			return true;
+		} else {
+			try (var in = req.getInputStream()) {
+				params = jkson.get().load(ByteStreams.limit(in, 16384));
+			} catch (SyntaxError e) {
+				throw new UserVisibleException(HTTP_400_BAD_REQUEST, "JSON syntax error: "+e.getCompleteMessage());
+			}
 		}
-		try {
-			invoke(path, req, res, jkson.get().load(ByteStreams.limit(req.getInputStream(), 16384)));
-		} catch (SyntaxError e) {
-			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "JSON syntax error: "+e.getCompleteMessage());
-		}
-	}
-
-	protected void invoke(String path, HttpServletRequest req, HttpServletResponse res, JsonObject body) throws IOException, ServletException, SQLException {
 		try {
 			outer: for (var inv : invocations) {
-				if (body == null) {
+				if (inv.wantsJson != isJson) continue;
+				if (!inv.verb.equals(verb)) continue;
+				if (params == null) {
 					if (!inv.paramNames.isEmpty()) {
 						continue;
 					}
-				} else if (!inv.paramNames.containsAll(body.keySet())) {
+				} else if (!inv.paramNames.containsAll(params.keySet())) {
 					if (invocations.size() == 1) {
 						res.setStatus(HTTP_400_BAD_REQUEST);
-						serve(req, res, new UnexpectedParameters(true, 400, "The request body has unexpected parameters", body.keySet().stream()
+						serve(req, res, new UnexpectedParameters(true, 400, "The request has unexpected parameters", params.keySet().stream()
 								.filter(s -> !inv.paramNames.contains(s))
 								.toList(), inv.paramNames.asList()));
-						return;
+						return true;
 					}
 					continue;
 				}
@@ -207,7 +246,7 @@ public abstract class ApiHandler extends SimpleHandler implements Get, Post {
 				var li = new ArrayList<>(inv.mappers.size());
 				for (var mapper : inv.mappers) {
 					try {
-						li.add(mapper.map(path, req, body));
+						li.add(mapper.map(path, req, params));
 					} catch (MissingParameterException e) {
 						if (invocations.size() == 1) {
 							missingParams.add(e.getParam());
@@ -218,8 +257,8 @@ public abstract class ApiHandler extends SimpleHandler implements Get, Post {
 				}
 				if (missingParams != null && !missingParams.isEmpty()) {
 					res.setStatus(HTTP_400_BAD_REQUEST);
-					serve(req, res, new UnexpectedParameters(true, 400, "The request body is missing required parameters", missingParams, inv.paramNames.asList()));
-					return;
+					serve(req, res, new UnexpectedParameters(true, 400, "The request is missing required parameters", missingParams, inv.paramNames.asList()));
+					return true;
 				}
 				if (inv.isVoid) {
 					inv.invoker.invokeWithArguments(li);
@@ -230,10 +269,10 @@ public abstract class ApiHandler extends SimpleHandler implements Get, Post {
 					res.setStatus(HTTP_200_OK);
 					serve(req, res, r);
 				}
-				return;
+				return true;
 			}
 			res.setStatus(HTTP_400_BAD_REQUEST);
-			serve(req, res, new NoMatchingInvocation(true, 400, "The request body does not match any valid signature", invocations.stream()
+			serve(req, res, new NoMatchingInvocation(true, 400, "The request does not match any valid signature", invocations.stream()
 					.map(inv -> inv.paramNames.asList())
 					.toList()));
 		} catch (UserVisibleException e) {
@@ -244,6 +283,7 @@ public abstract class ApiHandler extends SimpleHandler implements Get, Post {
 		} catch (Throwable e) {
 			throw new ServletException(e);
 		}
+		return true;
 	}
 
 	public static void serve(HttpServletRequest req, HttpServletResponse res, Record obj) throws ServletException, IOException {

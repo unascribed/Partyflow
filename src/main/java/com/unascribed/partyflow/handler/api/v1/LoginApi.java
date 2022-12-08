@@ -39,6 +39,7 @@ public class LoginApi extends ApiHandler {
 
 	public record LoginResponse(@Nonnull String token) {}
 	
+	@POST
 	public static LoginResponse invoke(String username, String password, boolean remember)
 			throws UserVisibleException, SQLException {
 		if (password.length() != 128 || !HEX.matchesAllOf(password)) {
