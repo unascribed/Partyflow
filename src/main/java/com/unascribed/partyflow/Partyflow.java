@@ -96,8 +96,8 @@ import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 import com.unascribed.partyflow.handler.frontend.release.DeleteReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.release.EditReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.release.PublishReleaseHandler;
-import com.unascribed.partyflow.handler.frontend.release.ReleaseAddTrackHandler;
-import com.unascribed.partyflow.handler.frontend.release.ReleaseViewHandler;
+import com.unascribed.partyflow.handler.frontend.release.AddTrackHandler;
+import com.unascribed.partyflow.handler.frontend.release.ViewReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.release.UnpublishReleaseHandler;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.PartyflowErrorHandler;
@@ -357,8 +357,8 @@ public class Partyflow {
 				handler("logout", new LogoutHandler()),
 				handler("releases", new ReleasesHandler()),
 				
-				handler("releases/{}", new ReleaseViewHandler()),
-				handler("releases/{}/add-track", new ReleaseAddTrackHandler()),
+				handler("releases/{}", new ViewReleaseHandler()),
+				handler("releases/{}/add-track", new AddTrackHandler()),
 				handler("releases/{}/delete", new DeleteReleaseHandler()),
 				handler("releases/{}/edit", new EditReleaseHandler()),
 				handler("releases/{}/publish", new PublishReleaseHandler()),

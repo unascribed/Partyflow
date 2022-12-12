@@ -68,9 +68,9 @@ import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 
-public class ReleaseAddTrackHandler extends SimpleHandler implements GetOrHead, MultipartPost {
+public class AddTrackHandler extends SimpleHandler implements GetOrHead, MultipartPost {
 
-	private static final Logger log = LoggerFactory.getLogger(ReleaseAddTrackHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(AddTrackHandler.class);
 
 	private static final File WORK_DIR = new File(System.getProperty("java.io.tmpdir"), "partyflow/work");
 

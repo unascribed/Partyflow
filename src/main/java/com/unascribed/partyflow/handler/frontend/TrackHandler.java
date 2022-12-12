@@ -54,7 +54,7 @@ import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.data.Queries;
-import com.unascribed.partyflow.handler.frontend.release.ReleaseAddTrackHandler;
+import com.unascribed.partyflow.handler.frontend.release.AddTrackHandler;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
@@ -260,7 +260,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					ps.setLong(1, trackId);
 					ps.executeUpdate();
 				}
-				ReleaseAddTrackHandler.regenerateAlbumFile(releaseId);
+				AddTrackHandler.regenerateAlbumFile(releaseId);
 				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(releaseSlug));
 			} catch (SQLException e) {
 				throw new ServletException(e);

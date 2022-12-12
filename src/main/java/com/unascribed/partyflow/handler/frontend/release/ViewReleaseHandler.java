@@ -46,9 +46,9 @@ import com.unascribed.partyflow.TranscodeFormat;
 
 import com.google.common.collect.Lists;
 
-public class ReleaseViewHandler extends SimpleHandler implements GetOrHead {
+public class ViewReleaseHandler extends SimpleHandler implements GetOrHead {
 
-	private static final Logger log = LoggerFactory.getLogger(ReleaseViewHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(ViewReleaseHandler.class);
 	private static final Gson gson = new Gson();
 	
 	private final Remark remark = new Remark(com.overzealous.remark.Options.github());
