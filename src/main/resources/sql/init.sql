@@ -3,8 +3,6 @@ CREATE TABLE `meta` (
 	`value` {{clob}} NOT NULL
 );
 --
-INSERT INTO `meta` (`name`, `value`) VALUES ('data_version', '0');
---
 INSERT INTO `meta` (`name`, `value`) VALUES ('site_description', '
 <h1>Welcome to Partyflow!</h1>
 <p>
@@ -25,8 +23,8 @@ INSERT INTO `meta` (`name`, `value`) VALUES ('site_description', '
 ');
 --
 CREATE TABLE `releases` (
-	`release_id`    BIGINT AUTO_INCREMENT PRIMARY KEY,
-	`user_id`       BIGINT NOT NULL,
+	`release_id`    {{u32}} AUTO_INCREMENT PRIMARY KEY,
+	`user_id`       {{u32}} NOT NULL,
 	`title`         VARCHAR(255) NOT NULL,
 	`subtitle`      VARCHAR(255) NOT NULL,
 	`slug`          VARCHAR(255) NOT NULL UNIQUE,
@@ -42,8 +40,8 @@ CREATE TABLE `releases` (
 );
 --
 CREATE TABLE `tracks` (
-	`track_id`     BIGINT AUTO_INCREMENT PRIMARY KEY,
-	`release_id`   BIGINT NOT NULL,
+	`track_id`     {{u32}} AUTO_INCREMENT PRIMARY KEY,
+	`release_id`   {{u32}} NOT NULL,
 	`title`        VARCHAR(255) NOT NULL,
 	`subtitle`     VARCHAR(255) NOT NULL,
 	`slug`         VARCHAR(255) NOT NULL UNIQUE,
@@ -54,35 +52,35 @@ CREATE TABLE `tracks` (
 	`created_at`   TIMESTAMP NOT NULL,
 	`last_updated` TIMESTAMP NOT NULL,
 	`track_number` INT NOT NULL,
-	`duration`     BIGINT NOT NULL,
+	`duration`     {{u32}} NOT NULL,
 	`loudness`     INT NOT NULL,
 	`peak`         INT NOT NULL
 );
 --
 CREATE TABLE `transcodes` (
-	`transcode_id`    BIGINT AUTO_INCREMENT PRIMARY KEY,
+	`transcode_id`    {{u32}} AUTO_INCREMENT PRIMARY KEY,
 	`master`          VARCHAR(255) NOT NULL,
 	`format`          VARCHAR(255) NOT NULL,
 	`file`            VARCHAR(255) NOT NULL,
-	`track_id`        BIGINT,
-	`release_id`      BIGINT,
+	`track_id`        {{u32}},
+	`release_id`      {{u32}},
 	`created_at`      TIMESTAMP NOT NULL,
 	`last_downloaded` TIMESTAMP NOT NULL
 );
 --
 CREATE TABLE `users` (
-	`user_id`      BIGINT AUTO_INCREMENT PRIMARY KEY,
+	`user_id`      {{u32}} AUTO_INCREMENT PRIMARY KEY,
 	`username`     VARCHAR(255) NOT NULL UNIQUE,
 	`display_name` VARCHAR(255) NOT NULL,
 	`password`     VARCHAR(255) NOT NULL,
-	`admin`        BOOLEAN NOT NULL,
+	`role`         {{u8}} NOT NULL,
 	`created_at`   TIMESTAMP NOT NULL,
 	`last_login`   TIMESTAMP
 );
 --
 CREATE TABLE `sessions` (
 	`session_id`   UUID PRIMARY KEY,
-	`user_id`      BIGINT NOT NULL,
+	`user_id`      {{u32}} NOT NULL,
 	`expires`      TIMESTAMP NOT NULL
 );
 
@@ -137,3 +135,5 @@ ALTER TABLE `releases` ADD CONSTRAINT `releases_users`
 ALTER TABLE `sessions` ADD CONSTRAINT `sessions_users`
 	FOREIGN KEY (`user_id`) REFERENCES `users`
 	ON DELETE CASCADE;
+--
+INSERT INTO `meta` (`name`, `value`) VALUES ('data_version', '0');

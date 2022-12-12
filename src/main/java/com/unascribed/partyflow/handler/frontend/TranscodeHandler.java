@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.frontend;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;

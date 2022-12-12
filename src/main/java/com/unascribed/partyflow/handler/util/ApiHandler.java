@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.handler.UserVisibleException;
+import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 import com.unascribed.partyflow.handler.util.PartyflowErrorHandler.JsonError;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Any;
 import com.google.common.base.Charsets;

@@ -17,40 +17,39 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.frontend;
 
 import java.io.IOException;
 import java.sql.SQLException;
-
+import java.util.Map;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.data.QSessions;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
-import com.unascribed.partyflow.handler.util.SimpleHandler.Get;
+import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
 
-public class AdminHandler extends SimpleHandler implements Get {
-
-	private static final Logger log = LoggerFactory.getLogger(AdminHandler.class);
+public class LogoutHandler extends SimpleHandler implements UrlEncodedPost {
 
 	@Override
-	public void get(String path, HttpServletRequest req, HttpServletResponse res)
-			throws IOException, ServletException, SQLException {
-		Session s = SessionHelper.getSession(req);
-		if (s == null) {
-			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException, SQLException {
+		Session session = SessionHelper.getSession(req);
+		if (session == null) {
+			res.sendRedirect(Partyflow.config.http.path);
 			return;
 		}
-		if (!s.admin()) {
-			res.sendError(403);
+		String csrf = params.get("csrf");
+		if (!Partyflow.isCsrfTokenValid(session, csrf)) {
+			res.sendRedirect(Partyflow.config.http.path);
 			return;
 		}
+		QSessions.destroy(session.sessionId());
+		SessionHelper.clearSessionCookie(res);
+		res.sendRedirect(Partyflow.config.http.path);
 	}
 
 }

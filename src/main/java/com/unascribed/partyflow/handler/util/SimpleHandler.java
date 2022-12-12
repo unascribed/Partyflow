@@ -321,5 +321,11 @@ public class SimpleHandler {
 	protected static String escPathSeg(String str) {
 		return UrlEscapers.urlPathSegmentEscaper().escape(str);
 	}
+	
+	protected static String keepQuery(HttpServletRequest req) {
+		String q = req.getQueryString();
+		if (q == null) return "";
+		return "?"+q;
+	}
 
 }

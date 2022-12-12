@@ -1098,8 +1098,6 @@ public class Queries {
 			delegate.updateObject(columnLabel, x, targetSqlType);
 		}
 		
-		
-		
 	}
 	
 }

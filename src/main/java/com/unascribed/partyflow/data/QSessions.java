@@ -24,16 +24,18 @@ import java.util.UUID;
 
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.UserRole;
 
 public class QSessions extends Queries {
 
 	public static Session get(UUID sessionId) throws SQLException {
-		try (var rs = select("SELECT `sessions`.`user_id`, `users`.`display_name`, `users`.`username`, `users`.`admin` FROM `sessions` "
+		try (var rs = select("SELECT `sessions`.`user_id`, `users`.`display_name`, `users`.`username`, `users`.`role` FROM `sessions` "
 					+ "JOIN `users` ON `users`.`user_id` = `sessions`.`user_id` "
 					+ "WHERE `session_id` = ? AND `expires` > NOW();",
 				sessionId.toString())) {
 			if (rs.first()) {
-				return new Session(sessionId, rs.getInt("user_id"), rs.getString("users.username"), rs.getString("users.display_name"), rs.getBoolean("users.admin"));
+				return new Session(sessionId, rs.getInt("user_id"), rs.getString("users.username"),
+						rs.getString("users.display_name"), UserRole.byId(rs.getInt("users.role")));
 			} else {
 				return null;
 			}

@@ -64,7 +64,8 @@ jar {
 	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	
 	manifest.attributes (
-		'Main-Class': 'com.unascribed.partyflow.Partyflow'
+		'Main-Class': 'com.unascribed.partyflow.Partyflow',
+		'Implementation-Version': java.util.UUID.randomUUID().toString().replace("-", "")
 	)
 }
 

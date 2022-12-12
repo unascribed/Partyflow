@@ -17,11 +17,13 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.frontend;
 
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.zip.GZIPInputStream;
 
@@ -38,6 +40,9 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
 public class StaticHandler extends SimpleHandler implements GetOrHead {
 
+	private static final String etag = StaticHandler.class.getPackage().getImplementationVersion();
+	private static final String qetag = "\""+etag+"\"";
+	
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
@@ -45,9 +50,33 @@ public class StaticHandler extends SimpleHandler implements GetOrHead {
 			res.sendError(HTTP_404_NOT_FOUND);
 			return;
 		}
+		if (etag != null && qetag.equals(req.getHeader("If-None-Match"))) {
+			res.setStatus(HTTP_304_NOT_MODIFIED);
+			res.getOutputStream().close();
+			return;
+		}
 		var encodings = ((Request)req).getHttpFields().getQualityCSV(HttpHeader.ACCEPT_ENCODING);
 		URL gz = ClassLoader.getSystemResource("static/"+path+".gz");
 		URL raw = ClassLoader.getSystemResource("static/"+path);
+		
+		String etag = StaticHandler.etag;
+		String qetag = etag == null ? null : StaticHandler.qetag;
+		if (etag == null) {
+			if (raw != null && "file".equals(raw.getProtocol())) {
+				// dev environment, use lastModified as etag
+				try {
+					File f = new File(raw.toURI());
+					etag = "dev-"+Long.toHexString(f.lastModified());
+					qetag = "\""+etag+"\"";
+					if (qetag.equals(req.getHeader("If-None-Match"))) {
+						res.setStatus(HTTP_304_NOT_MODIFIED);
+						res.getOutputStream().close();
+						return;
+					}
+				} catch (URISyntaxException e) {}
+			}
+		}
+		
 		
 		String mime = "application/octet-stream";
 		Long len;
@@ -85,6 +114,7 @@ public class StaticHandler extends SimpleHandler implements GetOrHead {
 			res.setHeader("Content-Disposition", "attachment; filename=Partyflow-src-v"+Version.FULL+".zip");
 		}
 		res.setHeader("Content-Type", mime);
+		res.setHeader("ETag", qetag);
 		if (len != null) res.setHeader("Content-Length", Long.toString(len));
 		if (in != null) {
 			try (in; var out = res.getOutputStream()) {

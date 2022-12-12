@@ -46,6 +46,7 @@ with customizable colors.
 - Can't override templates or static files
 - No translation support
 - No automatic pruning of old transcodes that haven't been downloaded lately
+- If the server is stopped while a release concatenation is ongoing, the release will never finish processing
 
 ## The ugly 😦
 (Assorted notes about things needing improvement)

@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.frontend;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,6 +41,7 @@ import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.data.Queries;
 import com.unascribed.partyflow.handler.util.MultipartData;
+import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
@@ -126,8 +127,33 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		} else {
 			throw new IllegalArgumentException("Invalid file format for art; only PNG and JPEG are accepted");
 		}
-		Process magick = Commands.magick_convert("-", "-strip", "-resize", "x576>", "-quality", "80", format+":-").start();
-		ByteStreams.copy(art.getInputStream(), magick.getOutputStream());
+		byte[] main = magick(art.getInputStream(), format, "-resize", "x576>", "-quality", "80");
+		byte[] thumb = magick(art.getInputStream(), "webp", "-resize", "x128>", "-quality", "75");
+		String name;
+		do {
+			String rand = Partyflow.randomString(16);
+			name = "art/"+rand.substring(0, 3)+"/"+rand+"."+format;
+		} while (Partyflow.storage.blobExists(Partyflow.storageContainer, name));
+		Blob mainBlob = Partyflow.storage.blobBuilder(name)
+				.payload(main)
+				.cacheControl("public, immutable")
+				.contentLength(main.length)
+				.contentType(mime)
+				.build();
+		Blob thumbBlob = Partyflow.storage.blobBuilder(name+"-thumb.webp")
+				.payload(thumb)
+				.cacheControl("public, immutable")
+				.contentLength(thumb.length)
+				.contentType("image/webp")
+				.build();
+		Partyflow.storage.putBlob(Partyflow.storageContainer, mainBlob, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
+		Partyflow.storage.putBlob(Partyflow.storageContainer, thumbBlob, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
+		return mainBlob.getMetadata().getName();
+	}
+
+	private static byte[] magick(InputStream in, String format, String... args) throws IOException {
+		Process magick = Commands.magick_convert("-", "-strip", args, format+":-").start();
+		ByteStreams.copy(in, magick.getOutputStream());
 		magick.getOutputStream().close();
 		byte[] imgData = ByteStreams.toByteArray(magick.getInputStream());
 		magick.getInputStream().close();
@@ -143,19 +169,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 			log.warn("Failed to process image with ImageMagick:\n{}", s);
 			throw new IllegalArgumentException("Failed to process art");
 		}
-		String name;
-		do {
-			String rand = Partyflow.randomString(16);
-			name = "art/"+rand.substring(0, 3)+"/"+rand+"."+format;
-		} while (Partyflow.storage.blobExists(Partyflow.storageContainer, name));
-		Blob b = Partyflow.storage.blobBuilder(name)
-				.payload(imgData)
-				.cacheControl("public, immutable")
-				.contentLength(imgData.length)
-				.contentType(mime)
-				.build();
-		Partyflow.storage.putBlob(Partyflow.storageContainer, b, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
-		return b.getMetadata().getName();
+		return imgData;
 	}
 
 }

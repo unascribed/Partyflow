@@ -29,4 +29,9 @@ public class QReleases extends Queries {
 				userId, title, subtitle, slug, desc);
 	}
 
+	public static boolean setPublished(String slug, int userId, boolean published) throws SQLException {
+		return update("UPDATE `releases` SET `published` = ?"+(published ? ", published_at = NOW()" : "")+" WHERE `slug` = ? AND `user_id` = ?;",
+				published, slug, userId) > 0;
+	}
+
 }

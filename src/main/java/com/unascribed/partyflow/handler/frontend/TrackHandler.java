@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.frontend;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,7 +54,9 @@ import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.data.Queries;
+import com.unascribed.partyflow.handler.frontend.release.ReleaseAddTrackHandler;
 import com.unascribed.partyflow.handler.util.MultipartData;
+import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedOrMultipartPost;
@@ -258,7 +260,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					ps.setLong(1, trackId);
 					ps.executeUpdate();
 				}
-				ReleaseHandler.regenerateAlbumFile(releaseId);
+				ReleaseAddTrackHandler.regenerateAlbumFile(releaseId);
 				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(releaseSlug));
 			} catch (SQLException e) {
 				throw new ServletException(e);

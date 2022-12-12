@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.util;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -30,9 +30,9 @@ import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.MustacheFactory;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
+import com.unascribed.partyflow.UserRole;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
 import com.google.common.base.Function;
@@ -80,9 +80,10 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		Object[] arr = new Object[context.length+2];
 		arr[0] = globalContext;
 		Session session = SessionHelper.getSession(req);
+		UserRole role = session == null ? UserRole.GUEST : session.role();
 		arr[1] = new Object() {
 			boolean loggedIn = session != null;
-			boolean admin = session != null && session.admin();
+			boolean admin = role.admin();
 			String username = session == null ? null : session.username();
 			String displayName = session == null ? null : session.displayName();
 			String csrf = session != null ? Partyflow.allocateCsrfToken(session) : null;

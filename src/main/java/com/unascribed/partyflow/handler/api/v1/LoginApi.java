@@ -28,7 +28,7 @@ import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.data.QSessions;
 import com.unascribed.partyflow.data.QUsers;
-import com.unascribed.partyflow.handler.UserVisibleException;
+import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 import com.unascribed.partyflow.handler.util.ApiHandler;
 
 import com.google.common.base.CharMatcher;

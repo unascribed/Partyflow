@@ -29,13 +29,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.http.HttpStatus;
 import org.eclipse.jetty.server.Dispatcher;
 import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.handler.MustacheHandler;
-import com.unascribed.partyflow.handler.UserVisibleException;
+import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 
 public class PartyflowErrorHandler extends ErrorHandler {
 
@@ -65,6 +65,16 @@ public class PartyflowErrorHandler extends ErrorHandler {
 					uve = null;
 				}
 				if (uve != null) {
+					if (HttpStatus.isRedirection(uve.getCode())) {
+						int code = uve.getCode();
+						String loc = uve.getMessage();
+						if (code == 399) {
+							code = 302;
+							loc = req.getRequestURI()+"?error="+loc;
+						}
+						((Response)res).sendRedirect(code, loc);
+						return;
+					}
 					res.setStatus(uve.getCode());
 					if (req.getAttribute("partyflow.isApi") == Boolean.TRUE) {
 						res.setStatus(uve.getCode());

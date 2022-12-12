@@ -23,6 +23,8 @@ import java.sql.SQLException;
 
 import com.lambdaworks.crypto.SCrypt;
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.UserRole;
+
 import com.google.common.math.IntMath;
 
 public class QUsers extends Queries {
@@ -39,10 +41,10 @@ public class QUsers extends Queries {
 		}, "Dummy compute thread").start();
 	}
 
-	public static void create(String name, String username, String passwordSha512) throws SQLException {
-		update("INSERT INTO `users` (`username`, `display_name`, `password`, `admin`, `created_at`) "
-					+ "VALUES (?, ?, ?, TRUE, NOW());",
-				username, name, scrypt(passwordSha512));
+	public static void create(String name, String username, String passwordSha512, UserRole role) throws SQLException {
+		update("INSERT INTO `users` (`username`, `display_name`, `password`, `role`, `created_at`) "
+					+ "VALUES (?, ?, ?, ?, NOW());",
+				username, name, scrypt(passwordSha512), role.id());
 	}
 
 	private static String scrypt(String passwordSha512) {

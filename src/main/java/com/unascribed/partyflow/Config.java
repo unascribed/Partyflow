@@ -44,13 +44,19 @@ public final class Config {
 	public DatabaseSection database;
 	public static final class DatabaseSection {
 		public enum DatabaseDriver {
-			h2("CLOB"),
-			mariadb("TEXT"),
+			h2("CLOB", "BIGINT", "SMALLINT"),
+			mariadb("TEXT", "INT UNSIGNED", "TINYINT UNSIGNED"),
 			;
-			private final String clob;
-			DatabaseDriver(String clob) { this.clob = clob; }
+			private final String clob, u32, u8;
+			DatabaseDriver(String clob, String u32, String u8) {
+				this.clob = clob;
+				this.u32 = u32;
+				this.u8 = u8;
+			}
 
 			public String clob() { return clob; }
+			public String u32() { return u32; }
+			public String u8() { return u8; }
 		}
 		public DatabaseDriver driver;
 

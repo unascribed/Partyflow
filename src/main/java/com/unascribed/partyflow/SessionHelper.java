@@ -32,6 +32,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.unascribed.partyflow.data.QSessions;
+import com.unascribed.partyflow.handler.frontend.UserVisibleException;
+import com.unascribed.partyflow.handler.util.SimpleHandler;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
@@ -39,12 +41,25 @@ import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
 
 public class SessionHelper {
-
+	
 	private static final Object NOT_LOGGED_IN = new Object();
 
-	public record Session(UUID sessionId, int userId, String username, String displayName, boolean admin) {}
+	public record Session(UUID sessionId, int userId, String username, String displayName, UserRole role) {
+		public boolean hasPermission(String perm) {
+			if (role.admin()) return true;
+			return false;
+		}
+	}
 
 	private static final Splitter SEMICOLON_SPLITTER = Splitter.on(';').trimResults();
+	
+	public static @Nonnull Session getSessionOrThrow(HttpServletRequest req, String csrf) throws SQLException, UserVisibleException {
+		var s = getSession(req);
+		if (csrf != null) Partyflow.validateCsrf(s, csrf);
+		if (s == null || s.role() == UserRole.GUEST)
+			throw new UserVisibleException(SimpleHandler.HTTP_302_FOUND, Partyflow.config.http.path+"login?message=You must log in to do that.");
+		return s;
+	}
 	
 	public static @Nullable Session getSession(HttpServletRequest req) throws SQLException {
 		Object cache = req.getAttribute("partyflow.sessionCache");

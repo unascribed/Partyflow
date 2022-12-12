@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.frontend;
 
 import java.io.IOException;
 import java.net.URLDecoder;
@@ -34,7 +34,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.UserRole;
 import com.unascribed.partyflow.data.QUsers;
+import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Any;
 
@@ -121,7 +123,7 @@ public class SetupHandler extends SimpleHandler implements Any {
 					}
 					String name = URLDecoder.decode(params.get("name"), "UTF-8");
 					String username = Partyflow.sanitizeSlug(name);
-					QUsers.create(name, username, passwordSha512);
+					QUsers.create(name, username, passwordSha512, UserRole.ADMIN);
 					log.info("Admin user {} created successfully. Setup mode disabled.", username);
 					Partyflow.setupToken = null;
 					res.sendRedirect(Partyflow.config.http.path);

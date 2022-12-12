@@ -21,7 +21,7 @@ package com.unascribed.partyflow.handler.api.v1;
 
 import java.sql.SQLException;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.handler.UserVisibleException;
+import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 import com.unascribed.partyflow.handler.util.ApiHandler;
 
 public class WhoAmIApi extends ApiHandler {

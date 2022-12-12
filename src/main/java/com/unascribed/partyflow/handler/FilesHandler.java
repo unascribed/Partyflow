@@ -87,6 +87,16 @@ public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 		}
 		Blob b = Partyflow.storage.getBlob(Partyflow.storageContainer, path, opt);
 		if (b != null) {
+			res.setHeader("Cache-Control", "public, immutable");
+			String etag = b.getMetadata().getETag();
+			if (etag != null) {
+				if (etag.equals(req.getHeader("If-None-Match"))) {
+					res.setStatus(HTTP_304_NOT_MODIFIED);
+					res.getOutputStream().close();
+					return;
+				}
+				res.setHeader("ETag", etag);
+			}
 			Long len = b.getMetadata().getContentMetadata().getContentLength();
 			if (len != null && rangesHdr == null) {
 				res.setHeader("Content-Length", Long.toString(len));

@@ -79,21 +79,27 @@ import com.unascribed.asyncsimplelog.AsyncSimpleLog;
 import com.unascribed.partyflow.Config.DatabaseSection.DatabaseDriver;
 import com.unascribed.partyflow.Config.StorageSection.StorageDriver;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.handler.CreateReleaseHandler;
-import com.unascribed.partyflow.handler.DownloadHandler;
 import com.unascribed.partyflow.handler.FilesHandler;
-import com.unascribed.partyflow.handler.IndexHandler;
-import com.unascribed.partyflow.handler.LoginHandler;
-import com.unascribed.partyflow.handler.LogoutHandler;
-import com.unascribed.partyflow.handler.MustacheHandler;
-import com.unascribed.partyflow.handler.ReleaseHandler;
-import com.unascribed.partyflow.handler.ReleasesHandler;
-import com.unascribed.partyflow.handler.SetupHandler;
-import com.unascribed.partyflow.handler.StaticHandler;
-import com.unascribed.partyflow.handler.TrackHandler;
-import com.unascribed.partyflow.handler.TranscodeHandler;
 import com.unascribed.partyflow.handler.api.v1.LoginApi;
 import com.unascribed.partyflow.handler.api.v1.WhoAmIApi;
+import com.unascribed.partyflow.handler.frontend.CreateReleaseHandler;
+import com.unascribed.partyflow.handler.frontend.DownloadHandler;
+import com.unascribed.partyflow.handler.frontend.IndexHandler;
+import com.unascribed.partyflow.handler.frontend.LoginHandler;
+import com.unascribed.partyflow.handler.frontend.LogoutHandler;
+import com.unascribed.partyflow.handler.frontend.ReleasesHandler;
+import com.unascribed.partyflow.handler.frontend.SetupHandler;
+import com.unascribed.partyflow.handler.frontend.StaticHandler;
+import com.unascribed.partyflow.handler.frontend.TrackHandler;
+import com.unascribed.partyflow.handler.frontend.TranscodeHandler;
+import com.unascribed.partyflow.handler.frontend.UserVisibleException;
+import com.unascribed.partyflow.handler.frontend.release.DeleteReleaseHandler;
+import com.unascribed.partyflow.handler.frontend.release.EditReleaseHandler;
+import com.unascribed.partyflow.handler.frontend.release.PublishReleaseHandler;
+import com.unascribed.partyflow.handler.frontend.release.ReleaseAddTrackHandler;
+import com.unascribed.partyflow.handler.frontend.release.ReleaseViewHandler;
+import com.unascribed.partyflow.handler.frontend.release.UnpublishReleaseHandler;
+import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.PartyflowErrorHandler;
 import com.unascribed.partyflow.handler.util.PathResolvingHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
@@ -350,7 +356,14 @@ public class Partyflow {
 				handler("login", new LoginHandler()),
 				handler("logout", new LogoutHandler()),
 				handler("releases", new ReleasesHandler()),
-				handler("releases/", new ReleaseHandler()),
+				
+				handler("releases/{}", new ReleaseViewHandler()),
+				handler("releases/{}/add-track", new ReleaseAddTrackHandler()),
+				handler("releases/{}/delete", new DeleteReleaseHandler()),
+				handler("releases/{}/edit", new EditReleaseHandler()),
+				handler("releases/{}/publish", new PublishReleaseHandler()),
+				handler("releases/{}/unpublish", new UnpublishReleaseHandler()),
+				
 				handler("track/", new TrackHandler()),
 				handler("transcode/", new TranscodeHandler()),
 				handler("download/", new DownloadHandler()),
@@ -381,7 +394,7 @@ public class Partyflow {
 
 		try (Connection c = sql.getConnection()) {
 			try (Statement s = c.createStatement()) {
-				try (ResultSet rs = s.executeQuery("SELECT 1 FROM users WHERE admin = true LIMIT 1;")) {
+				try (ResultSet rs = s.executeQuery("SELECT 1 FROM users WHERE role = "+UserRole.ADMIN.id()+" LIMIT 1;")) {
 					if (!rs.first()) {
 						setupToken = randomString(32);
 						log.info("There are no admin users. Entering setup mode.\n"
@@ -390,7 +403,7 @@ public class Partyflow {
 				}
 			}
 		} catch (SQLException e) {
-			log.warn("Failed to check for the existence of admin users");
+			log.warn("Failed to check for the existence of admin users", e);
 		}
 
 		sched.scheduleWithFixedDelay(() -> {
@@ -402,7 +415,7 @@ public class Partyflow {
 					}
 				}
 			} catch (SQLException e) {
-				log.warn("Failed to prune expired sessions");
+				log.warn("Failed to prune expired sessions", e);
 			}
 		}, 0, 1, TimeUnit.HOURS);
 		sched.scheduleWithFixedDelay(() -> {
@@ -424,6 +437,8 @@ public class Partyflow {
 	private static void exec(Statement s, URL res) throws SQLException, IOException {
 		for (var q : Resources.toString(res, Charsets.UTF_8)
 				.replace("{{clob}}", config.database.driver.clob())
+				.replace("{{u8}}", config.database.driver.u8())
+				.replace("{{u32}}", config.database.driver.u32())
 				.split("\n--\n")) {
 			s.execute(q);
 		}
@@ -520,12 +535,25 @@ public class Partyflow {
 		}
 	}
 
+	public static String resolveArtThumb(String art) {
+		if (art == null) {
+			return config.http.path+"static/default_art.svg";
+		} else {
+			return resolveBlob(art)+"-thumb.webp";
+		}
+	}
+
 	public static String resolveBlob(String blob) {
 		if (config.storage.publicUrlPattern.startsWith("/") || config.storage.publicUrlPattern.startsWith("http://") || config.storage.publicUrlPattern.startsWith("https://")) {
 			return config.storage.publicUrlPattern.replace("{}", blob);
 		} else {
 			return config.http.path+config.storage.publicUrlPattern.replace("{}", blob);
 		}
+	}
+
+	public static void validateCsrf(Session s, String csrf) throws UserVisibleException {
+		if (!isCsrfTokenValid(s, csrf))
+			throw new UserVisibleException(399, "Invalid CSRF token");
 	}
 
 }

@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.frontend.release;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -25,31 +25,37 @@ import java.util.Map;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.data.QSessions;
+import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
+import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
-public class LogoutHandler extends SimpleHandler implements UrlEncodedPost {
+public class PublishReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedPost {
+
+	private static final Logger log = LoggerFactory.getLogger(PublishReleaseHandler.class);
+	
+	@Override
+	public void getOrHead(String slug, HttpServletRequest req, HttpServletResponse res, boolean head)
+			throws IOException, ServletException, SQLException {
+		res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+keepQuery(req));
+	}
 
 	@Override
-	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException, SQLException {
-		Session session = SessionHelper.getSession(req);
-		if (session == null) {
-			res.sendRedirect(Partyflow.config.http.path);
-			return;
+	public void urlEncodedPost(String slug, HttpServletRequest req, HttpServletResponse res, Map<String, String> params)
+			throws IOException, ServletException, SQLException {
+		Session s = SessionHelper.getSessionOrThrow(req, params.get("csrf"));
+		
+		if (QReleases.setPublished(slug, s.userId(), true)) {
+			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug));
+		} else {
+			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+"?error=You're not allowed to do that");
 		}
-		String csrf = params.get("csrf");
-		if (!Partyflow.isCsrfTokenValid(session, csrf)) {
-			res.sendRedirect(Partyflow.config.http.path);
-			return;
-		}
-		QSessions.destroy(session.sessionId());
-		SessionHelper.clearSessionCookie(res);
-		res.sendRedirect(Partyflow.config.http.path);
 	}
 
 }

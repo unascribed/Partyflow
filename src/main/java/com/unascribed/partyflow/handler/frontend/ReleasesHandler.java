@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler;
+package com.unascribed.partyflow.handler.frontend;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -33,6 +33,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
@@ -62,7 +63,7 @@ public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 							String creator = rs.getString("users.display_name");
 							String slug = rs.getString("slug");
 							boolean published = rs.getBoolean("published");
-							String art = Partyflow.resolveArt(rs.getString("art"));
+							String art = Partyflow.resolveArtThumb(rs.getString("art"));
 						});
 					}
 					res.setStatus(HTTP_200_OK);
