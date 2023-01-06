@@ -50,6 +50,10 @@ public class Commands {
 		if (cmd == null) throw new IllegalArgumentException("Unknown altcmd: "+altcmd);
 		return exec(combine(cmd, arguments));
 	}
+
+	public static ProcessBuilder wineserver() throws IOException {
+		return exec(Partyflow.config.programs.wineserver);
+	}
 	
 
 	private static String[] combine(String[] a, Object[] b) {

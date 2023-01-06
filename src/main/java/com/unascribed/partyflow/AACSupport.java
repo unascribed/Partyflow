@@ -47,7 +47,7 @@ public class AACSupport {
 					if (output.contains(" libfdk_aac ")) {
 						log.info("FFmpeg appears to have libfdk_aac support. AAC support enabled");
 					} else {
-						log.error("aacMode is set to ffmpeg, but libfdk_aac support is not available. Disabling AAC support!");
+						log.error("aacMode is set to ffmpeg-fdk, but libfdk_aac support is not available. Disabling AAC support!");
 						Partyflow.config.formats.aacMode = "none";
 					}
 				} catch (IOException e) {

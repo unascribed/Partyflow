@@ -89,6 +89,9 @@ public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 		if (b != null) {
 			res.setHeader("Cache-Control", "public, immutable");
 			String etag = b.getMetadata().getETag();
+			if (!etag.startsWith("\"")) {
+				etag = "\""+etag.replace("\"", "\\\"")+"\"";
+			}
 			if (etag != null) {
 				if (etag.equals(req.getHeader("If-None-Match"))) {
 					res.setStatus(HTTP_304_NOT_MODIFIED);

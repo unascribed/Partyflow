@@ -65,6 +65,20 @@ footer {
 	opacity: 0.7;
 }
 
+.partyflowlink:before {
+	content: "";
+	display: inline-block;
+	width: 1.25em;
+	height: 1.25em;
+	vertical-align: baseline;
+	mask-image: url({{root}}static/logo-white.svg);
+	-webkit-mask-image: url({{root}}static/logo-white.svg);
+	mask-size: contain;
+	-webkit-mask-size: contain;
+	background-color: currentColor;
+	text-decoration: underline;
+}
+
 .inner {
 	max-width: 800px;
 	margin: auto;

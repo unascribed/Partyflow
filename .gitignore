@@ -1,3 +1,5 @@
+# This is parsed by multiple simplistic parsers that do not support the full gitignore syntax
+# Don't introduce new syntax other than what's currently used
 partyflow-config.jkson
 *.db
 *.log

@@ -23,23 +23,40 @@ package com.unascribed.partyflow.handler.frontend;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.server.Request;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.unascribed.partyflow.ThreadPools;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
 public class StaticHandler extends SimpleHandler implements GetOrHead {
 
+	private static final Logger log = LoggerFactory.getLogger(StaticHandler.class);
+	
 	private static final String etag = StaticHandler.class.getPackage().getImplementationVersion();
 	private static final String qetag = "\""+etag+"\"";
 	
@@ -98,8 +115,13 @@ public class StaticHandler extends SimpleHandler implements GetOrHead {
 			len = conn.getContentLengthLong();
 			in = head ? null : conn.getInputStream();
 		} else {
-			res.sendError(HTTP_404_NOT_FOUND);
-			return;
+			if (path.equals("quine.zip") && StaticHandler.etag == null) {
+				in = buildDevQuine();
+				len = null;
+			} else {
+				res.sendError(HTTP_404_NOT_FOUND);
+				return;
+			}
 		}
 		if (path.endsWith(".svg")) {
 			mime = "image/svg+xml";
@@ -123,6 +145,85 @@ public class StaticHandler extends SimpleHandler implements GetOrHead {
 		} else {
 			res.getOutputStream().close();
 		}
+	}
+
+	private InputStream buildDevQuine() throws IOException {
+		var out = new PipedOutputStream();
+		ThreadPools.GENERIC.execute(() -> {
+			try (var zos = new ZipOutputStream(out)) {
+				var root = new File(".").toPath();
+				var ignores = Files.readAllLines(root.resolve(".gitignore")).stream()
+						.filter(s -> !s.startsWith("#"))
+						.map(s -> s.replaceFirst("^/", "^")
+								.replace(".", "\\.")
+								.replace("*", "[^/]*"))
+						.map(s -> Pattern.compile(s+"(/|$)"))
+						.collect(Collectors.toCollection(ArrayList::new));
+				ignores.add(Pattern.compile("^.git(/|$)"));
+				Files.walkFileTree(root, new FileVisitor<Path>() {
+					private boolean ignore(Path path) {
+						var str = root.relativize(path).toString();
+						return ignores.stream().anyMatch(p -> p.matcher(str).matches());
+					}
+					
+					private void startEntry(Path path) throws IOException {
+						var attr = Files.readAttributes(path, BasicFileAttributes.class);
+						var ze = new ZipEntry(root.relativize(path).toString()+(attr.isDirectory()?"/":""));
+						ze.setLastModifiedTime(attr.lastModifiedTime());
+						ze.setLastAccessTime(attr.lastAccessTime());
+						ze.setCreationTime(attr.creationTime());
+						if (attr.isDirectory()) {
+							ze.setMethod(ZipEntry.STORED);
+							ze.setSize(0);
+							ze.setCompressedSize(0);
+							ze.setCrc(0);
+						} else {
+							ze.setMethod(ZipEntry.DEFLATED);
+						}
+						zos.putNextEntry(ze);
+					}
+					
+					@Override
+					public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+						if (!ignore(dir)) {
+							if (!dir.equals(root)) {
+								startEntry(dir);
+								zos.closeEntry();
+							}
+							return FileVisitResult.CONTINUE;
+						}
+						return FileVisitResult.SKIP_SUBTREE;
+					}
+
+					@Override
+					public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+						if (!ignore(file)) {
+							startEntry(file);
+							try (var in = Files.newInputStream(file)) {
+								in.transferTo(zos);
+							}
+							zos.closeEntry();
+						}
+						return FileVisitResult.CONTINUE;
+					}
+
+					@Override
+					public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+						log.warn("Exception while making devquine", exc);
+						return FileVisitResult.CONTINUE;
+					}
+
+					@Override
+					public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+						if (exc != null) log.warn("Exception while making devquine", exc);
+						return FileVisitResult.CONTINUE;
+					}
+				});
+			} catch (IOException e) {
+				log.error("Error while making devquine", e);
+			}
+		});
+		return new PipedInputStream(out);
 	}
 
 }

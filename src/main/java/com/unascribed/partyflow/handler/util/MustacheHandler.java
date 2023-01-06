@@ -21,6 +21,7 @@ package com.unascribed.partyflow.handler.util;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.regex.Pattern;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.MustacheFactory;
+import com.github.mustachejava.MustacheNotFoundException;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.UserRole;
@@ -46,6 +48,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		};
 		String root = Partyflow.config.http.path;
 	};
+	private static final Pattern FILE_EXT_PATTERN = Pattern.compile("\\.[^.]+$");
 
 	private final String template;
 	private final Function<HttpServletRequest, Object> contextComputer;
@@ -62,10 +65,14 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head) throws IOException, ServletException, SQLException {
+		String tmpl = template;
+		if (tmpl.contains("{}")) {
+			tmpl = tmpl.replace("{}", FILE_EXT_PATTERN.matcher(path).replaceFirst(".hbs$0"));
+		}
 		if (contextComputer == null) {
-			serveTemplate(req, res, template);
+			serveTemplate(req, res, tmpl);
 		} else {
-			serveTemplate(req, res, template, contextComputer.apply(req));
+			serveTemplate(req, res, tmpl, contextComputer.apply(req));
 		}
 	}
 
@@ -89,9 +96,13 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			String csrf = session != null ? Partyflow.allocateCsrfToken(session) : null;
 		};
 		System.arraycopy(context, 0, arr, 2, context.length);
-		(Partyflow.config.http.cacheTemplates ? mustache : new DefaultMustacheFactory("templates"))
-			.compile(path).execute(res.getWriter(), arr);
-		res.getWriter().close();
+		try {
+			(Partyflow.config.http.cacheTemplates ? mustache : new DefaultMustacheFactory("templates"))
+				.compile(path).execute(res.getWriter(), arr);
+			res.getWriter().close();
+		} catch (MustacheNotFoundException e) {
+			res.sendError(404);
+		}
 	}
 
 }

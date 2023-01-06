@@ -99,7 +99,9 @@ task sourceZip(type: Zip) {
 	archiveBaseName = 'quine'
 	reproducibleFileOrder = true
 	entryCompression = 'stored'
-	file('.gitignore').eachLine { exclude(it) }
+	file('.gitignore').eachLine {
+		if (!it.startsWith("#")) exclude(it)
+	}
 	exclude '.git'
 	from(file('.')) {}
 }

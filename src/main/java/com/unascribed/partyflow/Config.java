@@ -119,6 +119,9 @@ public final class Config {
 		public String[] magickConvert;
 		public int maxTranscodes;
 		
+		public boolean runWineserver;
+		public String[] wineserver;
+		
 		public Map<String, String[]> altcmds;
 	}
 

@@ -120,6 +120,13 @@ programs {
 	// For newer versions of ImageMagick:
 	//magickConvert: <magick convert>
 	
+	// This should be enabled if you're using QAAC in Wine - it greatly increases the speed of
+	// transcodes by keeping a wineserver instance ready with the correct wineprefix. Normally,
+	// the wineserver automatically exits after a few seconds of inactivity. The spawned
+	// wineserver will exit when Partyflow does.
+	runWineserver: false
+	wineserver: <env WINEPREFIX=/opt/qaac wineserver --persistent --foreground>
+	
 	// The maximum number of FFmpeg processes that will be run simultaneously. If set to 0, uses
 	// the number of CPU threads.
 	maxTranscodes: 0

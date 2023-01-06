@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ProcessBuilder.Redirect;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -91,8 +92,10 @@ import com.unascribed.partyflow.handler.frontend.ReleasesHandler;
 import com.unascribed.partyflow.handler.frontend.SetupHandler;
 import com.unascribed.partyflow.handler.frontend.StaticHandler;
 import com.unascribed.partyflow.handler.frontend.TrackHandler;
-import com.unascribed.partyflow.handler.frontend.TranscodeHandler;
+import com.unascribed.partyflow.handler.frontend.TranscodeReleaseHandler;
+import com.unascribed.partyflow.handler.frontend.TranscodeTrackHandler;
 import com.unascribed.partyflow.handler.frontend.UserVisibleException;
+import com.unascribed.partyflow.handler.frontend.TranscodeReleaseZipHandler;
 import com.unascribed.partyflow.handler.frontend.release.DeleteReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.release.EditReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.release.PublishReleaseHandler;
@@ -184,6 +187,20 @@ public class Partyflow {
 		AsyncSimpleLog.ban(Pattern.compile("^jclouds\\."));
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.jclouds\\.(http|rest)\\.internal"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
+		
+		if (config.programs.runWineserver) {
+			log.debug("Starting the wineserver");
+			try {
+				var ws = Commands.wineserver()
+					.redirectError(Redirect.DISCARD)
+					.redirectOutput(Redirect.DISCARD)
+					.start();
+				ws.getOutputStream().close();
+				Runtime.getRuntime().addShutdownHook(new Thread(ws::destroy, "Wine shutdown thread"));
+			} catch (IOException e) {
+				log.warn("Could not start the wineserver", e);
+			}
+		}
 		
 		if (config.formats.allowEncumberedFormats) {
 			// separate class so we don't load ThreadPools too early
@@ -331,8 +348,8 @@ public class Partyflow {
 			majorJavaVer = first;
 		}
 
-		String poweredBy = "Jetty "+Splitter.on('.').split(Jetty.VERSION).iterator().next()+", "
-				+ "Java "+majorJavaVer;
+		String poweredBy = "Jetty/"+Splitter.on('.').split(Jetty.VERSION).iterator().next()+" "
+				+ "Java/"+majorJavaVer;
 
 		String displayBind;
 		if ("0.0.0.0".equals(config.http.bind)) {
@@ -343,15 +360,11 @@ public class Partyflow {
 		Server server = new Server(new InetSocketAddress(config.http.bind, config.http.port));
 		HandlerCollection hc = new HandlerCollection(
 				setHeader("Clacks-Overhead", "GNU Natalie Nguyen, Shiina Mota, Near"),
-				setHeader("Server", "Partyflow v"+Version.FULL),
+				setHeader("Server", "Partyflow/"+Version.FULL),
 				setHeader("Powered-By", poweredBy),
 				new SetupHandler().asJettyHandler(),
 				handler("", new IndexHandler()),
-				handler("assets/partyflow.css", new MustacheHandler("partyflow.hbs.css")),
-				handler("assets/password-hasher.js", new MustacheHandler("password-hasher.hbs.js")),
-				handler("assets/edit-art.js", new MustacheHandler("edit-art.hbs.js")),
-				handler("assets/description-editor.js", new MustacheHandler("description-editor.hbs.js")),
-				handler("assets/gapless-player.js", new MustacheHandler("gapless-player.hbs.js")),
+				handler("assets/{}", new MustacheHandler("assets/{}")),
 				handler("create-release", new CreateReleaseHandler()),
 				handler("login", new LoginHandler()),
 				handler("logout", new LogoutHandler()),
@@ -365,7 +378,9 @@ public class Partyflow {
 				handler("releases/{}/unpublish", new UnpublishReleaseHandler()),
 				
 				handler("track/", new TrackHandler()),
-				handler("transcode/", new TranscodeHandler()),
+				handler("transcode/release-zip/{}", new TranscodeReleaseZipHandler()),
+				handler("transcode/release/{}", new TranscodeReleaseHandler()),
+				handler("transcode/track/{}", new TranscodeTrackHandler()),
 				handler("download/", new DownloadHandler()),
 				handler("static/", new StaticHandler()),
 				handler("files/", new FilesHandler()),

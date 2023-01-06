@@ -55,13 +55,14 @@ import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.data.Queries;
-import com.unascribed.partyflow.handler.frontend.TranscodeHandler;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.ThreadPools;
+import com.unascribed.partyflow.Transcoder;
+
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Files;
@@ -198,7 +199,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 							if (sfm.contains(".")) {
 								sfm = sfm.substring(0, sfm.lastIndexOf('.'))+".flac";
 							}
-							String filename = TranscodeHandler.encodeFilename(sfm);
+							String filename = Transcoder.encodeFilename(sfm);
 							Blob blob = Partyflow.storage.blobBuilder(blobName)
 									.payload(tmpFile)
 									.cacheControl("private")
