@@ -19,8 +19,20 @@
 
 package com.unascribed.partyflow.data;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.UncheckedIOException;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.Array;
@@ -29,6 +41,7 @@ import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.NClob;
+import java.sql.PreparedStatement;
 import java.sql.Ref;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -40,21 +53,48 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
+import java.util.Spliterator;
+import java.util.Spliterators.AbstractSpliterator;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import javax.annotation.WillCloseWhenClosed;
+
+import org.h2.jdbc.JdbcClob;
 
 import com.google.errorprone.annotations.MustBeClosed;
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.UncheckedSQLException;
+
+import com.google.common.io.CharStreams;
 
 public class Queries {
+	
+	@Documented @Target(ElementType.RECORD_COMPONENT) @Retention(RetentionPolicy.RUNTIME)
+	public @interface Column { String value(); }
+	
+	@Documented @Target(ElementType.RECORD_COMPONENT) @Retention(RetentionPolicy.RUNTIME)
+	public @interface SubstNull { String value(); }
 
-	public static int update(String query) throws SQLException {
+	protected static int update(String query) throws SQLException {
 		try (var c = conn(); var s = c.createStatement()) {
 			return s.executeUpdate(query);
 		}
 	}
 
-	public static int update(String query, Object... values) throws SQLException {
+	protected static int update(String query, Object... values) throws SQLException {
 		try (var c = conn(); var s = c.prepareStatement(query)) {
 			for (int i = 0; i < values.length; i++) {
 				s.setObject(i+1, values[i]);
@@ -62,44 +102,237 @@ public class Queries {
 			return s.executeUpdate();
 		}
 	}
+
+	protected static int update(String query, Record values) throws SQLException {
+		try (var c = conn(); var s = prepare(c, query, values)) {
+			return s.executeUpdate();
+		}
+	}
 	
 
 	@MustBeClosed
-	public static ResultSet select(String query) throws SQLException {
+	protected static ResultSet select(String query) throws SQLException {
 		var c = conn(); var s = c.createStatement();
 		return new CascadingResultSet(s.executeQuery(query), s, c);
 	}
 
 	@MustBeClosed
-	public static ResultSet select(String query, Object... values) throws SQLException {
+	protected static ResultSet select(String query, Object... values) throws SQLException {
 		var c = conn(); var s = c.prepareStatement(query);
 		for (int i = 0; i < values.length; i++) {
 			s.setObject(i+1, values[i]);
 		};
 		return new CascadingResultSet(s.executeQuery(), s, c);
 	}
-
 	
-	public static String findSlug(String table, String slug) throws SQLException {
-		try (var c = conn(); var s = c.prepareStatement("SELECT 1 FROM "+table+" WHERE slug = ?;")) {
-			int i = 0;
-			String suffix = "";
-			while (true) {
-				if (i > 0) suffix = "-"+(i+1);
-				s.setString(1, slug+suffix);
-				try (ResultSet rs = s.executeQuery()) {
-					if (!rs.first()) break;
-				}
-				i++;
-			}
-			slug = slug+suffix;
+	@MustBeClosed
+	protected static PreparedStatement prepare(Connection c, String query, Record r) throws SQLException {
+		var type = r.getClass();
+		var cmps = type.getRecordComponents();
+		if (query.contains("{columns}")) {
+			query = query.replace("{columns}", columnsForRecord("", r.getClass()));
 		}
-		return slug;
+		List<Consumer<PreparedStatement>> preparer = List.of();
+		int valuesIdx = query.indexOf("{values}");
+		if (valuesIdx != -1) {
+			int firstIdx = (int)query.substring(valuesIdx+1).chars()
+					.filter(i -> i == '?')
+					.count();
+			var values = new StringBuilder();
+			preparer = new ArrayList<Consumer<PreparedStatement>>();
+			for (int i = 0; i < cmps.length; i++) {
+				var cmp = cmps[i];
+				Object v;
+				try {
+					v = cmp.getAccessor().invoke(r);
+				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+					throw new AssertionError(e);
+				}
+				if (i != 0) {
+					values.append(",");
+				}
+				SubstNull subst;
+				if (v == null && (subst = cmp.getAnnotation(SubstNull.class)) != null) {
+					values.append(subst.value());
+				} else {
+					int idx = firstIdx+i+1;
+					preparer.add(s -> {
+						try {
+							s.setObject(idx, v);
+						} catch (SQLException e) {
+							throw new UncheckedSQLException(e);
+						}
+					});
+					values.append("?");
+				}
+			};
+			query = query.replace("{values}", values.toString());
+		}
+		var s = c.prepareStatement(query);
+		preparer.forEach(p -> p.accept(s));
+		return s;
+	}
+
+	protected static String columnsForRecord(String table, Class<? extends Record> type) {
+		return Arrays.stream(type.getRecordComponents())
+				.map(t -> getColumnName(table, t, true))
+				.collect(Collectors.joining(","));
+	}
+
+	@MustBeClosed
+	protected static <R extends Record> Stream<R> unpack(Class<R> type, @WillCloseWhenClosed ResultSet rs) {
+		return stream(rs).map(it -> unpackOne(type, it));
 	}
 	
+	private static final Pattern CAMEL_CASE_PATTERN = Pattern.compile("([a-z])([A-Z])");
+	
+	protected static <R extends Record> R unpackOne(Class<R> type, ResultSet rs) {
+		return unpackOne(type, rs, (Object[])null);
+	}
+	
+	protected static <R extends Record> R unpackOne(Class<R> type, ResultSet rs, Object... preface) {
+		var cmps = type.getRecordComponents();
+		var args = new Object[cmps.length];
+		var types = new Class<?>[cmps.length];
+		for (int i = 0; i < cmps.length; i++) {
+			var cmp = cmps[i];
+			var colName = getColumnName("", cmp, false);
+			var cmpt = cmp.getType();
+			Object o;
+			if (preface != null && preface.length > i) {
+				o = preface[i];
+			} else {
+				try {
+					o = rs.getObject(colName);
+					if (cmpt == OptionalInt.class) {
+						if (o == null) {
+							o = OptionalInt.empty();
+						} else if (o instanceof Number n) {
+							o = OptionalInt.of(n.intValue());
+						} else {
+							throw new ClassCastException("Column `"+colName+"` was of type "+o.getClass().getSimpleName()+", but a number was expected");
+						}
+					} else if (cmpt == OptionalLong.class) {
+						if (o == null) {
+							o = OptionalLong.empty();
+						} else if (o instanceof Number n) {
+							o = OptionalLong.of(n.longValue());
+						} else {
+							throw new ClassCastException("Column `"+colName+"` was of type "+o.getClass().getSimpleName()+", but a number was expected");
+						}
+					} else if (o instanceof Number n && (Number.class.isAssignableFrom(cmpt) || (cmpt != boolean.class && cmpt.isPrimitive()))) {
+						if (cmpt == byte.class || cmpt == Byte.class) {
+							o = n.byteValue();
+						} else if (cmpt == short.class || cmpt == Short.class) {
+							o = n.shortValue();
+						} else if (cmpt == int.class || cmpt == Integer.class) {
+							o = n.intValue();
+						} else if (cmpt == long.class || cmpt == Long.class) {
+							o = n.longValue();
+						} else if (cmpt == float.class || cmpt == Float.class) {
+							o = n.floatValue();
+						} else if (cmpt == double.class || cmpt == Double.class) {
+							o = n.doubleValue();
+						} else if (!cmpt.isInstance(o)) {
+							throw new ClassCastException("Column `"+colName+"` was of type "+o.getClass().getSimpleName()+", but "+cmpt.getSimpleName()+" was expected");
+						}
+					} else if (o instanceof JdbcClob clob && CharSequence.class.isAssignableFrom(cmpt)) {
+						o = CharStreams.toString(clob.getCharacterStream());
+					} else if (o != null && !(o instanceof Boolean && cmpt == boolean.class) && !cmpt.isInstance(o)) {
+						throw new ClassCastException("Column `"+colName+"` was of type "+o.getClass().getSimpleName()+", but "+cmpt.getSimpleName()+" was expected");
+					} else if (o == null && cmpt.isPrimitive()) {
+						throw new NullPointerException("Column `"+colName+"` was null, but "+cmpt.getSimpleName()+" was expected");
+					}
+				} catch (SQLException e) {
+					throw new UncheckedSQLException(e);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			}
+			args[i] = o;
+			types[i] = cmpt;
+		}
+		try {
+			return (R)getCanonicalConstructor(type).invokeWithArguments(args);
+		} catch (Throwable e) {
+			throw new AssertionError(e);
+		}
+	}
+
+	private static String getColumnName(String table, RecordComponent cmp, boolean ticks) {
+		String t = ticks ? "`" : "";
+		var col = cmp.getAnnotation(Column.class);
+		String name;
+		if (col != null) {
+			name = col.value();
+		} else {
+			name = CAMEL_CASE_PATTERN.matcher(cmp.getName())
+					.replaceAll("$1_$2").replace("$", ".").toLowerCase(Locale.ROOT);
+		}
+		if (name.contains(".")) return t+name.replace(".", t+"."+t)+t;
+		return (table.isEmpty() ? "" : t+table+t+".") + t+name+t;
+	}
+
+	private static final Map<Class<? extends Record>, MethodHandle> canonicalConstructors = new ConcurrentHashMap<>();
+	
+	private static MethodHandle getCanonicalConstructor(Class<? extends Record> type) {
+		return canonicalConstructors.computeIfAbsent(type, Queries::computeCanonicalConstructor);
+	}
+	
+	private static MethodHandle computeCanonicalConstructor(Class<? extends Record> type) {
+		try {
+			return MethodHandles.publicLookup().findConstructor(type,
+						MethodType.methodType(void.class, Arrays.stream(type.getRecordComponents())
+							.map(RecordComponent::getType)
+							.toArray(Class<?>[]::new)));
+		} catch (NoSuchMethodException | IllegalAccessException e) {
+			throw new AssertionError(e);
+		}
+	}
+
+	private static Stream<ResultSet> stream(ResultSet rs) {
+		return StreamSupport.stream(new AbstractSpliterator<ResultSet>(Long.MAX_VALUE, Spliterator.ORDERED) {
+			@Override
+			public boolean tryAdvance(Consumer<? super ResultSet> action) {
+				try {
+					boolean n = rs.next();
+					if (n) action.accept(rs);
+					return n;
+				} catch (SQLException e) {
+					throw new UncheckedSQLException(e);
+				}
+			}
+		}, false).onClose(unchecked(rs::close));
+	}
+
+	private interface SQLRunnable {
+		void run() throws SQLException;
+	}
+	
+	private static Runnable unchecked(SQLRunnable r) {
+		return () -> {
+			try {
+				r.run();
+			} catch (SQLException e) {
+				throw new UncheckedSQLException(e);
+			}
+		};
+	}
+	
+	private static final ThreadLocal<Connection> keptConnection = new ThreadLocal<>();
+	
+	public static Connection begin() throws SQLException {
+		var conn = Partyflow.sql.getConnection();
+		keptConnection.set(conn);
+		return conn;
+	}
+
 	// UTILITY //
 	
-	private static Connection conn() throws SQLException {
+	protected static Connection conn() throws SQLException {
+		var kept = keptConnection.get();
+		if (kept != null && !kept.isClosed()) return kept;
+		keptConnection.set(null);
 		return Partyflow.sql.getConnection();
 	}
 	

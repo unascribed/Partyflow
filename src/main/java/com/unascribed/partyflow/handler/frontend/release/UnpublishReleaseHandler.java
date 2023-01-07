@@ -50,7 +50,7 @@ public class UnpublishReleaseHandler extends SimpleHandler implements GetOrHead,
 	public void urlEncodedPost(String slug, HttpServletRequest req, HttpServletResponse res, Map<String, String> params)
 			throws IOException, ServletException, SQLException {
 		Session s = SessionHelper.getSessionOrThrow(req, params.get("csrf"));
-		if (QReleases.setPublished(slug, s.userId(), false)) {
+		if (QReleases.publish(slug, s.userId(), false)) {
 			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug));
 		} else {
 			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+"?error=You're not allowed to do that");

@@ -39,12 +39,13 @@ import com.unascribed.partyflow.Commands;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.data.Queries;
+import com.unascribed.partyflow.data.QReleases.Release;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
+import com.unascribed.partyflow.data.QGeneric;
 import com.unascribed.partyflow.data.QReleases;
 
 import com.google.common.base.Charsets;
@@ -103,8 +104,8 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 				});
 				return;
 			}
-			String slug = Queries.findSlug("releases", Partyflow.sanitizeSlug(title));
-			QReleases.create(slug, session.userId(), title, subtitle, "");
+			String slug = QGeneric.findSlug("releases", Partyflow.sanitizeSlug(title));
+			QReleases.create(new Release(slug, session.userId(), title, subtitle, "", false, null, null));
 			res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
 		} else {
 			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");

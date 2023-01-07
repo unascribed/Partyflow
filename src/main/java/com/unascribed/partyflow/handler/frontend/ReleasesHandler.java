@@ -20,9 +20,6 @@
 package com.unascribed.partyflow.handler.frontend;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -30,14 +27,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.data.QReleases;
+import com.unascribed.partyflow.data.QReleases.FullRelease;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
-
-import com.google.common.collect.Lists;
 
 public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 
@@ -45,36 +41,10 @@ public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
 		Session s = SessionHelper.getSession(req);
-		try (Connection c = Partyflow.sql.getConnection()) {
-			String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
-			try (PreparedStatement ps = c.prepareStatement(
-					"SELECT `title`, `subtitle`, `slug`, `published`, `art`, `users`.`display_name` FROM `releases`"
-					+ " JOIN `users` ON `users`.`user_id` = `releases`.`user_id`"
-					+ " WHERE `published` = true"+suffix+";")) {
-				if (s != null) {
-					ps.setInt(1, s.userId());
-				}
-				try (ResultSet rs = ps.executeQuery()) {
-					List<Object> li = Lists.newArrayList();
-					while (rs.next()) {
-						li.add(new Object() {
-							String title = rs.getString("title");
-							String subtitle = rs.getString("subtitle");
-							String creator = rs.getString("users.display_name");
-							String slug = rs.getString("slug");
-							boolean published = rs.getBoolean("published");
-							String art = Partyflow.resolveArtThumb(rs.getString("art"));
-						});
-					}
-					res.setStatus(HTTP_200_OK);
-					MustacheHandler.serveTemplate(req, res, "releases.hbs.html", new Object() {
-						List<Object> releases = li;
-					});
-				}
-			}
-		} catch (SQLException e) {
-			throw new ServletException(e);
-		}
+		res.setStatus(HTTP_200_OK);
+		MustacheHandler.serveTemplate(req, res, "releases.hbs.html", new Object() {
+			List<FullRelease> releases = QReleases.getAll(s);
+		});
 	}
 
 }

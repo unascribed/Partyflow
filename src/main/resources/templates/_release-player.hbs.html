@@ -1,0 +1,31 @@
+{{#doneProcessing}}
+<noscript>
+<i>Enable JavaScript to play the entire album with gapless playback.</i>
+</noscript>
+{{> _player-widget.hbs.html }}
+{{/doneProcessing}}
+{{^doneProcessing}}
+<i>This release is still processing.</i> Check back in a few moments.
+{{/doneProcessing}}
+<h2><a href="{{root}}download/release/{{slug}}">Download</a></h2>
+<div id="tracks">
+{{#tracks}}
+	<div class="track" data-track-slug="{{slug}}">
+		<button class="yesscript player-control play"></button>
+		<a href="{{root}}track/{{slug}}">
+			<span class="trackNumber">{{trackNumberStr}}</span>
+			<span class="title">{{title}}</span>
+			<span class="subtitle">{{subtitle}}</span>
+		</a>
+		<span class="track-duration"></span>
+		{{#lyrics}}
+			<details class="lyrics"><summary>lyrics</summary><p>{{lyrics}}</p></details>
+		{{/lyrics}}
+	</div>
+{{/tracks}}
+</div>
+{{#doneProcessing}}
+<script data-loudness="{{albumLoudness}}" data-release-slug="{{slug}}"
+	data-formats="{{stream_formats_json}}" data-tracks="{{tracks_json}}"
+	src="{{root}}assets/gapless-player.js"></script>
+{{/doneProcessing}}

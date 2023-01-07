@@ -36,7 +36,9 @@ CREATE TABLE `releases` (
 	`published_at`  TIMESTAMP,
 	`concat_master` VARCHAR(255),
 	`loudness`      INT,
-	`peak`          INT
+	`peak`          INT,
+	`dl_bloom`      BLOB,
+	`downloads`     INT DEFAULT 0 NOT NULL
 );
 --
 CREATE TABLE `tracks` (
@@ -83,7 +85,6 @@ CREATE TABLE `sessions` (
 	`user_id`      {{u32}} NOT NULL,
 	`expires`      TIMESTAMP NOT NULL
 );
-
 --
 CREATE INDEX `tracks_release_index`
 	ON `tracks` (`release_id`);

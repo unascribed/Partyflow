@@ -43,7 +43,9 @@ import com.unascribed.partyflow.TranscodeFormat;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.TranscodeFormat.ReplayGainData;
 import com.unascribed.partyflow.TranscodeFormat.Shortcut;
+import com.unascribed.partyflow.TranscodeFormat.Usage;
 import com.unascribed.partyflow.Transcoder;
+import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QTranscodes;
 import com.unascribed.partyflow.data.QTranscodes.FoundShortcut;
 import com.unascribed.partyflow.data.QTranscodes.FoundTranscode;
@@ -56,6 +58,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.google.common.collect.Tables;
 import com.google.common.hash.Hashing;
+import com.google.common.net.InetAddresses;
 
 public abstract class AbstractTranscodeHandler extends SimpleHandler implements GetOrHead {
 
@@ -150,6 +153,16 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 				res.getOutputStream().close();
 				return;
 			}
+			
+			if (format.usage() == Usage.DOWNLOAD && !prepare && releaseId != null) {
+				try {
+					var addr = InetAddresses.forString(req.getRemoteAddr());
+					QReleases.maybeRecordDownload(releaseId, addr);
+				} catch (IllegalArgumentException e) {
+					e.printStackTrace();
+				}
+			}
+			
 			TranscodeFindResult findRes = QTranscodes.findExistingTranscode(c, !head, kind, slug, format, master);
 			if (findRes instanceof FoundTranscode ft) {
 				res.setHeader("Transcode-Status", "CACHED");

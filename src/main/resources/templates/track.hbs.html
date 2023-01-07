@@ -32,6 +32,18 @@
 		{{/download_formats}}
 	-->
 	<title>{{title}} by {{release.creator}} from {{release.title}} - Partyflow</title>
+	<link rel="canonical" href="{{publicUrl}}track/{{slug}}">
+	<meta name="generator" content="Partyflow v{{partyflow.version}}">
+	<meta name="author" content="{{release.creator}}">
+	<meta name="description" content="Listen to {{title}} by {{release.creator}}. {{descriptionMd}}">
+	<meta property="og:title" content="{{title}}">
+	<meta property="og:description" content="{{description}}">
+	<meta property="og:type" content="music.song">
+	<meta property="og:music:duration" content="{{durationSecs}}">
+	<meta property="og:music:album" content="{{release.title}}">
+	<meta property="og:music:musician" content="{{release.creator}}">
+	<meta property="og:url" content="{{publicUrl}}track/{{slug}}">
+	<meta property="og:image" content="{{art}}">
 </head>
 <body>
 	{{> _header.hbs.html}}
@@ -81,15 +93,23 @@
 				<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title" value="{{title}}"/>
 				<input name="subtitle" maxlength="255" type="text" class="ghost-input subtitle" placeholder="Subtitle" value="{{subtitle}}"/>
 				<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
+				{{> _player-widget.hbs.html }}
+				<script data-loudness="{{loudness}}" data-tracks="{{tracks_json}}"
+					data-formats="{{stream_formats_json}}" data-hide-title="true"
+					src="{{root}}assets/gapless-player.js"></script>
+				<noscript>
 				<audio controls>
 					{{#stream_formats}}
 						<!--<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
 						<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 					{{/stream_formats}}
 				</audio>
+				</noscript>
 				<h3>Lyrics</h3>
+				<p>This will get embedded in the track as metadata. No formatting, sorry.</p>
 				<textarea rows="16" id="lyrics" name="lyrics" maxlength="16384" class="ghost-input" placeholder="Lyrics">{{lyrics}}</textarea>
 				<h3>Description</h3>
+				<p>Visible on the track page in Partyflow.</p>
 				<div class="md-wrapper">
 				<textarea rows="16" id="descriptionMd" name="descriptionMd" maxlength="16384" class="ghost-input description">{{descriptionMd}}</textarea>
 				</div>

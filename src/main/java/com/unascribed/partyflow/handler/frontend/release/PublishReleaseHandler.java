@@ -51,7 +51,7 @@ public class PublishReleaseHandler extends SimpleHandler implements GetOrHead, U
 			throws IOException, ServletException, SQLException {
 		Session s = SessionHelper.getSessionOrThrow(req, params.get("csrf"));
 		
-		if (QReleases.setPublished(slug, s.userId(), true)) {
+		if (QReleases.publish(slug, s.userId(), true)) {
 			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug));
 		} else {
 			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+"?error=You're not allowed to do that");

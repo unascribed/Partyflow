@@ -55,6 +55,7 @@ import com.unascribed.partyflow.TranscodeFormat.ReplayGainData;
 import com.unascribed.partyflow.TranscodeFormat.Shortcut;
 import com.unascribed.partyflow.Transcoder;
 import com.unascribed.partyflow.Transcoder.TranscodeResult;
+import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QTranscodes;
 import com.unascribed.partyflow.data.QTranscodes.FoundShortcut;
 import com.unascribed.partyflow.data.QTranscodes.FoundTranscode;
@@ -63,6 +64,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.google.common.base.Charsets;
 import com.google.common.base.MoreObjects;
+import com.google.common.net.InetAddresses;
 
 public class TranscodeReleaseZipHandler extends SimpleHandler implements GetOrHead {
 
@@ -220,6 +222,11 @@ public class TranscodeReleaseZipHandler extends SimpleHandler implements GetOrHe
 					return;
 				}
 
+				try {
+					var addr = InetAddresses.forString(req.getRemoteAddr());
+					QReleases.maybeRecordDownload(slug, addr);
+				} catch (IllegalArgumentException e) {}
+				
 				String filename = creator+" - "+releaseTitle+".zip";
 				res.setHeader("Content-Type", "application/zip");
 				res.setHeader("Content-Disposition", "attachment; filename="+filename+"; filename*=utf-8''"+filename);

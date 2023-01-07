@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.BindException;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -59,14 +58,20 @@ import jakarta.servlet.http.HttpServletResponse;
 import javax.sql.DataSource;
 
 import org.eclipse.jetty.server.AsyncRequestLogWriter;
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.CustomRequestLog;
+import org.eclipse.jetty.server.ForwardedRequestCustomizer;
 import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.HttpConfiguration;
+import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.util.Jetty;
 import org.h2.jdbcx.JdbcConnectionPool;
+import org.h2.tools.Shell;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -113,8 +118,10 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
+import com.google.common.hash.BloomFilter;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
+import com.google.common.io.CountingOutputStream;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
 import com.google.common.net.UrlEscapers;
@@ -187,6 +194,16 @@ public class Partyflow {
 		AsyncSimpleLog.ban(Pattern.compile("^jclouds\\."));
 		AsyncSimpleLog.ban(Pattern.compile("^org\\.jclouds\\.(http|rest)\\.internal"));
 		log.info("Partyflow v{} starting up...", Version.FULL);
+		
+		if (config.database.expectedTraffic > 0) {
+			var counter = new CountingOutputStream(ByteStreams.nullOutputStream());
+			try {
+				BloomFilter.create((t, s) -> {}, config.database.expectedTraffic, 0.1).writeTo(counter);
+			} catch (IOException e2) {
+				throw new AssertionError(e2);
+			}
+			log.debug("Expected bloom filter size: {} bytes", counter.getCount());
+		}
 		
 		if (config.programs.runWineserver) {
 			log.debug("Starting the wineserver");
@@ -357,7 +374,17 @@ public class Partyflow {
 		} else {
 			displayBind = config.http.bind;
 		}
-		Server server = new Server(new InetSocketAddress(config.http.bind, config.http.port));
+		var server = new Server();
+		var cfg = new HttpConfiguration();
+		// we handle this ourselves
+		cfg.setSendServerVersion(false);
+		cfg.setSendXPoweredBy(false);
+		if (config.http.trustProxy) cfg.addCustomizer(new ForwardedRequestCustomizer());
+		var factory = new HttpConnectionFactory(cfg);
+		var conn = new ServerConnector(server, factory);
+		conn.setHost(config.http.bind);
+		conn.setPort(config.http.port);
+		server.setConnectors(new Connector[] {conn});
 		HandlerCollection hc = new HandlerCollection(
 				setHeader("Clacks-Overhead", "GNU Natalie Nguyen, Shiina Mota, Near"),
 				setHeader("Server", "Partyflow/"+Version.FULL),
@@ -369,8 +396,9 @@ public class Partyflow {
 				handler("login", new LoginHandler()),
 				handler("logout", new LogoutHandler()),
 				handler("releases", new ReleasesHandler()),
-				
-				handler("releases/{}", new ViewReleaseHandler()),
+
+				handler("releases/{}.rss", new ViewReleaseHandler("release-playlist.hbs.xml")),
+				handler("releases/{}", new ViewReleaseHandler("release.hbs.html")),
 				handler("releases/{}/add-track", new AddTrackHandler()),
 				handler("releases/{}/delete", new DeleteReleaseHandler()),
 				handler("releases/{}/edit", new EditReleaseHandler()),
@@ -447,6 +475,14 @@ public class Partyflow {
 				log.debug("Pruned {} expired CSRF tokens", removed);
 			}
 		}, 15, 15, TimeUnit.MINUTES);
+		
+		if (Boolean.getBoolean("partyflow.sqlShell")) {
+			try (Connection c = sql.getConnection()) {
+				new Shell().runTool(c);
+			} catch (SQLException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	private static void exec(Statement s, URL res) throws SQLException, IOException {

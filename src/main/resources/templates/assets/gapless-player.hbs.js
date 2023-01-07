@@ -200,6 +200,9 @@
 	const playPositionNow = widget.querySelector(".play-position .current");
 	/** @type {HTMLSpanElement} */
 	const playPositionTotal = widget.querySelector(".play-position .total");
+	if (data.hideTitle === "true") {
+		trackName.style.display = "none";
+	}
 	let storedVolume = 0;
 	if (localStorage.getItem("replaygain") === "off") {
 		replaygain.classList.remove("replaygain");
@@ -254,6 +257,7 @@
 		if (mouseDownInVolbar) dragVolbar(e.clientY);
 	});
 	voldrop.addEventListener("click", (e) => {
+		e.preventDefault();
 		if (getVolume() === 0) {
 			setVolume(storedVolume);
 		} else {
@@ -262,20 +266,24 @@
 		}
 	});
 	voldropContents.addEventListener("click", (e) => {
+		e.preventDefault();
 		e.stopPropagation();
 	});
-	skipPrev.addEventListener("click", () => {
+	skipPrev.addEventListener("click", (e) => {
+		e.preventDefault();
 		if (currentTrack.index > 0) {
 			audio.currentTime = tracks[currentTrack.index-1].start;
 		}
 	});
-	skipNext.addEventListener("click", () => {
+	skipNext.addEventListener("click", (e) => {
+		e.preventDefault();
 		if (currentTrack.index < tracks.length) {
 			audio.currentTime = tracks[currentTrack.index+1].start;
 			updateTime();
 		}
 	});
-	replaygain.addEventListener("click", () => {
+	replaygain.addEventListener("click", (e) => {
+		e.preventDefault();
 		if (localStorage.getItem("replaygain") === "off") {
 			replaygain.classList.remove("replaygain-off");
 			replaygain.classList.add("replaygain");
@@ -290,6 +298,7 @@
 	});
 	updateSkipState();
 	globalPlayPause.addEventListener("click", (e) => {
+		e.preventDefault();
 		if (audio.paused) {
 			audio.play();
 		} else {
@@ -299,6 +308,7 @@
 	tracks.forEach((track) => {
 		if (track.button) {
 			track.button.addEventListener("click", (e) => {
+				e.preventDefault();
 				let paused = audio.paused;
 				if (currentTrack.slug !== track.slug) {
 					audio.currentTime = track.start;

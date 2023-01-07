@@ -26,6 +26,9 @@ http {
 	cacheTemplates: true
 	// The absolute public URL this instance is accessible at, excluding the root path
 	publicUrl: "http://localhost:3000"
+	// If true, Partyflow is running behind a trusted proxy and should parse X-Forwarded-For,
+	// Forwarded, etc.
+	trustProxy: false
 }
 logger {
 	// TRACE, DEBUG, INFO, WARN, or ERROR
@@ -36,6 +39,17 @@ logger {
 database {
 	// Valid options are h2 and mariadb.
 	driver: "h2"
+	
+	// The most downloads expected from unique IPs for any given release. This is used to
+	// initialize the anonymous Bloom filter that manages the download count. If you receive
+	// massively more downloads than this number, the filter will saturate and the count will
+	// stop updating. If a saturated filter is detected, it will be reinitialized with the
+	// current value of this option. Be warned that large numbers will greatly increase the
+	// amount of space required for the filters in the database.
+	//
+	// If set to zero, then the download counter will not consider client IPs and bloom filters
+	// will not be allocated.
+	expectedTraffic: 256
 	
 	// An embedded pure Java database comparable to SQLite. Great for easy small deployments.
 	// No configuration required - works out of the box.

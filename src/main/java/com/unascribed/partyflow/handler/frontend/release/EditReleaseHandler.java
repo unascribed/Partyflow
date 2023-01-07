@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.data.Queries;
+import com.unascribed.partyflow.data.QGeneric;
 import com.unascribed.partyflow.handler.frontend.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
@@ -120,7 +120,7 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 			if (published) {
 				slug = slugs;
 			} else {
-				slug = Queries.findSlug("releases", Partyflow.sanitizeSlug(title));
+				slug = QGeneric.findSlug("releases", Partyflow.sanitizeSlug(title));
 			}
 			String midfix = data.getPart("publish") != null ? ", `published` = true, `published_at` = NOW()" : "";
 			String extraCols = artPath != null ? "`art` = ?," : "";

@@ -53,7 +53,6 @@ import com.overzealous.remark.Remark;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.data.Queries;
 import com.unascribed.partyflow.handler.frontend.release.AddTrackHandler;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
@@ -61,6 +60,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedOrMultipartPost;
 import com.unascribed.partyflow.TranscodeFormat;
+import com.unascribed.partyflow.data.QGeneric;
 
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
@@ -102,13 +102,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						if (rs.first()) {
 							res.setStatus(HTTP_200_OK);
 							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId();
-							String _descriptionMd;
 							String desc = rs.getString("tracks.description");
-							if (_editable) {
-								_descriptionMd = remark.convert(desc);
-							} else {
-								_descriptionMd = null;
-							}
 							String trackArt = rs.getString("tracks.art");
 							String _art;
 							if (trackArt == null) {
@@ -141,7 +135,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 								String art = Partyflow.resolveArt(_art);
 								String lyrics = rs.getString("lyrics");
 								String description = desc;
-								String descriptionMd = _descriptionMd;
+								String descriptionMd = remark.convert(desc);
 								String error = query.get("error");
 								double loudness = rs.getInt("tracks.loudness")/10D;
 								String tracks_json = gson.toJson(_tracksJson);
@@ -348,7 +342,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 				if (published) {
 					slug = m.group(1);
 				} else {
-					slug = Queries.findSlug("releases", Partyflow.sanitizeSlug(title));
+					slug = QGeneric.findSlug("releases", Partyflow.sanitizeSlug(title));
 				}
 				String extraCols = artPath != null ? "`art` = ?," : "";
 				try (PreparedStatement ps = c.prepareStatement(

@@ -33,6 +33,7 @@ public final class Config {
 		public String accessLog;
 		public boolean cacheTemplates;
 		public String publicUrl;
+		public boolean trustProxy;
 	}
 
 	public LoggerSection logger;
@@ -59,6 +60,8 @@ public final class Config {
 			public String u8() { return u8; }
 		}
 		public DatabaseDriver driver;
+		
+		public int expectedTraffic;
 
 		public H2Section h2;
 		public static final class H2Section {

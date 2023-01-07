@@ -54,7 +54,7 @@ import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.Version;
-import com.unascribed.partyflow.data.Queries;
+import com.unascribed.partyflow.data.QGeneric;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
@@ -76,9 +76,9 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 	private static final File WORK_DIR = new File(System.getProperty("java.io.tmpdir"), "partyflow/work");
 
 	private static final Pattern DURATION_FFPROBE_PATTERN = Pattern.compile("^format.duration=\"?(.*?)\"?$", Pattern.MULTILINE);
-	private static final Pattern TITLE_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:title|TITLE)=\"?(.*?)\"?$", Pattern.MULTILINE);
-	private static final Pattern TRACK_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:track|TRACK)=\"?(.*?)\"?$", Pattern.MULTILINE);
-	private static final Pattern LYRICS_FFPROBE_PATTERN = Pattern.compile("^format.tags.(?:unsynced|UNSYNCED)?(?:lyrics|LYRICS)=\"?(.*?)\"?$", Pattern.MULTILINE);
+	private static final Pattern TITLE_FFPROBE_PATTERN = Pattern.compile("^(?:format|streams.stream.0).tags.(?:title|TITLE)=\"?(.*?)\"?$", Pattern.MULTILINE);
+	private static final Pattern TRACK_FFPROBE_PATTERN = Pattern.compile("^(?:format|streams.stream.0).tags.(?:track|TRACK)=\"?(.*?)\"?$", Pattern.MULTILINE);
+	private static final Pattern LYRICS_FFPROBE_PATTERN = Pattern.compile("^(?:format|streams.stream.0).tags.(?:unsynced|UNSYNCED)?(?:lyrics|LYRICS)=\"?(.*?)\"?$", Pattern.MULTILINE);
 	
 	private static final Pattern LOUDNESS_FFMPEG_PATTERN = Pattern.compile("^\\s+I:\\s+(-?\\d+\\.\\d+) LUFS$", Pattern.MULTILINE);
 	private static final Pattern PEAK_FFMPEG_PATTERN = Pattern.compile("^\\s+Peak:\\s+(-?(?:\\d+\\.\\d+|inf)) dBFS$", Pattern.MULTILINE);
@@ -209,18 +209,18 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 									.build();
 							Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
 							String titleFromFilename = sfm.contains(".") ? sfm.substring(0, sfm.lastIndexOf('.')) : sfm;
-							Process probe = Commands.ffprobe("-v", "error", "-print_format", "flat", "-show_format", "-").start();
+							Process probeIn = Commands.ffprobe("-v", "error", "-print_format", "flat", "-show_format", "-show_streams", "-").start();
 							try (InputStream in = master.getInputStream()) {
-								ByteStreams.copy(in, probe.getOutputStream());
-								probe.getOutputStream().close();
+								ByteStreams.copy(in, probeIn.getOutputStream());
+								probeIn.getOutputStream().close();
 							} catch (IOException e) {
 								if (!"Broken pipe".equals(e.getMessage())) {
 									throw e;
 								}
 							}
-							while (probe.isAlive()) {
+							while (probeIn.isAlive()) {
 								try {
-									probe.waitFor();
+									probeIn.waitFor();
 								} catch (InterruptedException e) {
 								}
 							}
@@ -228,20 +228,37 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 							int trackNumber = -1;
 							long duration;
 							String lyrics;
-							if (probe.exitValue() != 0) {
-								String str = new String(ByteStreams.toByteArray(probe.getErrorStream()), Charsets.UTF_8);
+							if (probeIn.exitValue() != 0) {
+								String str = new String(ByteStreams.toByteArray(probeIn.getErrorStream()), Charsets.UTF_8);
 								log.warn("Failed to probe master with FFprobe:\n{}", str);
 								title = titleFromFilename;
-								duration = 0;
 								lyrics = null;
 							} else {
-								String probeOut = new String(ByteStreams.toByteArray(probe.getInputStream()), Charsets.UTF_8);
+								String probeOut = new String(ByteStreams.toByteArray(probeIn.getInputStream()), Charsets.UTF_8);
 								title = find(TITLE_FFPROBE_PATTERN, probeOut)
 										.orElse(titleFromFilename);
 								trackNumber = find(TRACK_FFPROBE_PATTERN, probeOut)
 										.map(Ints::tryParse)
 										.filter(i -> i >= 1)
 										.orElse(-1);
+								lyrics = find(LYRICS_FFPROBE_PATTERN, probeOut)
+										.map(str -> str.replace("\\n", "\n").replace("\\r", ""))
+										.orElse(null);
+							}
+							Process probeFlac = Commands.ffprobe("-v", "error", "-print_format", "flat", "-show_format", tmpFile.getAbsolutePath()).start();
+							probeFlac.getOutputStream().close();
+							while (probeFlac.isAlive()) {
+								try {
+									probeFlac.waitFor();
+								} catch (InterruptedException e) {
+								}
+							}
+							if (probeFlac.exitValue() != 0) {
+								String str = new String(ByteStreams.toByteArray(probeFlac.getErrorStream()), Charsets.UTF_8);
+								log.warn("Failed to probe FLAC master with FFprobe:\n{}", str);
+								duration = 0;
+							} else {
+								String probeOut = new String(ByteStreams.toByteArray(probeFlac.getInputStream()), Charsets.UTF_8);
 								duration = find(DURATION_FFPROBE_PATTERN, probeOut)
 										.map(this::tryParseBigDecimal)
 										.map(bd -> bd.multiply(TO_SAMPLES))
@@ -250,9 +267,6 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 											log.warn("Couldn't parse duration from FFprobe output:\n{}", probeOut);
 											return 0L;
 										});
-								lyrics = find(LYRICS_FFPROBE_PATTERN, probeOut)
-										.map(str -> str.replace("\\n", "\n").replace("\\r", ""))
-										.orElse(null);
 							}
 							log.debug("Processed master {}. {} successfully.\nDuration: {}ms, loudness: {}LUFS, peak: {}dBFS", trackNumber, title, duration/48, loudness, peak);
 							return new TrackData(title, trackNumber, blobName, duration, loudness, peak, lyrics);
@@ -285,7 +299,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 							}
 						}
 					}
-					String slug = Queries.findSlug("tracks", Partyflow.sanitizeSlug(td.title));
+					String slug = QGeneric.findSlug("tracks", Partyflow.sanitizeSlug(td.title));
 					lastSlug = slug;
 					try (PreparedStatement ps = c.prepareStatement(
 							"INSERT INTO `tracks` (`release_id`, `title`, `subtitle`, `slug`, `master`, `description`, `track_number`, `loudness`, `peak`, `duration`, `lyrics`, `created_at`, `last_updated`) "

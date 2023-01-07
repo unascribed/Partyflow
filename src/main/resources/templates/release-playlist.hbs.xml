@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" >
+	<channel>
+		<title>{{title}}</title>
+		<link>{{publicUrl}}releases/{{slug}}</link>
+		{{#tracks}}
+		<item>
+			<title>{{title}}</title>
+			<link>{{publicUrl}}track/{{slug}}</link>
+			<guid>{{publicUrl}}track/{{slug}}</guid>
+			<description><![CDATA[{{{description}}}]]></description>
+			<dc:creator>{{creator}}</dc:creator>
+		</item>
+		{{/tracks}}
+	</channel>
+</rss>

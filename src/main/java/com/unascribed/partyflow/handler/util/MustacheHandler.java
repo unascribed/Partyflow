@@ -47,6 +47,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			String version = Version.FULL;
 		};
 		String root = Partyflow.config.http.path;
+		String publicUrl = Partyflow.config.http.publicUrl+Partyflow.config.http.path;
 	};
 	private static final Pattern FILE_EXT_PATTERN = Pattern.compile("\\.[^.]+$");
 
@@ -83,6 +84,8 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			res.setHeader("Content-Type", "text/css; charset=utf-8");
 		} else if (path.endsWith(".js")) {
 			res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+		} else if (path.endsWith(".xml")) {
+			res.setHeader("Content-Type", "text/xml; charset=utf-8");
 		}
 		Object[] arr = new Object[context.length+2];
 		arr[0] = globalContext;

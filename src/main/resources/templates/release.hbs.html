@@ -3,20 +3,24 @@
 <head>
 	{{> _head.hbs.html}}
 	<!--
-	{{!youtube-dl hack. See track.hbs.html for more info}}
-	
-	<title>{{release.creator}} - {{release.title}} - {{title}}</title>
-	<audio>
-		{{#download_formats}}
-			<source src="{{root}}transcode/release/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>
-			<source src="{{root}}transcode/release/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
-		{{/download_formats}}
-	</audio>
+	{{!youtube-dl hack}}
+	<title>{{creator}} - {{title}}</title>
+	<meta http-equiv="Refresh" content="0; URL={{root}}releases/{{slug}}.rss">
 	-->
 	<title>{{title}} by {{creator}} - Partyflow</title>
 	{{#editable}}
 		<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
 	{{/editable}}
+	<link rel="canonical" href="{{publicUrl}}releases/{{slug}}">
+	<meta name="generator" content="Partyflow v{{partyflow.version}}">
+	<meta name="author" content="{{creator}}">
+	<meta name="description" content="Listen to {{title}} by {{creator}}. {{descriptionMd}}">
+	<meta property="og:title" content="{{creator}} - {{title}}">
+	<meta property="og:description" content="{{description}}">
+	<meta property="og:type" content="music.album">
+	<meta property="og:music:musician" content="{{creator}}">
+	<meta property="og:url" content="{{publicUrl}}releases/{{slug}}">
+	<meta property="og:image" content="{{art}}">
 </head>
 <body>
 	{{> _header.hbs.html}}
@@ -43,37 +47,7 @@
 			<div class="title">{{title}}</div>
 			<div class="subtitle">{{subtitle}}</div>
 			<div class="creator">By {{creator}}</div>
-			{{#doneProcessing}}
-			<noscript>
-			<i>Enable JavaScript to play the entire album with gapless playback.</i>
-			</noscript>
-			{{> _player-widget.hbs.html }}
-			{{/doneProcessing}}
-			{{^doneProcessing}}
-			<i>This release is still processing.</i> Check back in a few moments.
-			{{/doneProcessing}}
-			<h2><a href="{{root}}download/release/{{slug}}">Download</a></h2>
-			<div id="tracks">
-			{{#tracks}}
-				<div class="track" data-track-slug="{{slug}}">
-					<button class="yesscript player-control play"></button>
-					<a href="{{root}}track/{{slug}}">
-						<span class="trackNumber">{{track_number}}.</span>
-						<span class="title">{{title}}</span>
-						<span class="subtitle">{{subtitle}}</span>
-					</a>
-					<span class="track-duration"></span>
-					{{#lyrics}}
-						<details class="lyrics"><summary>lyrics</summary><p>{{lyrics}}</p></details>
-					{{/lyrics}}
-				</div>
-			{{/tracks}}
-			</div>
-			{{#doneProcessing}}
-			<script data-loudness="{{albumLoudness}}" data-release-slug="{{slug}}"
-				data-formats="{{stream_formats_json}}" data-tracks="{{tracks_json}}"
-				src="{{root}}assets/gapless-player.js"></script>
-			{{/doneProcessing}}
+			{{> _release-player.hbs.html}}
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}
@@ -85,13 +59,8 @@
 				<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title" value="{{title}}"/>
 				<input name="subtitle" maxlength="255" type="text" class="ghost-input subtitle" placeholder="Subtitle" value="{{subtitle}}"/>
 				<div class="creator">By {{creator}}</div>
-				{{#tracks}}
-					<a href="{{root}}track/{{slug}}" class="track">
-						<span class="trackNumber">{{track_number}}.</span>
-						<span class="title">{{title}}</span>
-						<span class="subtitle">{{subtitle}}</span>
-					</a>
-				{{/tracks}}
+				<div><br>Downloads: {{downloads}}</div>
+				{{> _release-player.hbs.html}}
 				<button class="subdued" style="margin: 8px 0" name="addTrack" type="submit">
 					<img src="{{root}}static/list-add.svg"/>
 					Add {{#has_tracks}}more {{/has_tracks}}tracks
