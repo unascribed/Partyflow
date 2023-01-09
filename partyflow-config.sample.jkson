@@ -126,7 +126,7 @@ storage {
 	// between storage utilization and CPU utilization for performing transcodes. On remote storage, you
 	// will probably want to turn this down somewhat low to keep costs down. However, on some providers
 	// (such as Wasabi) there is a minimum storage time, so deleting files before that time elapses is
-	// just wasting money.
+	// just wasting money. Setting this shorter than 1 minute isn't useful.
 	pruneTime: "7D"
 	// If you're using Wasabi, this matches their minimum storage time:
 	//pruneTime: "90D"

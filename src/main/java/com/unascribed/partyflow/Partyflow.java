@@ -512,7 +512,7 @@ public class Partyflow {
 			} catch (SQLException e) {
 				log.warn("Failed to prune old transcodes", e);
 			}
-		}, 0, config.storage.pruneTime.toSeconds() < 120 ? 15 : 60, TimeUnit.SECONDS);
+		}, 0, 1, config.storage.pruneTime.toHours() <= 0 ? TimeUnit.MINUTES : TimeUnit.HOURS);
 		
 		if (Boolean.getBoolean("partyflow.sqlShell")) {
 			try (Connection c = sql.getConnection()) {
