@@ -5,13 +5,14 @@
 	<!--
 	{{!youtube-dl hack}}
 	<title>{{creator}} - {{title}}</title>
-	<meta http-equiv="Refresh" content="0; URL={{root}}releases/{{slug}}.rss">
+	<meta http-equiv="Refresh" content="0; URL={{root}}release/{{slug}}.rss">
 	-->
 	<title>{{title}} by {{creator}} - Partyflow</title>
 	{{#editable}}
 		<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
 	{{/editable}}
-	<link rel="canonical" href="{{publicUrl}}releases/{{slug}}">
+	<link rel="canonical" href="{{publicUrl}}release/{{slug}}">
+	<link rel="alternate" type="application/json" href="{{publicUrl}}api/v1/release/{{slug}}">
 	<meta name="generator" content="Partyflow v{{partyflow.version}}">
 	<meta name="author" content="{{creator}}">
 	<meta name="description" content="Listen to {{title}} by {{creator}}. {{descriptionMd}}">
@@ -19,7 +20,7 @@
 	<meta property="og:description" content="{{description}}">
 	<meta property="og:type" content="music.album">
 	<meta property="og:music:musician" content="{{creator}}">
-	<meta property="og:url" content="{{publicUrl}}releases/{{slug}}">
+	<meta property="og:url" content="{{publicUrl}}release/{{slug}}">
 	<meta property="og:image" content="{{art}}">
 </head>
 <body>
@@ -51,7 +52,7 @@
 			<div class="description">{{{description}}}</div>
 			{{/editable}}
 			{{#editable}}
-			<form class="inline" method="POST" enctype="multipart/form-data" action="{{root}}releases/{{slug}}/edit">
+			<form class="inline" method="POST" enctype="multipart/form-data" action="{{root}}release/{{slug}}/edit">
 				<input type="hidden" name="csrf" value="{{csrf}}"/>
 				<div class="art art-img" style="background-image: url({{art}})">
 					<input name="art" type="file" class="replaceArt" accept=".png,.jpeg,.jpg,.jpe,.jfif,image/png,image/jpeg"/>
@@ -84,7 +85,7 @@
 			</form>
 			<div class="buttons" style="text-align: right; width: 100%; padding-right: 16px;">
 				{{^published}}
-					<form class="inline" action="{{root}}releases/{{slug}}/delete" method="POST">
+					<form class="inline" action="{{root}}release/{{slug}}/delete" method="POST">
 						<input type="hidden" name="csrf" value="{{csrf}}"/>
 						<button class="danger">
 							<img src="{{root}}static/trash.svg"/>
@@ -93,7 +94,7 @@
 					</form>
 				{{/published}}
 				{{#published}}
-					<form class="inline" action="{{root}}releases/{{slug}}/unpublish" method="POST">
+					<form class="inline" action="{{root}}release/{{slug}}/unpublish" method="POST">
 						<input type="hidden" name="csrf" value="{{csrf}}"/>
 						<button class="danger">
 							<img src="{{root}}static/eye-off.svg"/>

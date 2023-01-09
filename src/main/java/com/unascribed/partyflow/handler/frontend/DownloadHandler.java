@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.TranscodeFormat;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
@@ -155,8 +156,8 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 			String kind = _kind;
 			String kinds = "release".equals(kind) ? "releases" : "track";
 			String slug = _slug;
-			String art = Partyflow.resolveArt(_art);
-			String download_url = Partyflow.config.http.path+"transcode/"+("release".equals(kind) ? "release-zip" : "track")+"/"+slug;
+			String art = URLs.resolveArt(_art);
+			String download_url = URLs.url("transcode/"+("release".equals(kind) ? "release-zip" : "track")+"/"+slug);
 			List<Object> other_formats = otherFormats.stream().map(munger).toList();
 			List<Object> suggested_formats = suggestedFormats.stream().map(munger).toList();
 		});

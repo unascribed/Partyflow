@@ -31,11 +31,12 @@ public class QTracks extends Queries {
 	private static final Logger log = LoggerFactory.getLogger(QTracks.class);
 	
 	public record Track(
-			String slug, String title, String subtitle, @Column("art") String artId,
-			OptionalInt trackNumber, long duration, String lyrics
+			long trackId, String slug, String title, String subtitle, @Column("art") String artId,
+			OptionalInt trackNumber, long duration, String lyrics, String description,
+			
+			OptionalInt loudness, OptionalInt peak
 		) implements Artful {
 		String trackNumberStr() { return trackNumber.isPresent() ? trackNumber.getAsInt()+"." : ""; }
-		double durationSecs() { return duration/48000D; }
 	}
 	
 	private static final String COLUMNS = columnsForRecord("tracks", Track.class);

@@ -30,7 +30,7 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.HandlerWrapper;
 
-import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.URLs;
 
 public class PathResolvingHandler extends HandlerWrapper {
 
@@ -57,11 +57,11 @@ public class PathResolvingHandler extends HandlerWrapper {
 			res.sendError(400);
 			return;
 		}
-		if (!_target.startsWith(Partyflow.config.http.path)) {
+		if (!_target.startsWith(URLs.root())) {
 			res.sendError(404);
 			return;
 		}
-		String target = _target.substring(Partyflow.config.http.path.length());
+		String target = _target.substring(URLs.root().length());
 		var m = pattern.matcher(target);
 		if (m.matches()) {
 			super.handle(m.group(1), baseRequest, req, res);

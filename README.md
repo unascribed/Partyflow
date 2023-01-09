@@ -34,6 +34,9 @@ with customizable colors.
 - Abstracted storage backend; currently supports S3 and local filesystem
 - Volumes above 100%
 - Automatic extraction and organization of existing metadata from uploaded masters
+- Automatic pruning of old transcodes that haven't been downloaded lately
+- Download counts that don't count multiple downloads from the same IP (anonymously, via bloom filter)
+- The core is becoming increasingly nice to use
 
 ## The bad 📝
 (What still needs work)
@@ -41,23 +44,24 @@ with customizable colors.
 - No admin page
 - No way to make new accounts
 - No way to pay for releases
-- Color customization is still WIP
+- No color customization yet
 - Can't set the release date on releases to the past (for backcatalog)
 - Can't override templates or static files
 - No translation support
-- No automatic pruning of old transcodes that haven't been downloaded lately
 - If the server is stopped while a release concatenation is ongoing, the release will never finish processing
 
 ## The ugly 😦
 (Assorted notes about things needing improvement)
 
 - If you're logged in as admin it's not possible to view a release/track as a normal user
+  - This is now a lot less bad as I ported over the new player to the edit page
 - Halfway through a refactor to move business logic into *Api classes that also expose a JSON HTTP API
 - Halfway through a refactor to put all SQL queries in one place for ease of reference
 - Windows support is currently broken due to usage of /dev/zero and some other stuff
 - All the SQL queries need to be confirmed to be compatible with MariaDB; I've tested a major number but not quite all
 - Some stuff needs to get migrated to use Jetty APIs instead of pointlessly reimplementing it, like query strings
 - All the booleans under "formats" should get moved into the database and controlled from the admin UI
+- The core really needs to become a library so it can be reused
 
 # Running it
 If you're okay with it being unfinished as described above, here's what you need to do to run it:

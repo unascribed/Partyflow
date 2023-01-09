@@ -28,8 +28,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.handler.api.v1.LoginApi;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
@@ -69,7 +69,7 @@ public class LoginHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 			boolean remember = params.containsKey("remember");
 			var ar = LoginApi.invoke(params.get("name"), passwordSha512, remember);
 			res.setHeader("Set-Cookie", SessionHelper.buildCookie(ar.token(), remember ? 365 : 0));
-			res.sendRedirect(Partyflow.config.http.path);
+			res.sendRedirect(URLs.root());
 		} catch (UserVisibleException uve) {
 			res.setStatus(uve.getCode());
 			MustacheHandler.serveTemplate(req, res, "login.hbs.html", new Object() {

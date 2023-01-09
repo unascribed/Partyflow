@@ -321,6 +321,7 @@ public record TranscodeFormat(
 				String name = tf.publicName();
 				String mimetype = tf.mimeType();
 				String ytdl_label = "$$ytdl-hack-"+tf.ytdlPriority()+"kbps_"+tf.publicName();
+				int ytdl_priority = tf.ytdlPriority();
 				boolean lossless = tf.lossless();
 			};
 		});

@@ -35,6 +35,7 @@ import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.UserRole;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 
 import com.google.common.base.Function;
@@ -46,8 +47,8 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		Object partyflow = new Object() {
 			String version = Version.FULL;
 		};
-		String root = Partyflow.config.http.path;
-		String publicUrl = Partyflow.config.http.publicUrl+Partyflow.config.http.path;
+		String root = URLs.root();
+		String publicUrl = URLs.publicRoot();
 	};
 	private static final Pattern FILE_EXT_PATTERN = Pattern.compile("\\.[^.]+$");
 

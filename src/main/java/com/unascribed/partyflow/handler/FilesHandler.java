@@ -34,6 +34,7 @@ import org.jclouds.blobstore.domain.BlobAccess;
 import org.jclouds.blobstore.options.GetOptions;
 
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Options;
@@ -51,6 +52,12 @@ public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
+		if (!Partyflow.config.storage.publicUrlPattern.startsWith("files/")
+				&& !Partyflow.config.storage.publicUrlPattern.startsWith(URLs.url("files/"))) {
+			res.setStatus(HTTP_307_TEMPORARY_REDIRECT);
+			res.setHeader("Location", Partyflow.config.storage.publicUrlPattern.replace("{}", path));
+			return;
+		}
 		try {
 			BlobAccess ba = Partyflow.storage.getBlobAccess(Partyflow.storageContainer, path);
 			if (ba == BlobAccess.PRIVATE) {

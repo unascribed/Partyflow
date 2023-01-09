@@ -62,6 +62,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.ThreadPools;
 import com.unascribed.partyflow.Transcoder;
+import com.unascribed.partyflow.URLs;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
@@ -104,7 +105,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 								String title = rs.getString("title");
 								String subtitle = rs.getString("subtitle");
 								boolean published = rs.getBoolean("published");
-								String art = Partyflow.resolveArt(rs.getString("art"));
+								String art = URLs.resolveArt(rs.getString("art"));
 								String error = query.get("error");
 							};
 						});
@@ -124,7 +125,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 		Session s = SessionHelper.getSessionOrThrow(req, data.getPartAsString("csrf", 64));
 		List<Part> masters = data.getAllParts("master");
 		if (masters.isEmpty()) {
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slugs)+"/add-track?error=At least one master is required");
+			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"/add-track?error=At least one master is required"));
 			return;
 		}
 		String lastSlug = null;
@@ -331,9 +332,9 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 			throw new ServletException(e);
 		}
 		if (masters.size() == 1) {
-			res.sendRedirect(Partyflow.config.http.path+"track/"+escPathSeg(lastSlug));
+			res.sendRedirect(URLs.url("track/"+escPathSeg(lastSlug)));
 		} else {
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slugs));
+			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)));
 		}
 	}
 	

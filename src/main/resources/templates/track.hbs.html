@@ -27,8 +27,7 @@
 	<title>{{release.creator}} - {{release.title}} - {{title}}</title>
 	<audio>
 		{{#download_formats}}
-			<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>
-			<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+			<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{name}} {{ytdl_priority}}kbps"/>
 		{{/download_formats}}
 	-->
 	<title>{{title}} by {{release.creator}} from {{release.title}} - Partyflow</title>
@@ -71,12 +70,11 @@
 				data-formats="{{stream_formats_json}}"
 				src="{{root}}assets/gapless-player.js"></script>
 			<div class="subtitle">{{subtitle}}</div>
-			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
+			<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}release/{{release.slug}}">{{release.title}}</a></div>
 			<noscript>
 			<audio controls>
 				{{#stream_formats}}
-					<!--<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
-					<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
+					<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}" label="__lowquality-{{name}}"/>
 				{{/stream_formats}}
 			</audio>
 			</noscript>
@@ -92,7 +90,7 @@
 				</div>
 				<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title" value="{{title}}"/>
 				<input name="subtitle" maxlength="255" type="text" class="ghost-input subtitle" placeholder="Subtitle" value="{{subtitle}}"/>
-				<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}releases/{{release.slug}}">{{release.title}}</a></div>
+				<div class="creator">By {{release.creator}}<br/>From <a href="{{root}}release/{{release.slug}}">{{release.title}}</a></div>
 				{{> _player-widget.hbs.html }}
 				<script data-loudness="{{loudness}}" data-tracks="{{tracks_json}}"
 					data-formats="{{stream_formats_json}}" data-hide-title="true"
@@ -100,7 +98,6 @@
 				<noscript>
 				<audio controls>
 					{{#stream_formats}}
-						<!--<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" label="{{ytdl_label}}"/>-->
 						<source src="{{root}}transcode/track/{{slug}}?format={{name}}" type="{{mimetype}}" title="{{name}}"/>
 					{{/stream_formats}}
 				</audio>

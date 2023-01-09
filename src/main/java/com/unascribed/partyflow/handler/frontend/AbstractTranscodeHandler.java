@@ -45,6 +45,7 @@ import com.unascribed.partyflow.TranscodeFormat.ReplayGainData;
 import com.unascribed.partyflow.TranscodeFormat.Shortcut;
 import com.unascribed.partyflow.TranscodeFormat.Usage;
 import com.unascribed.partyflow.Transcoder;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QTranscodes;
 import com.unascribed.partyflow.data.QTranscodes.FoundShortcut;
@@ -169,9 +170,9 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 				if (prepare) {
 					res.setStatus(HTTP_204_NO_CONTENT);
 					res.getOutputStream().close();
-					res.setHeader("Transcode-Result", Partyflow.resolveBlob(ft.blob()));
+					res.setHeader("Transcode-Result", URLs.resolveBlob(ft.blob()));
 				} else {
-					res.sendRedirect(Partyflow.resolveBlob(ft.blob()));
+					res.sendRedirect(URLs.resolveBlob(ft.blob()));
 				}
 				return;
 			} else if (findRes instanceof FoundShortcut fs) {
@@ -266,9 +267,9 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 				if (prepare) {
 					res.setStatus(HTTP_204_NO_CONTENT);
 					res.getOutputStream().close();
-					res.setHeader("Transcode-Result", Partyflow.resolveBlob(blobNameRes));
+					res.setHeader("Transcode-Result", URLs.resolveBlob(blobNameRes));
 				} else {
-					res.sendRedirect(Partyflow.resolveBlob(blobNameRes));
+					res.sendRedirect(URLs.resolveBlob(blobNameRes));
 				}
 			}
 		} catch (SQLException | InterruptedException | ExecutionException e) {

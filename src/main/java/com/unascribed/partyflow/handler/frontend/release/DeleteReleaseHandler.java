@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
@@ -46,7 +47,7 @@ public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, Ur
 	@Override
 	public void getOrHead(String slug, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
-		res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+keepQuery(req));
+		res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+keepQuery(req)));
 	}
 
 	@Override
@@ -100,7 +101,7 @@ public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, Ur
 			try (PreparedStatement ps = c.prepareStatement("DELETE FROM `transcodes` WHERE `release_id` = ?;")) {
 				ps.setLong(1, releaseId);
 				ps.executeUpdate();
-				res.sendRedirect(Partyflow.config.http.path+"releases");
+				res.sendRedirect(URLs.url("releases"));
 			}
 			try (PreparedStatement ps = c.prepareStatement("DELETE FROM `tracks` WHERE `release_id` = ?;")) {
 				ps.setLong(1, releaseId);

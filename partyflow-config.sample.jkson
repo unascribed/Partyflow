@@ -40,17 +40,6 @@ database {
 	// Valid options are h2 and mariadb.
 	driver: "h2"
 	
-	// The most downloads expected from unique IPs for any given release. This is used to
-	// initialize the anonymous Bloom filter that manages the download count. If you receive
-	// massively more downloads than this number, the filter will saturate and the count will
-	// stop updating. If a saturated filter is detected, it will be reinitialized with the
-	// current value of this option. Be warned that large numbers will greatly increase the
-	// amount of space required for the filters in the database.
-	//
-	// If set to zero, then the download counter will not consider client IPs and bloom filters
-	// will not be allocated.
-	expectedTraffic: 256
-	
 	// An embedded pure Java database comparable to SQLite. Great for easy small deployments.
 	// No configuration required - works out of the box.
 	h2 {
@@ -67,6 +56,17 @@ database {
 		pass: "p4ssw0rd!"
 		db: "partyflow"
 	}
+	
+	// The most downloads expected from unique IPs for any given release. This is used to
+	// initialize the anonymous Bloom filter that manages the download count. If you receive
+	// massively more downloads than this number, the filter will saturate and the count will
+	// stop updating. If a saturated filter is detected, it will be reinitialized with the
+	// current value of this option. Be warned that large numbers will greatly increase the
+	// amount of space required for the filters in the database.
+	//
+	// If set to zero, then the download counter will not consider client IPs and bloom filters
+	// will not be allocated.
+	expectedTraffic: 256
 }
 security {
 	// Used to secure session cookies. Should be set to something long and random; if null, an
@@ -120,6 +120,18 @@ storage {
 	publicUrlPattern: "files/{}"
 	// For example, a direct Wasabi config would look like this:
 	//publicUrlPattern: "https://BUCKET_NAME.s3.wasabisys.com/{}"
+	
+	// An ISO 8601 duration specifier (without the P prefix) describing the amount of time cached
+	// transcodes will be kept without any downloads before being deleted. The prune time is a tradeoff
+	// between storage utilization and CPU utilization for performing transcodes. On remote storage, you
+	// will probably want to turn this down somewhat low to keep costs down. However, on some providers
+	// (such as Wasabi) there is a minimum storage time, so deleting files before that time elapses is
+	// just wasting money.
+	pruneTime: "7D"
+	// If you're using Wasabi, this matches their minimum storage time:
+	//pruneTime: "90D"
+	// For times less than a day, you need to prefix this with "T" to switch from date to time:
+	//pruneTime: "T30S"
 }
 programs {
 	// Using some form of sandboxing (e.g. unshare) is recommended in production. All files will be

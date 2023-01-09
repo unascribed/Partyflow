@@ -35,8 +35,14 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.Temporal;
+import java.time.temporal.TemporalUnit;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
@@ -87,6 +93,8 @@ import com.unascribed.partyflow.Config.StorageSection.StorageDriver;
 import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.handler.FilesHandler;
 import com.unascribed.partyflow.handler.api.v1.LoginApi;
+import com.unascribed.partyflow.handler.api.v1.ReleasesApi;
+import com.unascribed.partyflow.handler.api.v1.ViewReleaseApi;
 import com.unascribed.partyflow.handler.api.v1.WhoAmIApi;
 import com.unascribed.partyflow.handler.frontend.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.DownloadHandler;
@@ -144,13 +152,13 @@ public class Partyflow {
 	public static Key sessionSecret;
 	public static URI publicUri;
 
-	public static ConcurrentMap<String, Long> csrfTokens = Maps.newConcurrentMap();
+	private static final ConcurrentMap<String, Long> csrfTokens = Maps.newConcurrentMap();
 
 	public static final ScheduledExecutorService sched = Executors.newSingleThreadScheduledExecutor();
 
 	private static final ThreadLocal<RandomXoshiro256StarStar> rand = ThreadLocal.withInitial(RandomXoshiro256StarStar::new);
 	private static final SecureRandom secureRand = new SecureRandom();
-
+	
 	public static RandomXoshiro256StarStar getRandom() {
 		return rand.get();
 	}
@@ -158,7 +166,9 @@ public class Partyflow {
 	public static void main(String[] args) {
 		Stopwatch sw = Stopwatch.createStarted();
 		AsyncSimpleLog.startLogging();
-		Dankson jkson = new Dankson(Jankson.builder().allowBareRootObject());
+		Dankson jkson = new Dankson(Jankson.builder()
+				.registerDeserializer(JsonPrimitive.class, Duration.class, (p, m) -> Duration.parse("P"+p.asString()))
+				.allowBareRootObject());
 		try {
 			File file = new File("partyflow-config.jkson");
 			String configStr = Files.asCharSource(file, Charsets.UTF_8).read();
@@ -265,6 +275,7 @@ public class Partyflow {
 			log.error("{} does not appear to be a valid URI", config.http.publicUrl);
 			return;
 		}
+		URLs.init();
 		
 		byte[] sessionSecretBytes = config.security.sessionSecret.getBytes(Charsets.UTF_8);
 		sessionSecret = new SecretKeySpec(sessionSecretBytes, "RAW");
@@ -389,7 +400,9 @@ public class Partyflow {
 				setHeader("Clacks-Overhead", "GNU Natalie Nguyen, Shiina Mota, Near"),
 				setHeader("Server", "Partyflow/"+Version.FULL),
 				setHeader("Powered-By", poweredBy),
+				
 				new SetupHandler().asJettyHandler(),
+				
 				handler("", new IndexHandler()),
 				handler("assets/{}", new MustacheHandler("assets/{}")),
 				handler("create-release", new CreateReleaseHandler()),
@@ -397,13 +410,13 @@ public class Partyflow {
 				handler("logout", new LogoutHandler()),
 				handler("releases", new ReleasesHandler()),
 
-				handler("releases/{}.rss", new ViewReleaseHandler("release-playlist.hbs.xml")),
-				handler("releases/{}", new ViewReleaseHandler("release.hbs.html")),
-				handler("releases/{}/add-track", new AddTrackHandler()),
-				handler("releases/{}/delete", new DeleteReleaseHandler()),
-				handler("releases/{}/edit", new EditReleaseHandler()),
-				handler("releases/{}/publish", new PublishReleaseHandler()),
-				handler("releases/{}/unpublish", new UnpublishReleaseHandler()),
+				handler("release/{}.rss", new ViewReleaseHandler("release-playlist.hbs.xml")),
+				handler("release/{}", new ViewReleaseHandler("release.hbs.html")),
+				handler("release/{}/add-track", new AddTrackHandler()),
+				handler("release/{}/delete", new DeleteReleaseHandler()),
+				handler("release/{}/edit", new EditReleaseHandler()),
+				handler("release/{}/publish", new PublishReleaseHandler()),
+				handler("release/{}/unpublish", new UnpublishReleaseHandler()),
 				
 				handler("track/", new TrackHandler()),
 				handler("transcode/release-zip/{}", new TranscodeReleaseZipHandler()),
@@ -414,7 +427,9 @@ public class Partyflow {
 				handler("files/", new FilesHandler()),
 				
 				handler("api/v1/login", new LoginApi()),
-				handler("api/v1/whoami", new WhoAmIApi())
+				handler("api/v1/whoami", new WhoAmIApi()),
+				handler("api/v1/release/{}", new ViewReleaseApi()),
+				handler("api/v1/releases", new ReleasesApi())
 			);
 		server.setHandler(hc);
 		server.setErrorHandler(new PartyflowErrorHandler());
@@ -472,9 +487,32 @@ public class Partyflow {
 				}
 			}
 			if (removed > 0) {
-				log.debug("Pruned {} expired CSRF tokens", removed);
+				log.debug("Pruned {} expired CSRF token{}", removed, removed == 1 ? "" : "s");
 			}
 		}, 15, 15, TimeUnit.MINUTES);
+		sched.scheduleWithFixedDelay(() -> {
+			try (var c = sql.getConnection()) {
+				try (var ps = c.prepareStatement("SELECT `transcode_id`, `file` FROM `transcodes` WHERE `last_downloaded` <= ? AND `master` != '__testtrack';");
+						var ps2 = c.prepareStatement("DELETE FROM `transcodes` WHERE `transcode_id` = ?;")) {
+					ps.setTimestamp(1, new Timestamp(Instant.now().minus(config.storage.pruneTime).toEpochMilli()));
+					try (var rs = ps.executeQuery()) {
+						int removed = 0;
+						while (rs.next()) {
+							ps2.setLong(1, rs.getLong("transcode_id"));
+							if (ps2.executeUpdate() > 0) {
+								storage.removeBlob(storageContainer, rs.getString("file"));
+								removed++;
+							}
+						}
+						if (removed > 0) {
+							log.debug("Pruned {} old transcode{}", removed, removed == 1 ? "" : "s");
+						}
+					}
+				}
+			} catch (SQLException e) {
+				log.warn("Failed to prune old transcodes", e);
+			}
+		}, 0, config.storage.pruneTime.toSeconds() < 120 ? 15 : 60, TimeUnit.SECONDS);
 		
 		if (Boolean.getBoolean("partyflow.sqlShell")) {
 			try (Connection c = sql.getConnection()) {
@@ -569,37 +607,39 @@ public class Partyflow {
 	private static final Pattern ILLEGAL = Pattern.compile("[?/#&;\\\\=\\^\\[\\]%]+");
 	private static final Pattern SPACE = Pattern.compile("[\\p{Space}]+");
 
+	public static final TemporalUnit SAMPLES = new TemporalUnit() {
+		
+		@Override
+		public boolean isTimeBased() { return false; }
+		@Override
+		public boolean isDurationEstimated() { return false; }
+		@Override
+		public boolean isDateBased() { return false; }
+		@Override
+		public Duration getDuration() { return Duration.ofNanos(20833/* and a third */); }
+		
+		@Override
+		public long between(Temporal temporal1Inclusive, Temporal temporal2Exclusive) {
+			long nanos = temporal1Inclusive.until(temporal2Exclusive, ChronoUnit.NANOS);
+			return (nanos*3)/62500;
+		}
+		
+		@Override
+		public <R extends Temporal> R addTo(R temporal, long amount) {
+			amount = (amount*62500)/3;
+			return (R)temporal.plus(amount, ChronoUnit.NANOS);
+		}
+	};
+
 	public static @Detainted String sanitizeSlug(@Tainted String name) {
 		if ("__testtrack".equals(name)) return "___testtrack";
 		String s = Normalizer.normalize(name, Form.NFC);
 		s = SPACE.matcher(s).replaceAll("-");
 		s = ILLEGAL.matcher(s).replaceAll("_");
+		s = s.replace("(", "");
+		s = s.replace(")", "");
 		s = s.replace('"', '\'');
 		return s.strip().toLowerCase();
-	}
-
-	public static String resolveArt(String art) {
-		if (art == null) {
-			return config.http.path+"static/default_art.svg";
-		} else {
-			return resolveBlob(art);
-		}
-	}
-
-	public static String resolveArtThumb(String art) {
-		if (art == null) {
-			return config.http.path+"static/default_art.svg";
-		} else {
-			return resolveBlob(art)+"-thumb.webp";
-		}
-	}
-
-	public static String resolveBlob(String blob) {
-		if (config.storage.publicUrlPattern.startsWith("/") || config.storage.publicUrlPattern.startsWith("http://") || config.storage.publicUrlPattern.startsWith("https://")) {
-			return config.storage.publicUrlPattern.replace("{}", blob);
-		} else {
-			return config.http.path+config.storage.publicUrlPattern.replace("{}", blob);
-		}
 	}
 
 	public static void validateCsrf(Session s, String csrf) throws UserVisibleException {

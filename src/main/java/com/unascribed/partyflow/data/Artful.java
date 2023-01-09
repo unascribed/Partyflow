@@ -19,13 +19,13 @@
 
 package com.unascribed.partyflow.data;
 
-import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.URLs;
 
 public interface Artful {
 
 	String artId();
 
-	default String art() { return Partyflow.resolveArt(artId()); }
-	default String artThumb() { return Partyflow.resolveArtThumb(artId()); }
+	default String art() { return URLs.resolveArt(artId()); }
+	default String artThumb() { return URLs.resolveArtThumb(artId()); }
 	
 }

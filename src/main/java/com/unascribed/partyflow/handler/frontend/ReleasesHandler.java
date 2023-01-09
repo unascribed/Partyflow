@@ -43,7 +43,7 @@ public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 		Session s = SessionHelper.getSession(req);
 		res.setStatus(HTTP_200_OK);
 		MustacheHandler.serveTemplate(req, res, "releases.hbs.html", new Object() {
-			List<FullRelease> releases = QReleases.getAll(s);
+			List<FullRelease> releases = QReleases.getAll(s, 100, 1); // TODO pagination
 		});
 	}
 

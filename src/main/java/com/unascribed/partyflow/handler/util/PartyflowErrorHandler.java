@@ -21,6 +21,7 @@ package com.unascribed.partyflow.handler.util;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.List;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -78,7 +79,7 @@ public class PartyflowErrorHandler extends ErrorHandler {
 					res.setStatus(uve.getCode());
 					if (req.getAttribute("partyflow.isApi") == Boolean.TRUE) {
 						res.setStatus(uve.getCode());
-						ApiHandler.serve(req, res, new JsonError(true, uve.getCode(), uve.getMessage(), null));
+						ApiHandler.serve(req, res, new JsonError(true, uve.getCode(), uve.getMessage(), null), List.of());
 						return;
 					} else {
 						MustacheHandler.serveTemplate(req, res, "user-error.hbs.html", new Object() {
@@ -92,7 +93,7 @@ public class PartyflowErrorHandler extends ErrorHandler {
 					log.warn("An error occurred while handling a request to {}\nMagic string, for log searching: {}", baseRequest.getRequestURI(), magic, cause);
 					if (req.getAttribute("partyflow.isApi") == Boolean.TRUE) {
 						res.setStatus(res.getStatus());
-						ApiHandler.serve(req, res, new JsonError(true, res.getStatus(), HttpStatus.getMessage(res.getStatus()), magic));
+						ApiHandler.serve(req, res, new JsonError(true, res.getStatus(), HttpStatus.getMessage(res.getStatus()), magic), List.of());
 						return;
 					}
 				}

@@ -28,9 +28,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
@@ -43,7 +43,7 @@ public class PublishReleaseHandler extends SimpleHandler implements GetOrHead, U
 	@Override
 	public void getOrHead(String slug, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
-		res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+keepQuery(req));
+		res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+keepQuery(req)));
 	}
 
 	@Override
@@ -52,9 +52,9 @@ public class PublishReleaseHandler extends SimpleHandler implements GetOrHead, U
 		Session s = SessionHelper.getSessionOrThrow(req, params.get("csrf"));
 		
 		if (QReleases.publish(slug, s.userId(), true)) {
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug));
+			res.sendRedirect(URLs.url("release/"+escPathSeg(slug)));
 		} else {
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+"?error=You're not allowed to do that");
+			res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+"?error=You're not allowed to do that"));
 		}
 	}
 

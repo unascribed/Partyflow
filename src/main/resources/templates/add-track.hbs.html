@@ -11,7 +11,7 @@
 			<div class="message error">{{error}}</div>
 		{{/error}}
 		<h1>Add tracks to {{release.title}}</h1>
-		<a href="{{root}}releases/{{release.slug}}">&laquo; Back to {{release.title}}</a>
+		<a href="{{root}}release/{{release.slug}}">&laquo; Back to {{release.title}}</a>
 		<form class="release editing" method="POST" enctype="multipart/form-data">
 			<input type="hidden" name="csrf" value="{{csrf}}"/>
 			<label for="master">

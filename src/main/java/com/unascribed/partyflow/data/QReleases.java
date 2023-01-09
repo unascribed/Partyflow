@@ -55,7 +55,7 @@ public class QReleases extends Queries {
 
 			@Column("art") String artId, Date publishedAt, String concatMaster, OptionalInt peak, OptionalInt loudness,
 			
-			@Column("users.display_name") String creator, long releaseId) implements Artful {}
+			@Column("users.username") String creatorUsername, @Column("users.display_name") String creator, long releaseId) implements Artful {}
 	
 	private static final String COLUMNS = columnsForRecord("releases", FullRelease.class);
 
@@ -108,16 +108,16 @@ public class QReleases extends Queries {
 		}
 	}
 	
-	public static List<FullRelease> getAll(Session s) throws SQLException {
-		return get(s, ", ", "", "");
+	public static List<FullRelease> getAll(Session s, int limit, int page) throws SQLException {
+		return get(s, ", ", "", " ORDER BY `release_id` ASC LIMIT "+(limit+1)+" OFFSET "+((page-1)*limit));
 	}
 	
 	public static List<FullRelease> get5MostDownloaded(Session s) throws SQLException {
-		return get(s, "", "", "ORDER BY `downloads` DESC LIMIT 5");
+		return get(s, "", "", " ORDER BY `downloads` DESC LIMIT 5");
 	}
 	
 	public static List<FullRelease> get5Newest(Session s) throws SQLException {
-		return get(s, "", "", "ORDER BY `created_at` DESC LIMIT 5");
+		return get(s, "", "", " ORDER BY `created_at` DESC LIMIT 5");
 	}
 	
 	public static void maybeRecordDownload(String slug, InetAddress addr) throws SQLException {

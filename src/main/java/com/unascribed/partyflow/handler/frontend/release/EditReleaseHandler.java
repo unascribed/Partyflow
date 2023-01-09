@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.data.QGeneric;
 import com.unascribed.partyflow.handler.frontend.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.util.MultipartData;
@@ -55,7 +56,7 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 	@Override
 	public void getOrHead(String slug, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
-		res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+keepQuery(req));
+		res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+keepQuery(req)));
 	}
 	
 	@Override
@@ -76,19 +77,19 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 			description = sanitizeHtml(Strings.nullToEmpty(data.getPartAsString("description", 65536)));
 		}
 		if (title.trim().isEmpty()) {
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slugs)+"?error=Title is required");
+			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=Title is required"));
 			return;
 		}
 		if (title.length() > 255) {
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slugs)+"?error=Title is too long");
+			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=Title is too long"));
 			return;
 		}
 		if (subtitle.length() > 255) {
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slugs)+"?error=Subtitle is too long");
+			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=Subtitle is too long"));
 			return;
 		}
 		if (description.length() > 16384) {
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slugs)+"?error=Description is too long");
+			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=Description is too long"));
 			return;
 		}
 		String artPath = null;
@@ -96,7 +97,7 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 			try {
 				artPath = CreateReleaseHandler.processArt(art);
 			} catch (IllegalArgumentException e) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slugs)+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8"));
+				res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8")));
 				return;
 			}
 		}
@@ -111,7 +112,7 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 					if (rs.first()) {
 						published = rs.getBoolean("published");
 					} else {
-						res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slugs)+"?error=You're not allowed to do that");
+						res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=You're not allowed to do that"));
 						return;
 					}
 				}
@@ -140,9 +141,9 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 				ps.executeUpdate();
 			}
 			if (data.getPart("addTrack") != null) {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug)+"/add-track");
+				res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+"/add-track"));
 			} else {
-				res.sendRedirect(Partyflow.config.http.path+"releases/"+escPathSeg(slug));
+				res.sendRedirect(URLs.url("release/"+escPathSeg(slug)));
 			}
 		} catch (SQLException e) {
 			throw new ServletException(e);

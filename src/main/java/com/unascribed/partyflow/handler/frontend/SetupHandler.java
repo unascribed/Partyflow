@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.UserRole;
 import com.unascribed.partyflow.data.QUsers;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
@@ -65,11 +66,11 @@ public class SetupHandler extends SimpleHandler implements Any {
 	@Override
 	public boolean any(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 		if (Partyflow.setupToken == null) return true;
-		if (!path.startsWith(Partyflow.config.http.path)) {
+		if (!path.startsWith(URLs.root())) {
 			res.sendError(HTTP_404_NOT_FOUND);
 			return true;
 		}
-		path = path.substring(Partyflow.config.http.path.length());
+		path = path.substring(URLs.root().length());
 		if (WHITELISTED_PATHS.contains(path)) return true;
 		if (path.equals("setup")) {
 			if (req.getMethod().equals("GET") || req.getMethod().equals("HEAD")) {
@@ -126,7 +127,7 @@ public class SetupHandler extends SimpleHandler implements Any {
 					QUsers.create(name, username, passwordSha512, UserRole.ADMIN);
 					log.info("Admin user {} created successfully. Setup mode disabled.", username);
 					Partyflow.setupToken = null;
-					res.sendRedirect(Partyflow.config.http.path);
+					res.sendRedirect(URLs.root());
 				} else {
 					res.setStatus(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
 					MustacheHandler.serveTemplate(req, res, "setup.hbs.html", new Object() {

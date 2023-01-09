@@ -57,7 +57,7 @@ public class SessionHelper {
 		var s = getSession(req);
 		if (csrf != null) Partyflow.validateCsrf(s, csrf);
 		if (s == null || s.role() == UserRole.GUEST)
-			throw new UserVisibleException(SimpleHandler.HTTP_302_FOUND, Partyflow.config.http.path+"login?message=You must log in to do that.");
+			throw new UserVisibleException(SimpleHandler.HTTP_302_FOUND, URLs.url("login?message=You must log in to do that."));
 		return s;
 	}
 	
@@ -133,7 +133,7 @@ public class SessionHelper {
 	}
 
 	public static String getCookieOptions() {
-		return (Partyflow.config.security.https ? "Secure;" : "")+"Path="+Partyflow.config.http.path+";HttpOnly;";
+		return (Partyflow.config.security.https ? "Secure;" : "")+"Path="+URLs.root()+";HttpOnly;";
 	}
 
 	public static @Nonnull String buildToken(UUID sessionId) {

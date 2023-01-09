@@ -19,6 +19,7 @@
 
 package com.unascribed.partyflow;
 
+import java.time.Duration;
 import java.util.Map;
 
 import com.unascribed.asyncsimplelog.AsyncSimpleLog.LogLevel;
@@ -112,7 +113,7 @@ public final class Config {
 			public String secretAccessKey;
 		}
 		
-		
+		public Duration pruneTime;
 		public String publicUrlPattern;
 	}
 

@@ -34,8 +34,10 @@ import blue.endless.jankson.Jankson;
 import blue.endless.jankson.JsonArray;
 import blue.endless.jankson.JsonObject;
 import blue.endless.jankson.JsonPrimitive;
+import blue.endless.jankson.api.Marshaller;
 import blue.endless.jankson.api.SyntaxError;
 import blue.endless.jankson.impl.ElementParserContext;
+import blue.endless.jankson.impl.MarshallerImpl;
 import blue.endless.jankson.impl.ObjectParserContext;
 import blue.endless.jankson.impl.ParserContext;
 import blue.endless.jankson.impl.StringParserContext;
@@ -53,8 +55,12 @@ public class Dankson extends Jankson {
 		super(builder);
 		try {
 			var lk = MethodHandles.privateLookupIn(Jankson.class, MethodHandles.lookup());
+			var lk2 = MethodHandles.privateLookupIn(Builder.class, MethodHandles.lookup());
 			lk.findSetter(Jankson.class, "allowBareRootObject", boolean.class)
 				.invokeExact((Jankson)this, true);
+			lk.findSetter(Jankson.class, "marshaller", Marshaller.class)
+				.invokeExact((Jankson)this, (Marshaller)lk2.findGetter(Builder.class, "marshaller", MarshallerImpl.class)
+						.invoke(builder));
 			line = lk.findGetter(Jankson.class, "line", int.class);
 			column = lk.findGetter(Jankson.class, "column", int.class);
 			spc_builder = MethodHandles.privateLookupIn(StringParserContext.class, MethodHandles.lookup())

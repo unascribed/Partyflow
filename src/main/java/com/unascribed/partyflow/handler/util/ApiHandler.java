@@ -24,6 +24,7 @@ import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.ElementType.RECORD_COMPONENT;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Documented;
@@ -33,13 +34,24 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Modifier;
 import java.sql.SQLException;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPOutputStream;
 
 import javax.annotation.Nullable;
 
+import org.eclipse.jetty.http.HttpHeader;
+import org.eclipse.jetty.server.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +66,11 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.ByteStreams;
+import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Longs;
 
 import blue.endless.jankson.Jankson;
+import blue.endless.jankson.JsonArray;
 import blue.endless.jankson.JsonElement;
 import blue.endless.jankson.JsonGrammar;
 import blue.endless.jankson.JsonNull;
@@ -93,6 +108,11 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 	protected @interface PATCH {}
 	
 	private static final ThreadLocal<Jankson> jkson = ThreadLocal.withInitial(() -> Jankson.builder()
+			.registerSerializer(Date.class, (d, m) -> JsonPrimitive.of(DateTimeFormatter.ISO_INSTANT.format(d.toInstant().truncatedTo(ChronoUnit.SECONDS))))
+			.registerSerializer(OptionalInt.class, (o, m) -> o.isPresent() ? JsonPrimitive.of((long)o.getAsInt()) : JsonNull.INSTANCE)
+			.registerSerializer(OptionalLong.class, (o, m) -> o.isPresent() ? JsonPrimitive.of(o.getAsLong()) : JsonNull.INSTANCE)
+			.registerSerializer(OptionalDouble.class, (o, m) -> o.isPresent() ? JsonPrimitive.of(o.getAsDouble()) : JsonNull.INSTANCE)
+			.registerSerializer(Optional.class, (o, m) -> o.isPresent() ? m.serialize(o.get()) : JsonNull.INSTANCE)
 			.build());
 	
 	private interface ParamMapper {
@@ -102,7 +122,9 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 	private record Invocation(String verb, ImmutableSet<String> paramNames, ImmutableList<ParamMapper> mappers, MethodHandle invoker, boolean isVoid, boolean wantsJson) {}
 	
 	private record NoMatchingInvocation(boolean error, int code, String message, List<? extends List<String>> options) {}
-	private record UnexpectedParameters(boolean error, int code, String message, List<String> got, List<String> expected) {}
+	private record UnexpectedParametersError(boolean error, int code, String message, List<String> got, List<String> expected) {}
+	
+	private record UnexpectedParametersWarning(String message, List<String> got, List<String> expected) {}
 	
 	private static class MissingParameterException extends Exception {
 		private final String param;
@@ -207,15 +229,10 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 		JsonObject params;
 		if ((!isJson && canAcceptNonJson) || "GET".equals(verb)) {
 			params = new JsonObject();
-			parseQuery(req).forEach((k, v) -> params.put(k, v == null ? null : switch (v) {
-				case "" -> JsonPrimitive.TRUE;
-				case "true" -> JsonPrimitive.TRUE;
-				case "false" -> JsonPrimitive.FALSE;
-				default -> JsonPrimitive.of(v);
-			}));
+			parseQuery(req).forEach((k, v) -> params.put(k, parseAdhoc(v)));
 		} else if (!isJson) {
 			res.setStatus(HTTP_415_UNSUPPORTED_MEDIA_TYPE);
-			serve(req, res, new JsonError(true, 415, "Content-Type must be 'application/json; charset=utf-8'", null));
+			serve(req, res, new JsonError(true, 415, "Content-Type must be 'application/json; charset=utf-8'", null), List.of());
 			return true;
 		} else {
 			try (var in = req.getInputStream()) {
@@ -226,21 +243,19 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 		}
 		try {
 			outer: for (var inv : invocations) {
-				if (inv.wantsJson != isJson) continue;
+				if (!"GET".equals(verb) && inv.wantsJson != isJson) continue;
 				if (!inv.verb.equals(verb)) continue;
+				List<Record> warnings = new ArrayList<>();
 				if (params == null) {
 					if (!inv.paramNames.isEmpty()) {
 						continue;
 					}
 				} else if (!inv.paramNames.containsAll(params.keySet())) {
 					if (invocations.size() == 1) {
-						res.setStatus(HTTP_400_BAD_REQUEST);
-						serve(req, res, new UnexpectedParameters(true, 400, "The request has unexpected parameters", params.keySet().stream()
+						warnings.add(new UnexpectedParametersWarning("The request has unexpected parameters", params.keySet().stream()
 								.filter(s -> !inv.paramNames.contains(s))
 								.toList(), inv.paramNames.asList()));
-						return true;
 					}
-					continue;
 				}
 				List<String> missingParams = invocations.size() == 1 ? new ArrayList<>() : null;
 				var li = new ArrayList<>(inv.mappers.size());
@@ -257,7 +272,7 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 				}
 				if (missingParams != null && !missingParams.isEmpty()) {
 					res.setStatus(HTTP_400_BAD_REQUEST);
-					serve(req, res, new UnexpectedParameters(true, 400, "The request is missing required parameters", missingParams, inv.paramNames.asList()));
+					serve(req, res, new UnexpectedParametersError(true, 400, "The request is missing required parameters", missingParams, inv.paramNames.asList()), List.of());
 					return true;
 				}
 				if (inv.isVoid) {
@@ -267,17 +282,17 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 				} else {
 					Record r = (Record)inv.invoker.invokeWithArguments(li);
 					res.setStatus(HTTP_200_OK);
-					serve(req, res, r);
+					serve(req, res, r, warnings);
 				}
 				return true;
 			}
 			res.setStatus(HTTP_400_BAD_REQUEST);
 			serve(req, res, new NoMatchingInvocation(true, 400, "The request does not match any valid signature", invocations.stream()
 					.map(inv -> inv.paramNames.asList())
-					.toList()));
+					.toList()), List.of());
 		} catch (UserVisibleException e) {
 			res.setStatus(e.getCode());
-			serve(req, res, new JsonError(true, e.getCode(), e.getMessage(), null));
+			serve(req, res, new JsonError(true, e.getCode(), e.getMessage(), null), List.of());
 		} catch (ServletException | IOException | SQLException e) {
 			throw e;
 		} catch (Throwable e) {
@@ -286,10 +301,41 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 		return true;
 	}
 
-	public static void serve(HttpServletRequest req, HttpServletResponse res, Record obj) throws ServletException, IOException {
+	private JsonElement parseAdhoc(String v) {
+		switch (v) {
+			case "true", "on", "": return JsonPrimitive.TRUE;
+			case "false", "off": return JsonPrimitive.FALSE;
+		}
+		if (v.contains(".")) {
+			var d = Doubles.tryParse(v);
+			if (d != null) return JsonPrimitive.of(d);
+		}
+		var l = Longs.tryParse(v);
+		if (l != null) return JsonPrimitive.of(l);
+		return JsonPrimitive.of(v);
+	}
+
+	public static void serve(HttpServletRequest req, HttpServletResponse res, Record obj, List<? extends Record> warnings) throws ServletException, IOException {
 		res.setContentType("application/json; charset=utf-8");
+		var encodings = ((Request)req).getHttpFields().getQualityCSV(HttpHeader.ACCEPT_ENCODING);
 		boolean curl = Strings.nullToEmpty(req.getHeader("User-Agent")).startsWith("curl/");
-		byte[] utf = jsonify(obj, res).toJson(curl ? JsonGrammar.STRICT : JsonGrammar.COMPACT).getBytes(Charsets.UTF_8);
+		var json = jsonify(obj, res);
+		if (!warnings.isEmpty()) {
+			var arr = new JsonArray();
+			for (var w : warnings) arr.add(jsonify(w));
+			json.put("_warnings", arr);
+		}
+		byte[] utf = json.toJson(curl ? JsonGrammar.STRICT : JsonGrammar.COMPACT).getBytes(Charsets.UTF_8);
+		if (encodings.contains("gzip")) {
+			var baos = new ByteArrayOutputStream();
+			var gz = new GZIPOutputStream(baos) {{
+				def.setLevel(2);
+			}};
+			gz.write(utf);
+			gz.close();
+			utf = baos.toByteArray();
+			res.setHeader("Content-Encoding", "gzip");
+		}
 		res.setContentLength(utf.length);
 		try (var out = res.getOutputStream()) {
 			out.write(utf);
@@ -326,6 +372,18 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 			return null;
 		} else if (rawV instanceof Record r) {
 			return jsonify(r, null);
+		} else if (rawV instanceof Iterable<?> coll) {
+			var out = new JsonArray();
+			for (var e : coll) {
+				out.add(jsonify(e));
+			}
+			return out;
+		} else if (rawV instanceof Map<?, ?> map) {
+			var out = new JsonObject();
+			for (var e : map.entrySet()) {
+				out.put(String.valueOf(e.getKey()), jsonify(e.getValue()));
+			}
+			return out;
 		} else {
 			return jkson.get().getMarshaller().serialize(rawV);
 		}

@@ -39,6 +39,7 @@ import com.unascribed.partyflow.Commands;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.SessionHelper;
 import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.data.QReleases.Release;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
@@ -67,7 +68,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 			res.setStatus(HTTP_200_OK);
 			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html");
 		} else {
-			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+			res.sendRedirect(URLs.url("login?message=You must log in to do that."));
 		}
 	}
 
@@ -78,7 +79,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		if (session != null) {
 			String csrf = data.getPartAsString("csrf", 64);
 			if (!Partyflow.isCsrfTokenValid(session, csrf)) {
-				res.sendRedirect(Partyflow.config.http.path);
+				res.sendRedirect(URLs.root());
 				return;
 			}
 			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
@@ -106,7 +107,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 			}
 			String slug = QGeneric.findSlug("releases", Partyflow.sanitizeSlug(title));
 			QReleases.create(new Release(slug, session.userId(), title, subtitle, "", false, null, null));
-			res.sendRedirect(Partyflow.config.http.path+"releases/"+slug);
+			res.sendRedirect(Partyflow.config.http.path+"release/"+slug);
 		} else {
 			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
 		}
