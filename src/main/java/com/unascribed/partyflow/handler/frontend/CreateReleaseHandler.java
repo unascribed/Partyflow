@@ -24,6 +24,8 @@ import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.Arrays;
 
+import javax.annotation.WillClose;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,21 +37,22 @@ import org.jclouds.blobstore.options.PutOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.unascribed.partyflow.Commands;
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.data.QReleases.Release;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
+import com.unascribed.partyflow.util.Commands;
+import com.unascribed.partyflow.util.MoreByteStreams;
+import com.unascribed.partyflow.util.Processes;
 import com.unascribed.partyflow.data.QGeneric;
 import com.unascribed.partyflow.data.QReleases;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.io.ByteStreams;
 
@@ -153,25 +156,20 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		return mainBlob.getMetadata().getName();
 	}
 
-	private static byte[] magick(InputStream in, String format, String... args) throws IOException {
-		Process magick = Commands.magick_convert("-", "-strip", args, format+":-").start();
-		ByteStreams.copy(in, magick.getOutputStream());
-		magick.getOutputStream().close();
-		byte[] imgData = ByteStreams.toByteArray(magick.getInputStream());
-		magick.getInputStream().close();
-		while (magick.isAlive()) {
-			try {
-				magick.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+	private static byte[] magick(@WillClose InputStream in, String format, String... args) throws IOException {
+		try (in) {
+			Process magick = Commands.magick_convert("-", "-strip", args, format+":-").start();
+			try (var out = magick.getOutputStream()) {
+				in.transferTo(out);
 			}
+			byte[] imgData = MoreByteStreams.consume(magick.getInputStream());
+			if (Processes.waitForUninterruptibly(magick) != 0) {
+				String s = MoreByteStreams.slurp(magick.getErrorStream());
+				log.warn("Failed to process image with ImageMagick:\n{}", s);
+				throw new IllegalArgumentException("Failed to process art");
+			}
+			return imgData;
 		}
-		if (magick.exitValue() != 0) {
-			String s = new String(ByteStreams.toByteArray(magick.getErrorStream()), Charsets.UTF_8);
-			log.warn("Failed to process image with ImageMagick:\n{}", s);
-			throw new IllegalArgumentException("Failed to process art");
-		}
-		return imgData;
 	}
 
 }

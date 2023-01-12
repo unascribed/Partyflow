@@ -30,7 +30,7 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.HandlerWrapper;
 
-import com.unascribed.partyflow.URLs;
+import com.unascribed.partyflow.logic.URLs;
 
 public class PathResolvingHandler extends HandlerWrapper {
 

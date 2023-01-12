@@ -23,7 +23,8 @@ import java.sql.SQLException;
 
 import com.lambdaworks.crypto.SCrypt;
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.UserRole;
+import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.logic.UserRole;
 
 import com.google.common.math.IntMath;
 

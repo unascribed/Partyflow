@@ -26,6 +26,9 @@ import java.util.OptionalInt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.unascribed.partyflow.data.util.Artful;
+import com.unascribed.partyflow.data.util.Queries;
+
 public class QTracks extends Queries {
 	
 	private static final Logger log = LoggerFactory.getLogger(QTracks.class);

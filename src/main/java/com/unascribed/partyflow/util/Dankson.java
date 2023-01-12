@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.util;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,24 +48,30 @@ public class Dankson extends Jankson {
 
 	public String filename = "<unknown>";
 	
-	private final MethodHandle line, column, spc_builder;
+	private static final MethodHandle jk_line, jk_column, spc_builder, jk_allowBareRootObject, jk_marshaller, jkb_marshaller;
+	static {
+		try {
+			var lk = MethodHandles.privateLookupIn(Jankson.class, MethodHandles.lookup());
+			var lk2 = MethodHandles.privateLookupIn(Builder.class, MethodHandles.lookup());
+			jk_allowBareRootObject = lk.findSetter(Jankson.class, "allowBareRootObject", boolean.class);
+			jk_marshaller = lk.findSetter(Jankson.class, "marshaller", Marshaller.class);
+			jkb_marshaller = lk2.findGetter(Builder.class, "marshaller", MarshallerImpl.class);
+			jk_line = lk.findGetter(Jankson.class, "line", int.class);
+			jk_column = lk.findGetter(Jankson.class, "column", int.class);
+			spc_builder = MethodHandles.privateLookupIn(StringParserContext.class, MethodHandles.lookup())
+				.findGetter(StringParserContext.class, "builder", StringBuilder.class);
+		} catch (Throwable e) {
+			throw new AssertionError(e);
+		}
+	}
 	
 	private boolean firstObject = false;
 	
 	public Dankson(Builder builder) {
 		super(builder);
 		try {
-			var lk = MethodHandles.privateLookupIn(Jankson.class, MethodHandles.lookup());
-			var lk2 = MethodHandles.privateLookupIn(Builder.class, MethodHandles.lookup());
-			lk.findSetter(Jankson.class, "allowBareRootObject", boolean.class)
-				.invokeExact((Jankson)this, true);
-			lk.findSetter(Jankson.class, "marshaller", Marshaller.class)
-				.invokeExact((Jankson)this, (Marshaller)lk2.findGetter(Builder.class, "marshaller", MarshallerImpl.class)
-						.invoke(builder));
-			line = lk.findGetter(Jankson.class, "line", int.class);
-			column = lk.findGetter(Jankson.class, "column", int.class);
-			spc_builder = MethodHandles.privateLookupIn(StringParserContext.class, MethodHandles.lookup())
-				.findGetter(StringParserContext.class, "builder", StringBuilder.class);
+			jk_allowBareRootObject.invokeExact((Jankson)this, true);
+			jk_marshaller.invokeExact((Jankson)this, (Marshaller)jkb_marshaller.invoke(builder));
 		} catch (Throwable e) {
 			throw new AssertionError(e);
 		}
@@ -108,7 +114,7 @@ public class Dankson extends Jankson {
 		super.push(t, consumer);
 	}
 
-	public class DankObjectParserContext extends ObjectParserContext {
+	public static class DankObjectParserContext extends ObjectParserContext {
 
 		public DankObjectParserContext(boolean assumeOpen) {
 			super(assumeOpen);
@@ -200,8 +206,8 @@ public class Dankson extends Jankson {
 			this.open = open;
 			this.close = close;
 			try {
-				this.l = (int)line.invokeExact((Jankson)Dankson.this);
-				this.c = (int)column.invokeExact((Jankson)Dankson.this);
+				this.l = (int)jk_line.invokeExact((Jankson)Dankson.this);
+				this.c = (int)jk_column.invokeExact((Jankson)Dankson.this);
 			} catch (Throwable t) {
 				throw new AssertionError(t);
 			}
@@ -323,7 +329,7 @@ public class Dankson extends Jankson {
 		
 	}
 
-	public class JsonJexlExpression extends JsonPrimitive {
+	public static class JsonJexlExpression extends JsonPrimitive {
 
 		private final JexlInfo info;
 		
@@ -334,6 +340,31 @@ public class Dankson extends Jankson {
 		
 		public JexlInfo getInfo() {
 			return info;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = super.hashCode();
+			result = prime * result + ((info == null) ? 0 : info.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (!super.equals(obj))
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			JsonJexlExpression other = (JsonJexlExpression) obj;
+			if (info == null) {
+				if (other.info != null)
+					return false;
+			} else if (!info.equals(other.info))
+				return false;
+			return true;
 		}
 
 	}

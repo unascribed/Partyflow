@@ -17,38 +17,48 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.util;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.sql.SQLException;
+import java.util.concurrent.Callable;
+
+import com.google.common.util.concurrent.UncheckedExecutionException;
 
 public class Unchecked {
 
-	public interface CheckedRunnable {
-		void run() throws SQLException, IOException;
-	}
-	public interface CheckedCallable<T> {
-		T call() throws SQLException, IOException;
+	public interface ExceptableRunnable {
+		void run() throws Exception;
 	}
 	
-	public static void run(CheckedRunnable r) {
+	public static void run(ExceptableRunnable r) {
 		try {
 			r.run();
-		} catch (SQLException e) {
-			throw new UncheckedSQLException(e);
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+		} catch (Throwable t) {
+			throw rethrow(t);
 		}
 	}
 	
-	public static <T> T call(CheckedCallable<T> c) {
+	public static <T> T call(Callable<T> c) {
 		try {
 			return c.call();
-		} catch (SQLException e) {
+		} catch (Throwable t) {
+			throw rethrow(t);
+		}
+	}
+
+	public static RuntimeException rethrow(Throwable t) {
+		if (t instanceof RuntimeException e) {
+			throw e;
+		} else if (t instanceof Error e) {
+			throw e;
+		} else if (t instanceof SQLException e) {
 			throw new UncheckedSQLException(e);
-		} catch (IOException e) {
+		} else if (t instanceof IOException e) {
 			throw new UncheckedIOException(e);
+		} else {
+			throw new UncheckedExecutionException(t);
 		}
 	}
 	

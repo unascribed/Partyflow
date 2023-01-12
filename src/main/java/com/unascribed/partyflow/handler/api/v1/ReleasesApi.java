@@ -23,13 +23,13 @@ import java.sql.SQLException;
 import java.util.List;
 import javax.annotation.Nullable;
 
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.URLs;
-import com.unascribed.partyflow.data.Queries;
 import com.unascribed.partyflow.data.QReleases;
+import com.unascribed.partyflow.data.util.Queries;
 import com.unascribed.partyflow.handler.api.v1.ViewReleaseApi.ReleaseResponse;
-import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 import com.unascribed.partyflow.handler.util.ApiHandler;
+import com.unascribed.partyflow.handler.util.UserVisibleException;
+import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class ReleasesApi extends ApiHandler {
 	

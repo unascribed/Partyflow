@@ -32,12 +32,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
+
 import com.google.common.base.Strings;
 
 public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedPost {

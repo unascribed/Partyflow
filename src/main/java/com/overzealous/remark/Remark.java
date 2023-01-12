@@ -148,7 +148,7 @@ public class Remark {
 	/**
 	 * This class is used to handle conversions that convert directly to streams.
 	 */
-	private final class StreamRemark extends Remark {
+	private static final class StreamRemark extends Remark {
 		private final Remark remark;
 		private final Writer writer;
 		private final OutputStream os;

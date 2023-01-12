@@ -36,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 
 public class PartyflowErrorHandler extends ErrorHandler {
 

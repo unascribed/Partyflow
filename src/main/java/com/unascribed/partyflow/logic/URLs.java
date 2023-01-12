@@ -17,9 +17,11 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.logic;
 
 import javax.annotation.Nullable;
+
+import com.unascribed.partyflow.Partyflow;
 
 /**
  * The Earl of URLs
@@ -76,7 +78,7 @@ public class URLs {
 	}
 	
 	
-	static void init() {
+	public static void init() {
 		if (Partyflow.config.storage.publicUrlPattern.startsWith("/")) {
 			blobPattern = Partyflow.config.storage.publicUrlPattern;
 			absBlobPattern = Partyflow.config.http.publicUrl+Partyflow.config.storage.publicUrlPattern;

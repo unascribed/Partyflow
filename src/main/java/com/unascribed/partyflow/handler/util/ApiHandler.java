@@ -55,11 +55,11 @@ import org.eclipse.jetty.server.Request;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 import com.unascribed.partyflow.handler.util.PartyflowErrorHandler.JsonError;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Any;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
@@ -360,6 +360,8 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 						json.put(c.getName(), ele);
 					}
 				}
+			} catch (RuntimeException e) {
+				throw e;
 			} catch (Exception e) {
 				throw new ServletException(e);
 			}

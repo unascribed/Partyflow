@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.util;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -35,7 +35,7 @@ public class ForkOutputStream extends OutputStream {
 
 	private static final Logger log = LoggerFactory.getLogger(ForkOutputStream.class);
 	
-	private final ExecutorService exec = new SimpleSingleThreadExecutor(toString());
+	private final ExecutorService exec = new QueueExecutor(toString());
 	
 	private final OutputStream left, right;
 	private volatile boolean rightForkDead = false;

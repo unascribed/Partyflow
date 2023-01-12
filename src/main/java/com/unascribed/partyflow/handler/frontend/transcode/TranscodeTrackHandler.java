@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler.frontend;
+package com.unascribed.partyflow.handler.frontend.transcode;
 
 public class TranscodeTrackHandler extends AbstractTranscodeHandler {
 

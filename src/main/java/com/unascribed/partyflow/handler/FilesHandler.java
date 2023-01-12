@@ -20,7 +20,6 @@
 package com.unascribed.partyflow.handler;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
 
 import jakarta.servlet.ServletException;
@@ -34,12 +33,10 @@ import org.jclouds.blobstore.domain.BlobAccess;
 import org.jclouds.blobstore.options.GetOptions;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Options;
-
-import com.google.common.io.ByteStreams;
+import com.unascribed.partyflow.logic.URLs;
 
 public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 
@@ -127,8 +124,8 @@ public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 				res.setStatus(HTTP_206_PARTIAL_CONTENT);
 			}
 			if (!head) {
-				try (InputStream in = b.getPayload().openStream()) {
-					ByteStreams.copy(in, res.getOutputStream());
+				try (var p = b.getPayload(); var in = p.openStream(); var out = res.getOutputStream()) {
+					in.transferTo(out);
 				}
 			}
 			res.getOutputStream().close();

@@ -20,8 +20,6 @@
 package com.unascribed.partyflow.handler.frontend;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -51,16 +49,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.overzealous.remark.Remark;
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.handler.frontend.release.AddTrackHandler;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedOrMultipartPost;
-import com.unascribed.partyflow.TranscodeFormat;
-import com.unascribed.partyflow.URLs;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
 import com.unascribed.partyflow.data.QGeneric;
 
 import com.google.common.base.Strings;
@@ -177,7 +175,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 							res.setHeader("Content-Type", cm.getContentType());
 							res.setHeader("Content-Disposition", cm.getContentDisposition());
 							res.setHeader("Cache-Control", cm.getCacheControl());
-							try (InputStream in = blob.getPayload().openStream(); OutputStream out = res.getOutputStream()) {
+							try (var p = blob.getPayload(); var in = p.openStream(); var out = res.getOutputStream()) {
 								if (!head) {
 									ByteStreams.copy(in, out);
 								}

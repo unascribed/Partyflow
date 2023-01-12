@@ -17,20 +17,23 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.util;
 
-import java.sql.SQLException;
-import java.util.Objects;
+import java.io.IOException;
+import java.io.InputStream;
 
-public class UncheckedSQLException extends RuntimeException {
+import javax.annotation.WillClose;
+import com.google.common.base.Charsets;
+import com.google.common.io.ByteStreams;
 
-	public UncheckedSQLException(SQLException e) {
-		super(Objects.requireNonNull(e));
+public class MoreByteStreams {
+
+	public static byte[] consume(@WillClose InputStream in) throws IOException {
+		try (in) { return ByteStreams.toByteArray(in); }
 	}
 	
-	@Override
-	public synchronized SQLException getCause() {
-		return (SQLException)super.getCause();
+	public static String slurp(@WillClose InputStream in) throws IOException {
+		return new String(consume(in), Charsets.UTF_8);
 	}
 	
 }

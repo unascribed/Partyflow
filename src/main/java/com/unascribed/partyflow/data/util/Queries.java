@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.data;
+package com.unascribed.partyflow.data.util;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -76,7 +76,7 @@ import org.h2.jdbc.JdbcClob;
 
 import com.google.errorprone.annotations.MustBeClosed;
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.UncheckedSQLException;
+import com.unascribed.partyflow.util.UncheckedSQLException;
 
 import com.google.common.io.CharStreams;
 
@@ -194,7 +194,6 @@ public class Queries {
 	protected static <R extends Record> R unpackOne(Class<R> type, ResultSet rs, Object... preface) {
 		var cmps = type.getRecordComponents();
 		var args = new Object[cmps.length];
-		var types = new Class<?>[cmps.length];
 		for (int i = 0; i < cmps.length; i++) {
 			var cmp = cmps[i];
 			var colName = getColumnName("", cmp, false);
@@ -238,7 +237,9 @@ public class Queries {
 							throw new ClassCastException("Column `"+colName+"` was of type "+o.getClass().getSimpleName()+", but "+cmpt.getSimpleName()+" was expected");
 						}
 					} else if (o instanceof JdbcClob clob && CharSequence.class.isAssignableFrom(cmpt)) {
-						o = CharStreams.toString(clob.getCharacterStream());
+						try (var r = clob.getCharacterStream()) {
+							o = CharStreams.toString(r);
+						}
 					} else if (o != null && !(o instanceof Boolean && cmpt == boolean.class) && !cmpt.isInstance(o)) {
 						throw new ClassCastException("Column `"+colName+"` was of type "+o.getClass().getSimpleName()+", but "+cmpt.getSimpleName()+" was expected");
 					} else if (o == null && cmpt.isPrimitive()) {
@@ -251,7 +252,6 @@ public class Queries {
 				}
 			}
 			args[i] = o;
-			types[i] = cmpt;
 		}
 		try {
 			return (R)getCanonicalConstructor(type).invokeWithArguments(args);
@@ -343,7 +343,7 @@ public class Queries {
 		private final ResultSet delegate;
 		private final AutoCloseable[] others;
 
-		public CascadingResultSet(ResultSet delegate, AutoCloseable... others) {
+		public CascadingResultSet(@WillCloseWhenClosed ResultSet delegate, @WillCloseWhenClosed AutoCloseable... others) {
 			this.delegate = delegate;
 			this.others = others;
 		}

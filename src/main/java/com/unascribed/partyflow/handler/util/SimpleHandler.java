@@ -42,7 +42,7 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.Unchecked;
+import com.unascribed.partyflow.util.Unchecked;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
@@ -171,8 +171,9 @@ public class SimpleHandler {
 		@Override
 		default void post(String path, HttpServletRequest req, HttpServletResponse res) throws IOException, ServletException, SQLException {
 			if (req.getContentType().startsWith("multipart/form-data;")) {
-				MultiPartFormInputStream mpfis = new MultiPartFormInputStream(req.getInputStream(), req.getContentType(), MP_CFG, TEMP_DIR);
-				try {
+				MultiPartFormInputStream mpfis = null;
+				try (var in = req.getInputStream()) {
+					mpfis = new MultiPartFormInputStream(in, req.getContentType(), MP_CFG, TEMP_DIR);
 					multipartPost(path, req, res, new MultipartData(mpfis));
 				} catch (IllegalStateException e) {
 					if (e.getMessage() != null && e.getMessage().endsWith("exceeds max filesize")) {
@@ -182,10 +183,9 @@ public class SimpleHandler {
 						throw e;
 					}
 				} finally {
-					if (mpfis.getParts() != null) {
+					if (mpfis != null && mpfis.getParts() != null) {
 						mpfis.deleteParts();
 					}
-					req.getInputStream().close();
 				}
 			} else {
 				res.sendError(HTTP_415_UNSUPPORTED_MEDIA_TYPE);

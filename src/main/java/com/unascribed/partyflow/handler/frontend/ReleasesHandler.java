@@ -27,13 +27,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QReleases.FullRelease;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 

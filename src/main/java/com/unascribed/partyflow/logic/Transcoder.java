@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.logic;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -36,15 +36,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+import javax.annotation.WillClose;
+
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.blobstore.domain.BlobAccess;
 import org.jclouds.blobstore.options.PutOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.unascribed.partyflow.TranscodeFormat.ReplayGainData;
-import com.unascribed.partyflow.TranscodeFormat.Shortcut;
-import com.unascribed.partyflow.TranscodeFormat.Usage;
+import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.Version;
+import com.unascribed.partyflow.config.TranscodeFormat;
+import com.unascribed.partyflow.config.TranscodeFormat.ReplayGainData;
+import com.unascribed.partyflow.config.TranscodeFormat.Shortcut;
+import com.unascribed.partyflow.config.TranscodeFormat.Usage;
+import com.unascribed.partyflow.util.Commands;
+import com.unascribed.partyflow.util.ForkOutputStream;
+import com.unascribed.partyflow.util.MoreByteStreams;
+import com.unascribed.partyflow.util.Processes;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.MoreObjects;
 import com.google.common.io.ByteStreams;
@@ -92,10 +102,10 @@ public class Transcoder {
 				log.warn("Art for {} {} is missing!", kind, slug);
 				attachArt = false;
 			} else {
-				try (var in = artBlob.getPayload().openStream()) {
-					try (var out = new FileOutputStream(artFile)) {
-						in.transferTo(out);
-					}
+				try (var p = artBlob.getPayload();
+						var in = p.openStream();
+						var out = new FileOutputStream(artFile)) {
+					in.transferTo(out);
 				}
 				if (ogg) {
 					attachArt = false;
@@ -103,15 +113,9 @@ public class Transcoder {
 					// Been an open feature request for 7 years
 					Process p = Commands.magick_convert(artFile.getPath(), "-identify", "null:-").start();
 					p.getOutputStream().close();
-					String out = new String(ByteStreams.toByteArray(p.getInputStream()), Charsets.UTF_8);
-					String err = new String(ByteStreams.toByteArray(p.getErrorStream()), Charsets.UTF_8);
-					while (p.isAlive()) {
-						try {
-							p.waitFor();
-						} catch (InterruptedException e) {
-						}
-					}
-					if (p.exitValue() != 0) {
+					String out = MoreByteStreams.slurp(p.getInputStream());
+					String err = MoreByteStreams.slurp(p.getErrorStream());
+					if (Processes.waitForUninterruptibly(p) != 0) {
 						log.warn("Failed to identify art with ImageMagick:\n{}", err);
 					} else {
 						var m = MAGICK_SIZE_PATTERN.matcher(out);
@@ -198,13 +202,15 @@ public class Transcoder {
 			String filename = creator+" - "+(releaseTitle == null ? "" : releaseTitle+" - ")+String.format("%02d", trackNumber)+" "+title+"."+fmt.fileExtension();
 			String filenameEncoded = encodeFilename(filename);
 			if (directOut != null) {
-				OutputStream out = cache ? new ForkOutputStream(new FileOutputStream(tmpFile), directOut.get(filenameEncoded)) : directOut.get(filenameEncoded);
+				OutputStream dio = directOut.get(filenameEncoded);
+				OutputStream out = cache ? new ForkOutputStream(new FileOutputStream(tmpFile), dio) : dio;
 				pipe(ffm, out);
 			}
 			if (masterBlob != null) {
-				try (InputStream in = masterBlob.getPayload().openStream()) {
-					ByteStreams.copy(in, input.getOutputStream());
-					input.getOutputStream().close();
+				try (var p = masterBlob.getPayload();
+						var in = p.openStream();
+						var out = input.getOutputStream()) {
+					ByteStreams.copy(in, out);
 				} catch (IOException e) {
 					if (!"Broken pipe".equals(e.getMessage())) {
 						throw e;
@@ -218,13 +224,8 @@ public class Transcoder {
 			for (var p : processes) {
 				new Thread(() -> {
 					try {
-						String err = new String(ByteStreams.toByteArray(p.getErrorStream()), Charsets.UTF_8);
-						while (p.isAlive()) {
-							try {
-								p.waitFor();
-							} catch (InterruptedException e) {}
-						}
-						if (p.exitValue() != 0) {
+						String err = MoreByteStreams.slurp(p.getErrorStream());
+						if (Processes.waitForUninterruptibly(p) != 0) {
 							log.warn("Failed to process audio:\n{}", err);
 							errored.set(true);
 						}
@@ -268,17 +269,20 @@ public class Transcoder {
 		}
 	}
 
+	@SuppressWarnings("resource")
 	private static void pipe(Process a, Process b) {
 		pipe(a.getInputStream(), b.getOutputStream());
 	}
 
-	public static void pipe(Process a, OutputStream b) {
+	@SuppressWarnings("resource")
+	public static void pipe(Process a, @WillClose OutputStream b) {
 		pipe(a.getInputStream(), b);
 	}
 
-	private static void pipe(InputStream a, OutputStream b) {
+	@SuppressWarnings("resource")
+	private static void pipe(@WillClose InputStream a, @WillClose OutputStream b) {
 		new Thread(() -> {
-			try (a) {
+			try (a; b) {
 				a.transferTo(b);
 			} catch (IOException e) {
 				log.warn("Exception while copying", e);

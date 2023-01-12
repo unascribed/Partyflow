@@ -17,31 +17,20 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.data;
+package com.unascribed.partyflow.util;
 
-import java.sql.SQLException;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
-import javax.annotation.Untainted;
+public class Processes {
 
-import com.unascribed.partyflow.data.util.Queries;
-
-public class QGeneric extends Queries {
-
-	public static String findSlug(@Untainted String table, String slug) throws SQLException {
-		try (var c = conn(); var s = c.prepareStatement("SELECT 1 FROM "+table+" WHERE slug = ?;")) {
-			int i = 0;
-			String suffix = "";
-			while (true) {
-				if (i > 0) suffix = "-"+(i+1);
-				s.setString(1, slug+suffix);
-				try (var rs = s.executeQuery()) {
-					if (!rs.first()) break;
-				}
-				i++;
-			}
-			slug = slug+suffix;
+	@CanIgnoreReturnValue
+	public static int waitForUninterruptibly(Process p) {
+		while (p.isAlive()) {
+			try {
+				return p.waitFor();
+			} catch (InterruptedException e) {}
 		}
-		return slug;
+		return p.exitValue();
 	}
 
 }

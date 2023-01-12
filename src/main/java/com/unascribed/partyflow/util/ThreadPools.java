@@ -17,12 +17,14 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.util;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import com.unascribed.partyflow.Partyflow;
 
 public class ThreadPools {
 
@@ -34,7 +36,7 @@ public class ThreadPools {
 		GENERIC = Executors.newFixedThreadPool(nproc, namedFactory("Generic pool thread"));
 		int maxTranscodes = Partyflow.config.programs.maxTranscodes;
 		if (maxTranscodes == 0) maxTranscodes = nproc;
-		TRANSCODE = Executors.newFixedThreadPool(nproc, namedFactory("Transcode pool thread"));
+		TRANSCODE = Executors.newFixedThreadPool(maxTranscodes, namedFactory("Transcode pool thread"));
 	}
 
 	private static ThreadFactory namedFactory(String name) {

@@ -17,10 +17,12 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.unascribed.partyflow.Partyflow;
 
 /**
  * Warnings that only log once in a given run.

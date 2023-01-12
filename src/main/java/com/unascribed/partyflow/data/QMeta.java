@@ -21,10 +21,12 @@ package com.unascribed.partyflow.data;
 
 import java.sql.SQLException;
 
-public class QMeta {
+import com.unascribed.partyflow.data.util.Queries;
+
+public class QMeta extends Queries {
 
 	public static String getSiteDescription() throws SQLException {
-		try (var rs = Queries.select("SELECT `value` FROM `meta` WHERE `name` = 'site_description';")) {
+		try (var rs = select("SELECT `value` FROM `meta` WHERE `name` = 'site_description';")) {
 			if (rs.first()) {
 				return rs.getString("value");
 			} else {

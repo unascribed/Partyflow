@@ -17,15 +17,18 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.logic;
 
 import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Charsets;
-import com.google.common.io.ByteStreams;
+import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.util.Commands;
+import com.unascribed.partyflow.util.MoreByteStreams;
+import com.unascribed.partyflow.util.Processes;
+import com.unascribed.partyflow.util.ThreadPools;
 
 public class AACSupport {
 	
@@ -43,7 +46,7 @@ public class AACSupport {
 							.redirectErrorStream(true)
 							.start();
 					ffm.getOutputStream().close();
-					String output = new String(ByteStreams.toByteArray(ffm.getInputStream()), Charsets.UTF_8);
+					String output = MoreByteStreams.slurp(ffm.getInputStream());
 					if (output.contains(" libfdk_aac ")) {
 						log.info("FFmpeg appears to have libfdk_aac support. AAC support enabled");
 					} else {
@@ -68,14 +71,9 @@ public class AACSupport {
 					.redirectErrorStream(true)
 					.start();
 			p.getOutputStream().close();
-			String output = new String(ByteStreams.toByteArray(p.getInputStream()), Charsets.UTF_8);
-			int code = p.isAlive() ? -1 : p.exitValue();
+			String output = MoreByteStreams.slurp(p.getInputStream());
+			int code = Processes.waitForUninterruptibly(p);
 			success = code == expectedCode;
-			while (p.isAlive()) {
-				try {
-					success = (code = p.waitFor()) == expectedCode;
-				} catch (InterruptedException e) {}
-			}
 			if (!success) {
 				log.error("aacMode is set to {}, but {} is not working. Disabling AAC support!\nExit code: {}, output:\n{}", altcmd, altcmd, code, output);
 			}

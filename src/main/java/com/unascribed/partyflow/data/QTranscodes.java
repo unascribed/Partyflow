@@ -27,8 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.TranscodeFormat;
-import com.unascribed.partyflow.TranscodeFormat.Shortcut;
+import com.unascribed.partyflow.config.TranscodeFormat;
+import com.unascribed.partyflow.config.TranscodeFormat.Shortcut;
+import com.unascribed.partyflow.data.util.Queries;
 
 import com.google.common.base.Strings;
 

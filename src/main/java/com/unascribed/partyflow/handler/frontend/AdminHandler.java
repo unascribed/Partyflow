@@ -29,10 +29,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.SessionHelper.Session;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Get;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class AdminHandler extends SimpleHandler implements Get {
 

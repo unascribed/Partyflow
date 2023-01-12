@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.config;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -39,7 +39,8 @@ import org.apache.commons.jexl3.internal.Engine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.unascribed.partyflow.Dankson.JsonJexlExpression;
+import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.util.Dankson.JsonJexlExpression;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;

@@ -56,6 +56,7 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Detainted;
 import javax.annotation.Tainted;
+import javax.annotation.WillClose;
 import javax.crypto.spec.SecretKeySpec;
 
 import jakarta.servlet.ServletException;
@@ -88,9 +89,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.asyncsimplelog.AsyncSimpleLog;
-import com.unascribed.partyflow.Config.DatabaseSection.DatabaseDriver;
-import com.unascribed.partyflow.Config.StorageSection.StorageDriver;
-import com.unascribed.partyflow.SessionHelper.Session;
+import com.unascribed.partyflow.config.Config;
+import com.unascribed.partyflow.config.TranscodeFormat;
+import com.unascribed.partyflow.config.Config.DatabaseSection.DatabaseDriver;
+import com.unascribed.partyflow.config.Config.StorageSection.StorageDriver;
 import com.unascribed.partyflow.handler.FilesHandler;
 import com.unascribed.partyflow.handler.api.v1.LoginApi;
 import com.unascribed.partyflow.handler.api.v1.ReleasesApi;
@@ -99,26 +101,33 @@ import com.unascribed.partyflow.handler.api.v1.WhoAmIApi;
 import com.unascribed.partyflow.handler.frontend.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.DownloadHandler;
 import com.unascribed.partyflow.handler.frontend.IndexHandler;
-import com.unascribed.partyflow.handler.frontend.LoginHandler;
-import com.unascribed.partyflow.handler.frontend.LogoutHandler;
 import com.unascribed.partyflow.handler.frontend.ReleasesHandler;
 import com.unascribed.partyflow.handler.frontend.SetupHandler;
 import com.unascribed.partyflow.handler.frontend.StaticHandler;
 import com.unascribed.partyflow.handler.frontend.TrackHandler;
-import com.unascribed.partyflow.handler.frontend.TranscodeReleaseHandler;
-import com.unascribed.partyflow.handler.frontend.TranscodeTrackHandler;
-import com.unascribed.partyflow.handler.frontend.UserVisibleException;
-import com.unascribed.partyflow.handler.frontend.TranscodeReleaseZipHandler;
 import com.unascribed.partyflow.handler.frontend.release.DeleteReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.release.EditReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.release.PublishReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.release.AddTrackHandler;
 import com.unascribed.partyflow.handler.frontend.release.ViewReleaseHandler;
+import com.unascribed.partyflow.handler.frontend.session.LoginHandler;
+import com.unascribed.partyflow.handler.frontend.session.LogoutHandler;
+import com.unascribed.partyflow.handler.frontend.transcode.TranscodeReleaseHandler;
+import com.unascribed.partyflow.handler.frontend.transcode.TranscodeReleaseZipHandler;
+import com.unascribed.partyflow.handler.frontend.transcode.TranscodeTrackHandler;
 import com.unascribed.partyflow.handler.frontend.release.UnpublishReleaseHandler;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.PartyflowErrorHandler;
 import com.unascribed.partyflow.handler.util.PathResolvingHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.UserVisibleException;
+import com.unascribed.partyflow.logic.AACSupport;
+import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.logic.UserRole;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
+import com.unascribed.partyflow.util.Commands;
+import com.unascribed.partyflow.util.Dankson;
+import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.random.RandomXoshiro256StarStar;
 
 import com.google.common.base.Charsets;
@@ -584,8 +593,8 @@ public class Partyflow {
 		return l != null && l > System.currentTimeMillis();
 	}
 
-	public static byte[] readWithLimit(InputStream in, long limit) throws IOException {
-		byte[] bys = ByteStreams.toByteArray(ByteStreams.limit(in, limit));
+	public static byte[] readWithLimit(@WillClose InputStream in, long limit) throws IOException {
+		byte[] bys = MoreByteStreams.consume(ByteStreams.limit(in, limit));
 		if (in.read() != -1) return null;
 		return bys;
 	}

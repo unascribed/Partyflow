@@ -17,36 +17,20 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler.frontend;
+package com.unascribed.partyflow.util;
 
-import jakarta.servlet.ServletException;
+import java.sql.SQLException;
+import java.util.Objects;
 
-import org.eclipse.jetty.http.HttpStatus;
+public class UncheckedSQLException extends RuntimeException {
 
-public class UserVisibleException extends ServletException {
-
-	private final int code;
-	private final String message;
-
-	public UserVisibleException(int code) {
-		super(code+" - "+HttpStatus.getMessage(code));
-		this.code = code;
-		this.message = HttpStatus.getMessage(code);
+	public UncheckedSQLException(SQLException e) {
+		super(Objects.requireNonNull(e));
 	}
 	
-	public UserVisibleException(int code, String message) {
-		super(code+" - "+HttpStatus.getMessage(code)+" ("+message+")");
-		this.code = code;
-		this.message = message;
-	}
-
-	public int getCode() {
-		return code;
-	}
-
 	@Override
-	public String getMessage() {
-		return message;
+	public synchronized SQLException getCause() {
+		return (SQLException)super.getCause();
 	}
-
+	
 }

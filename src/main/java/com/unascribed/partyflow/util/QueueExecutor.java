@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.util;
 
 import java.util.List;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -34,11 +34,11 @@ import com.google.common.util.concurrent.AbstractListeningExecutorService;
  * {@link ThreadPoolExecutor}. This is a simple implementation of a
  * single-thread executor with a queue.
  */
-public class SimpleSingleThreadExecutor extends AbstractListeningExecutorService {
+public class QueueExecutor extends AbstractListeningExecutorService {
 
 	private static final AtomicInteger nextDefaultThreadId = new AtomicInteger();
 	private static final ThreadFactory DEFAULT_THREAD_FACTORY = r -> {
-		return new Thread(r, "Anonymous SimpleSingleThreadExecutor #"+nextDefaultThreadId.getAndIncrement());
+		return new Thread(r, "Anonymous QueueExecutor #"+nextDefaultThreadId.getAndIncrement());
 	};
 	
 	private final LinkedBlockingDeque<Runnable> queue = new LinkedBlockingDeque<>();
@@ -48,15 +48,15 @@ public class SimpleSingleThreadExecutor extends AbstractListeningExecutorService
 
 	private final Thread thread;
 	
-	public SimpleSingleThreadExecutor() {
+	public QueueExecutor() {
 		this(DEFAULT_THREAD_FACTORY);
 	}
 	
-	public SimpleSingleThreadExecutor(String threadName) {
+	public QueueExecutor(String threadName) {
 		this(r -> new Thread(r, threadName));
 	}
 	
-	public SimpleSingleThreadExecutor(ThreadFactory threadFactory) {
+	public QueueExecutor(ThreadFactory threadFactory) {
 		this.thread = threadFactory.newThread(() -> {
 			while (!shutdown || !queue.isEmpty()) {
 				try {
@@ -68,7 +68,7 @@ public class SimpleSingleThreadExecutor extends AbstractListeningExecutorService
 		});
 	}
 
-	public SimpleSingleThreadExecutor withOperationDelay(long operationDelay) {
+	public QueueExecutor withOperationDelay(long operationDelay) {
 		this.operationDelay = operationDelay;
 		return this;
 	}

@@ -17,9 +17,9 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.data;
+package com.unascribed.partyflow.data.util;
 
-import com.unascribed.partyflow.URLs;
+import com.unascribed.partyflow.logic.URLs;
 
 public interface Artful {
 

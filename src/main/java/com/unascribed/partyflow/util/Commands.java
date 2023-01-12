@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.util;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -25,6 +25,8 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.unascribed.partyflow.Partyflow;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;

@@ -48,10 +48,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.unascribed.partyflow.ThreadPools;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.util.ThreadPools;
 
 public class StaticHandler extends SimpleHandler implements GetOrHead {
 

@@ -17,31 +17,36 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.data;
+package com.unascribed.partyflow.handler.util;
 
-import java.sql.SQLException;
+import jakarta.servlet.ServletException;
 
-import javax.annotation.Untainted;
+import org.eclipse.jetty.http.HttpStatus;
 
-import com.unascribed.partyflow.data.util.Queries;
+public class UserVisibleException extends ServletException {
 
-public class QGeneric extends Queries {
+	private final int code;
+	private final String message;
 
-	public static String findSlug(@Untainted String table, String slug) throws SQLException {
-		try (var c = conn(); var s = c.prepareStatement("SELECT 1 FROM "+table+" WHERE slug = ?;")) {
-			int i = 0;
-			String suffix = "";
-			while (true) {
-				if (i > 0) suffix = "-"+(i+1);
-				s.setString(1, slug+suffix);
-				try (var rs = s.executeQuery()) {
-					if (!rs.first()) break;
-				}
-				i++;
-			}
-			slug = slug+suffix;
-		}
-		return slug;
+	public UserVisibleException(int code) {
+		super(code+" - "+HttpStatus.getMessage(code));
+		this.code = code;
+		this.message = HttpStatus.getMessage(code);
+	}
+	
+	public UserVisibleException(int code, String message) {
+		super(code+" - "+HttpStatus.getMessage(code)+" ("+message+")");
+		this.code = code;
+		this.message = message;
+	}
+
+	public int getCode() {
+		return code;
+	}
+
+	@Override
+	public String getMessage() {
+		return message;
 	}
 
 }

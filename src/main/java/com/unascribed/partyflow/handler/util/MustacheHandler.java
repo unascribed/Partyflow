@@ -31,12 +31,12 @@ import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.MustacheFactory;
 import com.github.mustachejava.MustacheNotFoundException;
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.UserRole;
 import com.unascribed.partyflow.Version;
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.URLs;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.logic.UserRole;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 import com.google.common.base.Function;
 

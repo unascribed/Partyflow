@@ -23,8 +23,9 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.UserRole;
+import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.logic.UserRole;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class QSessions extends Queries {
 

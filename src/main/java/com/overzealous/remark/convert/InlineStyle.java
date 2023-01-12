@@ -56,6 +56,7 @@ public class InlineStyle extends AbstractNodeHandler {
 	 * @param node	  Node to handle
 	 * @param converter Parent converter for this object.
 	 */
+	@Override
 	public void handleNode(NodeHandler parent, Element node, DocumentConverter converter) {
 		if(checkInnerBlock(node)) {
 			// not valid to have an inline node around block nodes, so we have to
@@ -96,7 +97,7 @@ public class InlineStyle extends AbstractNodeHandler {
 	/**
 	 * Minor class to hold onto the styling rules for this class.
 	 */
-	private class Rules {
+	private static class Rules {
 		boolean emphasisPreserved = true;
 		boolean addSpacing = false;
 		boolean italics = false;
@@ -138,7 +139,7 @@ public class InlineStyle extends AbstractNodeHandler {
 					// write content
 					converter.output.write(parts.group(2));
 					
-					// write trailing marker 
+					// write trailing marker
 					end(rules, parts.group(3), converter);
 				}
 				

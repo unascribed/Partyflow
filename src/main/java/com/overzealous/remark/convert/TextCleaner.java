@@ -41,7 +41,7 @@ public class TextCleaner {
 	/**
 	 * Internal class simply used to hold the various escape regexes.
 	 */
-	private class Escape {
+	private static class Escape {
 		final Pattern pattern;
 		final String replacement;
 		public Escape(String pattern, String replacement) {

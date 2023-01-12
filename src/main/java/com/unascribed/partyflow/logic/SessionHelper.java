@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow;
+package com.unascribed.partyflow.logic;
 
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
@@ -31,9 +31,10 @@ import javax.crypto.Mac;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.data.QSessions;
-import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.UserVisibleException;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;

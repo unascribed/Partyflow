@@ -28,15 +28,15 @@ import java.util.OptionalInt;
 import javax.annotation.Nullable;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.URLs;
-import com.unascribed.partyflow.data.Queries;
 import com.unascribed.partyflow.data.QReleases.FullRelease;
 import com.unascribed.partyflow.data.QTracks.Track;
+import com.unascribed.partyflow.data.util.Queries;
 import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QTracks;
-import com.unascribed.partyflow.handler.frontend.UserVisibleException;
 import com.unascribed.partyflow.handler.util.ApiHandler;
+import com.unascribed.partyflow.handler.util.UserVisibleException;
+import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class ViewReleaseApi extends ApiHandler {
 

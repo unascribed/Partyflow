@@ -24,12 +24,9 @@ import org.jsoup.nodes.Element;
  */
 public class DefaultNodeHandler extends AbstractNodeHandler {
 
-	private static DefaultNodeHandler instance;
+	private static final DefaultNodeHandler instance = new DefaultNodeHandler();
 
 	public static DefaultNodeHandler getInstance() {
-		if(instance == null) {
-			instance = new DefaultNodeHandler();
-		}
 		return instance;
 	}
 
@@ -44,6 +41,7 @@ public class DefaultNodeHandler extends AbstractNodeHandler {
 	 * @param node	  Node to handle
 	 * @param converter Parent converter for this object.
 	 */
+	@Override
 	public void handleNode(NodeHandler parent, Element node, DocumentConverter converter) {
 		converter.walkNodes(this, node, converter.blockNodes);
 	}

@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler.frontend;
+package com.unascribed.partyflow.handler.frontend.transcode;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -47,21 +47,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.SessionHelper;
-import com.unascribed.partyflow.ThreadPools;
-import com.unascribed.partyflow.TranscodeFormat;
-import com.unascribed.partyflow.SessionHelper.Session;
-import com.unascribed.partyflow.TranscodeFormat.ReplayGainData;
-import com.unascribed.partyflow.TranscodeFormat.Shortcut;
-import com.unascribed.partyflow.Transcoder;
-import com.unascribed.partyflow.Transcoder.TranscodeResult;
+import com.unascribed.partyflow.config.TranscodeFormat;
+import com.unascribed.partyflow.config.TranscodeFormat.ReplayGainData;
+import com.unascribed.partyflow.config.TranscodeFormat.Shortcut;
 import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QTranscodes;
 import com.unascribed.partyflow.data.QTranscodes.FoundShortcut;
 import com.unascribed.partyflow.data.QTranscodes.FoundTranscode;
 import com.unascribed.partyflow.data.QTranscodes.TranscodeFindResult;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.UserVisibleException;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.Transcoder;
+import com.unascribed.partyflow.logic.SessionHelper.Session;
+import com.unascribed.partyflow.logic.Transcoder.TranscodeResult;
+import com.unascribed.partyflow.util.ThreadPools;
+
 import com.google.common.base.Charsets;
 import com.google.common.base.MoreObjects;
 import com.google.common.net.InetAddresses;
@@ -239,7 +241,7 @@ public class TranscodeReleaseZipHandler extends SimpleHandler implements GetOrHe
 					Blob b = Partyflow.storage.getBlob(Partyflow.storageContainer, releaseArt);
 					ZipEntry ze = new ZipEntry(artFname);
 					zos.putNextEntry(ze);
-					try (var in = b.getPayload().openStream()) {
+					try (var p = b.getPayload(); var in = p.openStream()) {
 						in.transferTo(zos);
 					}
 					zos.closeEntry();
@@ -248,10 +250,15 @@ public class TranscodeReleaseZipHandler extends SimpleHandler implements GetOrHe
 				for (CollectResult cr : results) {
 					ZipEntry ze = new ZipEntry(cr.tr().filename());
 					zos.putNextEntry(ze);
-					try (var in = cr.directFile() == null
-							? Partyflow.storage.getBlob(Partyflow.storageContainer, cr.tr().blob()).getPayload().openStream()
-							: new FileInputStream(cr.directFile())) {
-						in.transferTo(zos);
+					if (cr.directFile() == null) {
+						try (var p = Partyflow.storage.getBlob(Partyflow.storageContainer, cr.tr().blob()).getPayload();
+								var in = p.openStream()) {
+							in.transferTo(zos);
+						}
+					} else {
+						try (var in = new FileInputStream(cr.directFile())) {
+							in.transferTo(zos);
+						}
 					}
 					zos.closeEntry();
 				}

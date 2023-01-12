@@ -34,12 +34,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.URLs;
-import com.unascribed.partyflow.UserRole;
 import com.unascribed.partyflow.data.QUsers;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Any;
+import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.logic.UserRole;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;
