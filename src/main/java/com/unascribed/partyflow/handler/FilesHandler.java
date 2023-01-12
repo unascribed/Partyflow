@@ -122,7 +122,7 @@ public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 			}
 			if (ranges == null) {
 				res.setStatus(HTTP_200_OK);
-			} else {
+			} else if (fullLen != null) {
 				res.setHeader("Content-Range", ranges.get(0).toHeaderRangeString(fullLen));
 				res.setStatus(HTTP_206_PARTIAL_CONTENT);
 			}

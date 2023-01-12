@@ -263,7 +263,7 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 					try {
 						li.add(mapper.map(path, req, params));
 					} catch (MissingParameterException e) {
-						if (invocations.size() == 1) {
+						if (missingParams != null) {
 							missingParams.add(e.getParam());
 						} else {
 							continue outer;

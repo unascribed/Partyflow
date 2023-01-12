@@ -625,9 +625,9 @@ public class Partyflow {
 		}
 		
 		@Override
+		@SuppressWarnings("unchecked") // operation is safe
 		public <R extends Temporal> R addTo(R temporal, long amount) {
-			amount = (amount*62500)/3;
-			return (R)temporal.plus(amount, ChronoUnit.NANOS);
+			return (R)temporal.plus((amount*62500)/3, ChronoUnit.NANOS);
 		}
 	};
 

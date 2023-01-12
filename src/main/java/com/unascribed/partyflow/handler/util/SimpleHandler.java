@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,17 +42,17 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.Unchecked;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Maps;
-import com.google.common.io.Files;
 import com.google.common.net.UrlEscapers;
 
 public class SimpleHandler {
 
-	public static final int HTTP_100_HTTP_CONTINUE = 100;
+	public static final int HTTP_100_CONTINUE = 100;
     public static final int HTTP_101_SWITCHING_PROTOCOLS = 101;
     public static final int HTTP_102_PROCESSING = 102;
 
@@ -116,7 +117,8 @@ public class SimpleHandler {
     public static final int HTTP_511_NETWORK_AUTHENTICATION_REQUIRED = 511;
 
 	private static final Joiner COMMA_JOINER = Joiner.on(", ");
-	protected static final File TEMP_DIR = Files.createTempDir();
+	protected static final File TEMP_DIR = Unchecked.call(() -> Files.createTempDirectory("partyflow-upload").toFile());
+	
 	private static final int K = 1024;
 	private static final int M = 1024*K;
 	private static final long G = 1024*M;

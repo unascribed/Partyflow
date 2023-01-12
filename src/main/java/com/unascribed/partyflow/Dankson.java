@@ -43,6 +43,7 @@ import blue.endless.jankson.impl.ParserContext;
 import blue.endless.jankson.impl.StringParserContext;
 import blue.endless.jankson.impl.TokenParserContext;
 
+@SuppressWarnings("deprecation") // MarshallerImpl usage is not optional
 public class Dankson extends Jankson {
 
 	public String filename = "<unknown>";
@@ -90,6 +91,7 @@ public class Dankson extends Jankson {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked") // operations are safe
 	public <T> void push(ParserContext<T> t, Consumer<T> consumer) {
 		if (t instanceof ElementParserContext) {
 			t = (ParserContext<T>) new DankElementParserContext();

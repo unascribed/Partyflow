@@ -190,6 +190,7 @@ public class Queries {
 		return unpackOne(type, rs, (Object[])null);
 	}
 	
+	@SuppressWarnings("unchecked") // final cast is safe
 	protected static <R extends Record> R unpackOne(Class<R> type, ResultSet rs, Object... preface) {
 		var cmps = type.getRecordComponents();
 		var args = new Object[cmps.length];
@@ -336,6 +337,7 @@ public class Queries {
 		return Partyflow.sql.getConnection();
 	}
 	
+	@SuppressWarnings("deprecation") // overriding and delegating deprecated methods
 	private static class CascadingResultSet implements ResultSet {
 		
 		private final ResultSet delegate;

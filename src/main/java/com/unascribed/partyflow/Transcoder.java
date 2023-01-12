@@ -30,6 +30,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -83,8 +84,9 @@ public class Transcoder {
 		boolean attachArt = art != null && fmt.usage().canDownload() && !fmt.args().contains("-vn");
 		boolean ogg = fmt.args().contains("ogg");
 		String artB64 = null;
-		File artFile = attachArt ? File.createTempFile("transcode-", art.substring(art.lastIndexOf('.')), WORK_DIR) : null;
+		File artFile = null;
 		if (art != null && attachArt) {
+			artFile = File.createTempFile("transcode-", art.substring(art.lastIndexOf('.')), WORK_DIR);
 			Blob artBlob = Partyflow.storage.getBlob(Partyflow.storageContainer, art);
 			if (artBlob == null) {
 				log.warn("Art for {} {} is missing!", kind, slug);
@@ -163,7 +165,8 @@ public class Transcoder {
 				inputArgs = List.of("-i", "-");
 			}
 			ProcessBuilder ffmBldr = Commands.ffmpeg("-v", "error",
-					useAltcmd ? List.of("-i", "-") : inputArgs, "-i", metaFile.getAbsolutePath(), attachArt ? List.of("-i", artFile.getAbsolutePath()) : null,
+					useAltcmd ? List.of("-i", "-") : inputArgs, "-i", metaFile.getAbsolutePath(),
+							attachArt && artFile != null ? List.of("-i", artFile.getAbsolutePath()) : null,
 					shortcut == null ? fmt.args() : shortcut.args(),
 					"-map_metadata", "1",
 					"-map", "a",
@@ -176,7 +179,7 @@ public class Transcoder {
 							"-codec:v", "copy"
 						) : null,
 					"-y",
-					directOut != null ? "-" : tmpFile.getAbsolutePath());
+					directOut != null ? "-" : Objects.requireNonNull(tmpFile).getAbsolutePath());
 			Process input;
 			if (useAltcmd) {
 				ProcessBuilder inffm = Commands.ffmpeg("-v", "error",
