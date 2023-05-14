@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Get;
 import com.unascribed.partyflow.logic.SessionHelper;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
+import com.unascribed.partyflow.logic.permission.Permission;
 
 public class AdminHandler extends SimpleHandler implements Get {
 
@@ -41,11 +41,11 @@ public class AdminHandler extends SimpleHandler implements Get {
 	@Override
 	public void get(String path, HttpServletRequest req, HttpServletResponse res)
 			throws IOException, ServletException, SQLException {
-		Session s = SessionHelper.getSessionOrThrow(req, null);
-		if (!s.hasPermission("admin.administrate")) {
-			res.sendError(403);
-			return;
-		}
+		var s = SessionHelper.get(req)
+				.assertPresent()
+				.assertPermission(Permission.admin.administrate);
+		
+		
 	}
 
 }

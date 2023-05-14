@@ -45,8 +45,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.logic.SessionHelper;
-import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
+import com.unascribed.partyflow.logic.permission.Permission;
 import com.unascribed.partyflow.util.Commands;
 import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.partyflow.util.Processes;
@@ -66,54 +65,45 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
-		Session session = SessionHelper.getSession(req);
-		if (session != null) {
-			res.setStatus(HTTP_200_OK);
-			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html");
-		} else {
-			res.sendRedirect(URLs.url("login?message=You must log in to do that."));
-		}
+		var s = SessionHelper.get(req)
+				.assertPresent()
+				.assertPermission(Permission.release.create);
+		res.setStatus(HTTP_200_OK);
+		MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
+			String error = req.getParameter("error");
+		});
 	}
 
 	@Override
 	public void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data)
 			throws IOException, ServletException, SQLException {
-		Session session = SessionHelper.getSession(req);
-		if (session != null) {
-			String csrf = data.getPartAsString("csrf", 64);
-			if (!Partyflow.isCsrfTokenValid(session, csrf)) {
-				res.sendRedirect(URLs.root());
-				return;
-			}
-			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
-			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
-			if (title.trim().isEmpty()) {
-				res.setStatus(HTTP_400_BAD_REQUEST);
-				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-					String error = "Title is required";
-				});
-				return;
-			}
-			if (title.length() > 255) {
-				res.setStatus(HTTP_400_BAD_REQUEST);
-				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-					String error = "Title is too long";
-				});
-				return;
-			}
-			if (subtitle.length() > 255) {
-				res.setStatus(HTTP_400_BAD_REQUEST);
-				MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
-					String error = "Subtitle is too long";
-				});
-				return;
-			}
-			String slug = QGeneric.findSlug("releases", Partyflow.sanitizeSlug(title));
-			QReleases.create(new Release(slug, session.userId(), title, subtitle, "", false, null, null));
-			res.sendRedirect(Partyflow.config.http.path+"release/"+slug);
+		var session = SessionHelper.get(req)
+				.assertPresent()
+				.assertCsrf(data.getPartAsString("csrf", 64))
+				.assertPermission(Permission.release.create);
+		
+		String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
+		String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
+		String _error;
+		if (title.trim().isEmpty()) {
+			_error = "Title is required";
+		} else if (title.length() > 255) {
+			_error = "Title is too long";
+		} else if (subtitle.length() > 255) {
+			_error = "Subtitle is too long";
 		} else {
-			res.sendRedirect(Partyflow.config.http.path+"login?message=You must log in to do that.");
+			_error = null;
 		}
+		if (_error != null) {
+			res.setStatus(HTTP_400_BAD_REQUEST);
+			MustacheHandler.serveTemplate(req, res, "create-release.hbs.html", new Object() {
+				String error = _error;
+			});
+			return;
+		}
+		String slug = QGeneric.findSlug("releases", Partyflow.sanitizeSlug(title));
+		QReleases.create(new Release(slug, session.userId(), title, subtitle, "", false, null, null));
+		res.sendRedirect(Partyflow.config.http.path+"release/"+slug);
 	}
 
 	public static String processArt(Part art) throws IOException, IllegalArgumentException {

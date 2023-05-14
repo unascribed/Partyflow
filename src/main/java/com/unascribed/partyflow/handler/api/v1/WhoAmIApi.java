@@ -32,8 +32,7 @@ public class WhoAmIApi extends ApiHandler {
 	@GET
 	public static WhoAmIResponse invoke(Session session)
 			throws UserVisibleException, SQLException {
-		if (session == null) return new WhoAmIResponse(false, null, null);
-		return new WhoAmIResponse(true, session.displayName(), session.username());
+		return new WhoAmIResponse(session.isPresent(), session.displayName().orElse(null), session.username().orElse(null));
 	}
 
 }

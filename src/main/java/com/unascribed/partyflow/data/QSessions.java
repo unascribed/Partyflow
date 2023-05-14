@@ -25,6 +25,8 @@ import java.util.UUID;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.data.util.Queries;
 import com.unascribed.partyflow.logic.UserRole;
+import com.unascribed.partyflow.logic.SessionHelper.GuestSession;
+import com.unascribed.partyflow.logic.SessionHelper.RealSession;
 import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class QSessions extends Queries {
@@ -35,10 +37,10 @@ public class QSessions extends Queries {
 					+ "WHERE `session_id` = ? AND `expires` > NOW();",
 				sessionId.toString())) {
 			if (rs.first()) {
-				return new Session(sessionId, rs.getInt("user_id"), rs.getString("users.username"),
+				return new RealSession(sessionId, rs.getInt("user_id"), rs.getString("users.username"),
 						rs.getString("users.display_name"), UserRole.byId(rs.getInt("users.role")));
 			} else {
-				return null;
+				return GuestSession.INSTANCE;
 			}
 		}
 	}

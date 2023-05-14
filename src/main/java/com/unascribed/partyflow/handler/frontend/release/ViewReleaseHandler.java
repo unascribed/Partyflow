@@ -42,7 +42,6 @@ import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class ViewReleaseHandler extends SimpleHandler implements GetOrHead {
 
@@ -61,7 +60,7 @@ public class ViewReleaseHandler extends SimpleHandler implements GetOrHead {
 	public void getOrHead(String slug, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
 		Map<String, String> query = parseQuery(req);
-		Session s = SessionHelper.getSession(req);
+		var s = SessionHelper.get(req);
 		try (var c = Queries.begin()) {
 			var releaseOpt = QReleases.get(s, slug);
 			if (releaseOpt.isPresent()) {
@@ -83,7 +82,7 @@ public class ViewReleaseHandler extends SimpleHandler implements GetOrHead {
 					_tracksJson.add(obj);
 				}
 				res.setStatus(HTTP_200_OK);
-				boolean _editable = s != null && r.userId() == s.userId();
+				boolean _editable = s.userId().stream().anyMatch(id -> id == r.userId());
 				String desc = r.description();
 				MustacheHandler.serveTemplate(req, res, template, r, new Object() {
 					boolean editable = _editable;

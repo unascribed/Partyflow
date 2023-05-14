@@ -47,8 +47,6 @@ import com.unascribed.partyflow.handler.util.UserVisibleException;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
-
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
@@ -86,17 +84,17 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 		if (masterQuery == null) {
 			throw new UserVisibleException(HTTP_400_BAD_REQUEST, "Kind must be one of "+Joiner.on(", ").join(QUERIES_BY_KIND.keySet()));
 		}
-		Session s = SessionHelper.getSession(req);
+		var s = SessionHelper.get(req);
 		String _title;
 		String _subtitle;
 		String _creator;
 		String _art;
 		long _duration;
 		List<String> masters = new ArrayList<>();
-		String permissionQuery = (s == null ? "false" : "`releases`.`user_id` = ?");
+		String permissionQuery = (s.isEmpty() ? "false" : "`releases`.`user_id` = ?");
 		try (var c = Partyflow.sql.getConnection(); var ps = c.prepareStatement(masterQuery.replace("{}", permissionQuery))) {
 			ps.setString(1, _slug);
-			if (s != null) ps.setInt(2, s.userId());
+			if (s.isPresent()) ps.setInt(2, s.userId().getAsInt());
 			try (ResultSet rs = ps.executeQuery()) {
 				if (rs.first()) {
 					_title = rs.getString("title");

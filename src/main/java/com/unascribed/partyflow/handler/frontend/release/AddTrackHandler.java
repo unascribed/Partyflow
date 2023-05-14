@@ -53,12 +53,13 @@ import com.unascribed.partyflow.data.QGeneric;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.handler.util.UserVisibleException;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.Transcoder;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
+import com.unascribed.partyflow.logic.permission.Permission;
 import com.unascribed.partyflow.util.Commands;
 import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.partyflow.util.Processes;
@@ -90,13 +91,16 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 	public void getOrHead(String slugs, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
 		Map<String, String> query = parseQuery(req);
-		Session s = SessionHelper.getSessionOrThrow(req, null);
+		var s = SessionHelper.get(req)
+				.assertPresent();
+		String addn = s.hasPermission(Permission.moderate.bypass_ownership) ? "" : " AND `user_id` = ?";
 		try (Connection c = Partyflow.sql.getConnection()) {
 			try (PreparedStatement ps = c.prepareStatement(
 					"SELECT `title`, `subtitle`, `published`, `art` FROM `releases` "
-					+ "WHERE `slug` = ? AND `user_id` = ?;")) {
+					+ "WHERE `slug` = ?"+addn+";")) {
 				ps.setString(1, slugs);
-				ps.setInt(2, s.userId());
+				if (!s.hasPermission(Permission.moderate.bypass_ownership))
+					ps.setInt(2, s.userId());
 				try (ResultSet rs = ps.executeQuery()) {
 					if (rs.first()) {
 						MustacheHandler.serveTemplate(req, res, "add-track.hbs.html", new Object() {
@@ -122,11 +126,13 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 	@Override
 	public void multipartPost(String slugs, HttpServletRequest req, HttpServletResponse res, MultipartData data)
 			throws IOException, ServletException, SQLException {
-		Session s = SessionHelper.getSessionOrThrow(req, data.getPartAsString("csrf", 64));
+		var s = SessionHelper.get(req)
+				.assertPresent()
+				.assertCsrf(data.getPartAsString("csrf", 64))
+				.assertPermission(Permission.release.track.add);
 		List<Part> masters = data.getAllParts("master");
 		if (masters.isEmpty()) {
-			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"/add-track?error=At least one master is required"));
-			return;
+			throw new UserVisibleException(399, "At least one master is required");
 		}
 		String lastSlug = null;
 		boolean committed = false;
@@ -134,9 +140,11 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 			try {
 				c.setAutoCommit(false);
 				int releaseId;
-				try (PreparedStatement ps = c.prepareStatement("SELECT `release_id` FROM `releases` WHERE `slug` = ? AND `user_id` = ?;")) {
+				String addn = s.hasPermission(Permission.moderate.bypass_ownership) ? "" : " AND `user_id` = ?";
+				try (PreparedStatement ps = c.prepareStatement("SELECT `release_id` FROM `releases` WHERE `slug` = ?"+addn+";")) {
 					ps.setString(1, slugs);
-					ps.setInt(2, s.userId());
+					if (!s.hasPermission(Permission.moderate.bypass_ownership))
+						ps.setInt(2, s.userId());
 					try (ResultSet rs = ps.executeQuery()) {
 						// slug is UNIQUE, we don't need to handle more than one row
 						if (rs.first()) {

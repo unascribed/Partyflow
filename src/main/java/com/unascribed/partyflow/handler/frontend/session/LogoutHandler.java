@@ -26,28 +26,19 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.data.QSessions;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class LogoutHandler extends SimpleHandler implements UrlEncodedPost {
 
 	@Override
 	public void urlEncodedPost(String path, HttpServletRequest req, HttpServletResponse res, Map<String, String> params) throws IOException, ServletException, SQLException {
-		Session session = SessionHelper.getSession(req);
-		if (session == null) {
-			res.sendRedirect(URLs.root());
-			return;
-		}
-		String csrf = params.get("csrf");
-		if (!Partyflow.isCsrfTokenValid(session, csrf)) {
-			res.sendRedirect(URLs.root());
-			return;
-		}
+		var session = SessionHelper.get(req)
+				.assertPresent()
+				.assertCsrf(params.get("csrf"));
 		QSessions.destroy(session.sessionId());
 		SessionHelper.clearSessionCookie(res);
 		res.sendRedirect(URLs.root());

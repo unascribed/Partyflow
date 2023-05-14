@@ -73,7 +73,7 @@ public class QReleases extends Queries {
 	public static Optional<FullRelease> get(Session s, String slug) throws SQLException {
 		Object[] args = {slug};
 		String or = "";
-		if (s != null) {
+		if (s.isPresent()) {
 			or = " OR `releases`.`user_id` = ?";
 			args = new Object[] {slug, s.userId()};
 		}
@@ -97,9 +97,9 @@ public class QReleases extends Queries {
 		query.append(join);
 		query.append("WHERE `published` = true");
 		var args = new Object[0];
-		if (s != null) {
+		if (s.isPresent()) {
 			query.append(" OR `releases`.`user_id` = ?");
-			args = new Object[] { s.userId() };
+			args = new Object[] { s.userId().getAsInt() };
 		}
 		query.append(order);
 		query.append(";");

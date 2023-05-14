@@ -58,7 +58,6 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedOrMultipartPost;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
 import com.unascribed.partyflow.data.QGeneric;
 
 import com.google.common.base.Strings;
@@ -79,11 +78,11 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		Map<String, String> query = parseQuery(req);
-		Session s = SessionHelper.getSession(req);
+		var s = SessionHelper.get(req);
 		if (m.group(2) == null) {
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String trackSlug = m.group(1);
-				String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
+				String suffix = s.isEmpty() ? "" : " OR `releases`.`user_id` = ?";
 				try (PreparedStatement ps = c.prepareStatement(
 						"SELECT `tracks`.`title`, `tracks`.`subtitle`, `releases`.`published`, `releases`.`art`, `releases`.`title`, `releases`.`slug`, "
 								+ "`tracks`.`art`, `tracks`.`description`, `releases`.`user_id`, `users`.`display_name`, `tracks`.`loudness`, `duration`, "
@@ -93,14 +92,13 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						+ "JOIN `users` ON `releases`.`user_id` = `users`.`user_id` "
 						+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
 					ps.setString(1, trackSlug);
-					if (s != null) {
-						ps.setInt(2, s.userId());
-					}
+					if (s.isPresent()) ps.setInt(2, s.userId().getAsInt());
 					try (ResultSet rs = ps.executeQuery()) {
 						// slug is UNIQUE, we don't need to handle more than one row
 						if (rs.first()) {
 							res.setStatus(HTTP_200_OK);
-							boolean _editable = s != null && rs.getInt("releases.user_id") == s.userId();
+							int releaseOwner = rs.getInt("releases.user_id");
+							boolean _editable = s.userId().stream().anyMatch(id -> id == releaseOwner);
 							String desc = rs.getString("tracks.description");
 							String trackArt = rs.getString("tracks.art");
 							String _art;
@@ -153,15 +151,13 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 		} else if ("/master".equals(m.group(2))) {
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String trackSlug = m.group(1);
-				String suffix = s == null ? "" : " OR `releases`.`user_id` = ?";
+				String suffix = s.isEmpty() ? "" : " OR `releases`.`user_id` = ?";
 				try (PreparedStatement ps = c.prepareStatement(
 						"SELECT `master` FROM `tracks` "
 						+ "JOIN `releases` ON `releases`.`release_id` = `tracks`.`release_id` "
 						+ "WHERE `tracks`.`slug` = ? AND (`releases`.`published` = true"+suffix+");")) {
 					ps.setString(1, trackSlug);
-					if (s != null) {
-						ps.setInt(2, s.userId());
-					}
+					if (s.isPresent()) ps.setInt(2, s.userId().getAsInt());
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
 							res.setStatus(HTTP_200_OK);
@@ -199,16 +195,9 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		if ("/delete".equals(m.group(2))) {
-			Session s = SessionHelper.getSession(req);
-			if (s == null) {
-				res.sendRedirect(URLs.url("login?message=You must log in to do that."));
-				return;
-			}
-			String csrf = params.get("csrf");
-			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
-				res.sendRedirect(URLs.root());
-				return;
-			}
+			var s = SessionHelper.get(req)
+			.assertPresent()
+					.assertCsrf(params.get("csrf"));
 			try (Connection c = Partyflow.sql.getConnection()) {
 				String slugs = m.group(1);
 				String releaseSlug;
@@ -273,16 +262,9 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 		Matcher m = PATH_PATTERN.matcher(path);
 		if (!m.matches()) return;
 		if ("/edit".equals(m.group(2))) {
-			Session s = SessionHelper.getSession(req);
-			if (s == null) {
-				res.sendRedirect(URLs.url("login?message=You must log in to do that."));
-				return;
-			}
-			String csrf = data.getPartAsString("csrf", 64);
-			if (!Partyflow.isCsrfTokenValid(s, csrf)) {
-				res.sendRedirect(URLs.url("track/"+escPathSeg(m.group(1))+"?error=Invalid CSRF token"));
-				return;
-			}
+			var s = SessionHelper.get(req)
+			.assertPresent()
+					.assertCsrf(data.getPartAsString("csrf", 64));
 			Part art = data.getPart("art");
 			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
 			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));

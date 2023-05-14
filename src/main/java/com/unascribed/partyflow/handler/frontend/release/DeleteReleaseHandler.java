@@ -37,8 +37,6 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
-
 import com.google.common.base.Strings;
 
 public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedPost {
@@ -54,7 +52,9 @@ public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, Ur
 	@Override
 	public void urlEncodedPost(String slugs, HttpServletRequest req, HttpServletResponse res, Map<String, String> params)
 			throws IOException, ServletException, SQLException {
-		Session s = SessionHelper.getSessionOrThrow(req, params.get("csrf"));
+		var s = SessionHelper.get(req)
+				.assertPresent()
+				.assertCsrf(params.get("csrf"));
 		
 		try (Connection c = Partyflow.sql.getConnection()) {
 			long releaseId;

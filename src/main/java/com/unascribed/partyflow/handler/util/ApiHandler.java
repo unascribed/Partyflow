@@ -173,7 +173,7 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 							throw new IllegalArgumentException("@RequestPath parameters must be of type String, not "+p.getType().getSimpleName());
 						mappers.add((path, req, body) -> path);
 					} else if (p.getType() == Session.class) {
-						mappers.add((path, req, body) -> SessionHelper.getSession(req));
+						mappers.add((path, req, body) -> SessionHelper.get(req));
 					} else if (p.getType() == InputStream.class) {
 						mappers.add((path, req, body) -> req.getInputStream());
 						wantsJson = false;
@@ -301,7 +301,7 @@ public abstract class ApiHandler extends SimpleHandler implements Any {
 		return true;
 	}
 
-	private JsonElement parseAdhoc(String v) {
+	private static JsonElement parseAdhoc(String v) {
 		switch (v) {
 			case "true", "on", "": return JsonPrimitive.TRUE;
 			case "false", "off": return JsonPrimitive.FALSE;

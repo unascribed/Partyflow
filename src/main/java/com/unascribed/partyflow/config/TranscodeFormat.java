@@ -36,6 +36,7 @@ import org.apache.commons.jexl3.JexlExpression;
 import org.apache.commons.jexl3.JexlInfo;
 import org.apache.commons.jexl3.MapContext;
 import org.apache.commons.jexl3.internal.Engine;
+import org.apache.commons.jexl3.introspection.JexlPermissions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,7 +150,9 @@ public record TranscodeFormat(
 							"string", String.class,
 							"log", log,
 							"int", Integer.class
-						)));
+						))
+				.permissions(JexlPermissions.UNRESTRICTED) // our JEXL expressions are trusted
+			);
 		Table<String, String, JexlExpression> defs = HashBasedTable.create();
 		Table<String, String, Map<String, JexlExpression>> mapDefs = HashBasedTable.create();
 		scanDefs(obj, engine, defs, mapDefs);

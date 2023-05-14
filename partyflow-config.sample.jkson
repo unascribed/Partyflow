@@ -76,19 +76,11 @@ security {
 	// over HTTPS. (This has to be done at a reverse proxy; Partyflow itself does not support SSL.)
 	https: false
 	
-	// Advanced tuning of the underlying password hashing algorithm.
-	scrypt {
-		// N. Scrypt work factor. Higher values are slower, which increases security in the event of a
-		// database leak. Exponential; 17 is 2x the work of 16.
-		cpu: 16
-		// r. Scrypt memory factor. Increases memory usage when hashing passwords. Linear; 17 is 6.25%
-		// more work than 16.
-		memory: 16
-		// p. Scrypt parallelization factor. Values greater than 1 allow parallelization; Partyflow's
-		// scrypt implementation (and in fact, most normal scrypt implementations) do not parallelize,
-		// so setting this >1 basically just weakens your hashes. Linear; 1 is 1 core, 2 is 2 cores.
-		parallelization: 1
-	}
+	// Advanced tuning of the underlying password hashing algorithm. null uses
+	// built-in defaults and is recommended.
+	scrypt: null
+	// You can specify parameters like so:
+	//scrypt: {N: 18, r: 16, p: 1}
 }
 storage {
 	// Valid options are fs and s3.
@@ -131,7 +123,7 @@ storage {
 	// If you're using Wasabi, this matches their minimum storage time:
 	//pruneTime: "90D"
 	// For times less than a day, you need to prefix this with "T" to switch from date to time:
-	//pruneTime: "T30S"
+	//pruneTime: "T5M"
 }
 programs {
 	// Using some form of sandboxing (e.g. unshare) is recommended in production. All files will be

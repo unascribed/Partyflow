@@ -53,6 +53,7 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -97,7 +98,7 @@ public class Queries {
 	protected static int update(String query, Object... values) throws SQLException {
 		try (var c = conn(); var s = c.prepareStatement(query)) {
 			for (int i = 0; i < values.length; i++) {
-				s.setObject(i+1, values[i]);
+				setObjectExt(s, i+1, values[i]);
 			};
 			return s.executeUpdate();
 		}
@@ -120,7 +121,7 @@ public class Queries {
 	protected static ResultSet select(String query, Object... values) throws SQLException {
 		var c = conn(); var s = c.prepareStatement(query);
 		for (int i = 0; i < values.length; i++) {
-			s.setObject(i+1, values[i]);
+			setObjectExt(s, i+1, values[i]);
 		};
 		return new CascadingResultSet(s.executeQuery(), s, c);
 	}
@@ -158,7 +159,7 @@ public class Queries {
 					int idx = firstIdx+i+1;
 					preparer.add(s -> {
 						try {
-							s.setObject(idx, v);
+							setObjectExt(s, idx, v);
 						} catch (SQLException e) {
 							throw new UncheckedSQLException(e);
 						}
@@ -177,6 +178,18 @@ public class Queries {
 		return Arrays.stream(type.getRecordComponents())
 				.map(t -> getColumnName(table, t, true))
 				.collect(Collectors.joining(","));
+	}
+	
+	protected static void setObjectExt(PreparedStatement s, int idx, Object v) throws SQLException {
+		if (v instanceof OptionalInt oi) {
+			if (oi.isPresent()) {
+				s.setInt(idx, oi.getAsInt());
+			} else {
+				s.setNull(idx, Types.INTEGER);
+			}
+		} else {
+			s.setObject(idx, v);
+		}
 	}
 
 	@MustBeClosed

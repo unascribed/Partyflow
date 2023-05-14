@@ -34,7 +34,6 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class UnpublishReleaseHandler extends SimpleHandler implements GetOrHead, UrlEncodedPost {
 
@@ -49,7 +48,9 @@ public class UnpublishReleaseHandler extends SimpleHandler implements GetOrHead,
 	@Override
 	public void urlEncodedPost(String slug, HttpServletRequest req, HttpServletResponse res, Map<String, String> params)
 			throws IOException, ServletException, SQLException {
-		Session s = SessionHelper.getSessionOrThrow(req, params.get("csrf"));
+		var s = SessionHelper.get(req)
+				.assertPresent()
+				.assertCsrf(params.get("csrf"));
 		if (QReleases.publish(slug, s.userId(), false)) {
 			res.sendRedirect(URLs.url("release/"+escPathSeg(slug)));
 		} else {

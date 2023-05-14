@@ -25,10 +25,11 @@ public class Version {
 	public static final int MAJOR = 0;
 	public static final int MINOR = 1;
 	public static final int PATCH = 0;
-	public static final String APPENDIX = "";
+	public static final String VARIANT = ""; // a fork/branch name should go here
 	public static final String BUILD = "";
 
+	// usage of == on strings is intentional to allow this to be evaluated at compile-time
 	@SuppressWarnings("unused")
-	public static final String FULL = MAJOR+"."+MINOR+(PATCH > 0 ? "."+PATCH : "")+(APPENDIX.isEmpty() ? "" : "-"+APPENDIX)+(BUILD.isEmpty() ? "" : "+"+BUILD);
+	public static final String FULL = MAJOR+"."+MINOR+(PATCH > 0 ? "."+PATCH : "")+(VARIANT == "" ? "" : "-"+VARIANT)+(BUILD == "" ? "" : "+"+BUILD);
 
 }

@@ -8,6 +8,9 @@
 	{{> _header.hbs.html}}
 	<div class="inner">
 		<h1>Create a new release</h1>
+		{{#error}}
+			<div class="message error">{{error}}</div>
+		{{/error}}
 		<form class="release editing" method="POST" enctype="multipart/form-data">
 			<input type="hidden" name="csrf" value="{{csrf}}"/>
 			<input name="title" required maxlength="255" type="text" class="ghost-input title" placeholder="Title"/>

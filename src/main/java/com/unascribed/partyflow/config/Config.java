@@ -87,9 +87,9 @@ public final class Config {
 		
 		public ScryptSection scrypt;
 		public static final class ScryptSection {
-			public int cpu;
-			public int memory;
-			public int parallelization;
+			public int N = 16;
+			public int r = 16;
+			public int p = 1;
 		}
 	}
 

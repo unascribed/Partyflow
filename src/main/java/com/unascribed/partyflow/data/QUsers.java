@@ -20,6 +20,7 @@
 package com.unascribed.partyflow.data;
 
 import java.sql.SQLException;
+import java.util.concurrent.Semaphore;
 
 import com.lambdaworks.crypto.SCrypt;
 import com.unascribed.partyflow.Partyflow;
@@ -30,6 +31,15 @@ import com.google.common.math.IntMath;
 
 public class QUsers extends Queries {
 
+	private enum Unit { UNIT }
+	
+	// to avoid resource starvation with many simultaneous logins
+	// "a quarter of the available threads" is a rough estimate of how "good" the system we're running on is
+	// we're also going to be expending memory... this is only an estimate, and should probably be tunable!
+	private static final int MAX_CONCURRENT_LOGINS = Math.min(1, Runtime.getRuntime().availableProcessors()/4);
+	
+	private static final Semaphore semaphore = new Semaphore(MAX_CONCURRENT_LOGINS, true);
+	
 	private static String DUMMY_PASSWORD;
 
 	static {
@@ -51,7 +61,7 @@ public class QUsers extends Queries {
 	private static String scrypt(String passwordSha512) {
 		var cfg = Partyflow.config.security.scrypt;
 		return SCrypt.scrypt(passwordSha512,
-				IntMath.pow(2, cfg.cpu), cfg.memory, cfg.parallelization);
+				IntMath.pow(2, cfg.N), cfg.r, cfg.p);
 	}
 
 	public static void updateLastLogin(int userId) throws SQLException {
@@ -82,8 +92,13 @@ public class QUsers extends Queries {
 					} catch (InterruptedException e) {}
 				}
 			}
-			String p = (password == null ? DUMMY_PASSWORD : password);
-			return SCrypt.check(passwordSha512, p);
+			try {
+				semaphore.acquireUninterruptibly();
+				String p = (password == null ? DUMMY_PASSWORD : password);
+				return SCrypt.check(passwordSha512, p);
+			} finally {
+				semaphore.release();
+			}
 		}
 		
 	}

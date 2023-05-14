@@ -33,14 +33,13 @@ import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class ReleasesHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
-		Session s = SessionHelper.getSession(req);
+		var s = SessionHelper.get(req);
 		res.setStatus(HTTP_200_OK);
 		MustacheHandler.serveTemplate(req, res, "releases.hbs.html", new Object() {
 			List<FullRelease> releases = QReleases.getAll(s, 100, 1); // TODO pagination

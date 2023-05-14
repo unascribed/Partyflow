@@ -48,7 +48,6 @@ with customizable colors.
 - Can't set the release date on releases to the past (for backcatalog)
 - Can't override templates or static files
 - No translation support
-- If the server is stopped while a release concatenation is ongoing, the release will never finish processing
 
 ## The ugly 😦
 (Assorted notes about things needing improvement)

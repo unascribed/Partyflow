@@ -52,7 +52,6 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.Transcoder;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
 import com.unascribed.partyflow.util.ThreadPools;
 
 import com.google.common.base.MoreObjects;
@@ -86,8 +85,8 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 		String formatString = query.get("format");
 		TranscodeFormat format = TranscodeFormat.byPublicName(formatString)
 				.orElseThrow(() -> new UserVisibleException(HTTP_400_BAD_REQUEST, "Unrecognized format "+formatString));
-		Session s = SessionHelper.getSession(req);
-		String permissionQuery = (s == null ? "false" : "`releases`.`user_id` = ?");
+		var s = SessionHelper.get(req);
+		String permissionQuery = (s.isEmpty() ? "false" : "`releases`.`user_id` = ?");
 		try (Connection c = Partyflow.sql.getConnection()) {
 			String shortcutSource = null;
 			Shortcut shortcut = null;
@@ -119,7 +118,7 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 			} else {
 				try (PreparedStatement ps = c.prepareStatement(masterQuery.replace("{}", permissionQuery))) {
 					ps.setString(1, slug);
-					if (s != null) ps.setInt(2, s.userId());
+					if (s.isPresent()) ps.setInt(2, s.userId().getAsInt());
 					try (ResultSet rs = ps.executeQuery()) {
 						if (rs.first()) {
 							master = rs.getString("master");

@@ -19,22 +19,26 @@
 
 package com.unascribed.partyflow.logic;
 
+import static com.unascribed.partyflow.handler.util.SimpleHandler.HTTP_302_FOUND;
+
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.SQLException;
+import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.UUID;
+import java.util.function.Function;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.crypto.Mac;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.data.QSessions;
-import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.UserVisibleException;
+import com.unascribed.partyflow.logic.permission.PermissionNode;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
@@ -43,32 +47,98 @@ import com.google.common.io.ByteStreams;
 
 public class SessionHelper {
 	
-	private static final Object NOT_LOGGED_IN = new Object();
-
-	public record Session(UUID sessionId, int userId, String username, String displayName, UserRole role) {
-		public boolean hasPermission(String perm) {
-			if (role.admin()) return true;
-			return false;
+	public sealed interface BaseSession<T extends BaseSession<T>> permits Session, AssertedSession {
+		UserRole role();
+		
+		default boolean hasPermission(PermissionNode perm) {
+			return role().grants(perm);
 		}
+		
+		boolean isPresent();
+		default boolean isEmpty() { return !isPresent(); }
+
+		AssertedSession assertPresent() throws UserVisibleException;
+		default T assertPermission(PermissionNode perm) throws UserVisibleException {
+			if (!hasPermission(perm))
+				throw new UserVisibleException(399, "You don't have permission to do that.");
+			return (T)this;
+		}
+		AssertedSession assertCsrf(String csrf) throws UserVisibleException;
+	}
+	
+	public sealed interface Session extends BaseSession<Session> permits RealSession, GuestSession {
+		Optional<UUID> sessionId();
+		OptionalInt userId();
+		Optional<String> username();
+		Optional<String> displayName();
+
+		@Override
+		default AssertedSession assertPresent() throws UserVisibleException {
+			if (!isPresent())
+				throw new UserVisibleException(HTTP_302_FOUND, URLs.url("login?message=You must log in to do that."));
+			return new AssertedSession(sessionId().get(), userId().getAsInt(), username().get(), displayName().get(), role());
+		}
+		
+		@Override
+		default AssertedSession assertCsrf(String csrf) throws UserVisibleException {
+			if (!Partyflow.isCsrfTokenValid(this, csrf))
+				throw new UserVisibleException(399, "Invalid CSRF token");
+			return assertPresent();
+		}
+		
+		default <T> Optional<T> map(Function<Session, T> func) {
+			return isPresent() ? Optional.of(func.apply(this)) : Optional.empty();
+		}
+	}
+	
+	public record AssertedSession(UUID sessionId, int userId, String username, String displayName, UserRole role) implements BaseSession<AssertedSession> {
+
+		@Override
+		public AssertedSession assertCsrf(String csrf) throws UserVisibleException {
+			if (!Partyflow.isCsrfTokenValid(sessionId, csrf))
+				throw new UserVisibleException(399, "Invalid CSRF token");
+			return this;
+		}
+
+		@Override @Deprecated public boolean isPresent() { return true; }
+		@Override @Deprecated public AssertedSession assertPresent() { return this; }
+		
+	}
+	
+	public record RealSession(Optional<UUID> sessionId, OptionalInt userId, Optional<String> username, Optional<String> displayName, UserRole role)
+			implements Session {
+		
+		public RealSession(UUID sessionId, int userId, String username, String displayName, UserRole role) {
+			this(Optional.of(sessionId), OptionalInt.of(userId), Optional.of(username), Optional.of(displayName), role);
+		}
+		
+		@Override
+		public boolean isPresent() {
+			return true;
+		}
+	}
+	
+	public static final class GuestSession implements Session {
+		public static final GuestSession INSTANCE = new GuestSession();
+		
+		private GuestSession() {}
+		
+		@Override
+		public boolean isPresent() { return false; }
+
+		@Override public Optional<UUID> sessionId() { return Optional.empty(); }
+		@Override public OptionalInt userId() { return OptionalInt.empty(); }
+		@Override public Optional<String> username() { return Optional.empty(); }
+		@Override public Optional<String> displayName() { return Optional.empty(); }
+		@Override public UserRole role() { return UserRole.GUEST; }
+
 	}
 
 	private static final Splitter SEMICOLON_SPLITTER = Splitter.on(';').trimResults();
 	
-	public static @Nonnull Session getSessionOrThrow(HttpServletRequest req, String csrf) throws SQLException, UserVisibleException {
-		var s = getSession(req);
-		if (csrf != null) Partyflow.validateCsrf(s, csrf);
-		if (s == null || s.role() == UserRole.GUEST)
-			throw new UserVisibleException(SimpleHandler.HTTP_302_FOUND, URLs.url("login?message=You must log in to do that."));
-		return s;
-	}
-	
-	public static @Nullable Session getSession(HttpServletRequest req) throws SQLException {
-		Object cache = req.getAttribute("partyflow.sessionCache");
-		if (cache == NOT_LOGGED_IN) {
-			return null;
-		} else if (cache instanceof Session) {
-			return (Session)cache;
-		}
+	public static @Nonnull Session get(HttpServletRequest req) throws SQLException {
+		if (req.getAttribute("partyflow.sessionCache") instanceof Session cache)
+			return cache;
 		String token = "";
 		if (req.getAttribute("partyflow.isApi") == Boolean.TRUE) {
 			var auth = req.getHeader("Authorization");
@@ -101,16 +171,14 @@ public class SessionHelper {
 					byte[] hmac = hmac(sessionId);
 					if (MessageDigest.isEqual(hmac, theirHmac)) {
 						Session s = QSessions.get(sessionId);
-						if (s != null) {
-							req.setAttribute("partyflow.sessionCache", s);
-							return s;
-						}
+						req.setAttribute("partyflow.sessionCache", s);
+						return s;
 					}
 				}
 			} catch (IllegalArgumentException e) {}
 		}
-		req.setAttribute("partyflow.sessionCache", NOT_LOGGED_IN);
-		return null;
+		req.setAttribute("partyflow.sessionCache", GuestSession.INSTANCE);
+		return GuestSession.INSTANCE;
 	}
 
 	private static byte[] hmac(UUID sessionId) {

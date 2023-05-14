@@ -46,8 +46,6 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
-
 import com.google.common.base.Strings;
 
 public class EditReleaseHandler extends SimpleHandler implements GetOrHead, MultipartPost {
@@ -63,7 +61,9 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 	@Override
 	public void multipartPost(String slugs, HttpServletRequest req, HttpServletResponse res, MultipartData data)
 			throws IOException, ServletException, SQLException {
-		Session s = SessionHelper.getSessionOrThrow(req, data.getPartAsString("csrf", 64));
+		var s = SessionHelper.get(req)
+				.assertPresent()
+				.assertCsrf(data.getPartAsString("csrf", 64));
 		
 		Part art = data.getPart("art");
 		String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));

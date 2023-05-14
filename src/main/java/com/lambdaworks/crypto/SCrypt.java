@@ -47,7 +47,7 @@ import com.google.common.io.BaseEncoding;
 public class SCrypt {
 	private static final SecureRandom RAND = new SecureRandom();
 	private static final BaseEncoding BASE64 = BaseEncoding.base64();
-
+	
 	/**
 	 * Hash the supplied plaintext password and generate output in the format described
 	 * in {@link SCrypt}.
@@ -118,10 +118,8 @@ public class SCrypt {
 				result |= derived0[i] ^ derived1[i];
 			}
 			return result == 0;
-		} catch (UnsupportedEncodingException e) {
-			throw new IllegalStateException("JVM doesn't support UTF-8?");
-		} catch (GeneralSecurityException e) {
-			throw new IllegalStateException("JVM doesn't support SHA1PRNG or HMAC_SHA256?");
+		} catch (UnsupportedEncodingException | GeneralSecurityException e) {
+			throw new AssertionError(e);
 		}
 	}
 

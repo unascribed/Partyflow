@@ -36,8 +36,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.UserRole;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
-
+import com.unascribed.partyflow.logic.permission.Permission;
 import com.google.common.base.Function;
 
 public class MustacheHandler extends SimpleHandler implements GetOrHead {
@@ -90,14 +89,14 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		}
 		Object[] arr = new Object[context.length+2];
 		arr[0] = globalContext;
-		Session session = SessionHelper.getSession(req);
-		UserRole role = session == null ? UserRole.GUEST : session.role();
+		var s = SessionHelper.get(req);
+		UserRole role = s.role();
 		arr[1] = new Object() {
-			boolean loggedIn = session != null;
-			boolean admin = role.admin();
-			String username = session == null ? null : session.username();
-			String displayName = session == null ? null : session.displayName();
-			String csrf = session != null ? Partyflow.allocateCsrfToken(session) : null;
+			boolean loggedIn = s.isPresent();
+			boolean admin = role.grants(Permission.admin.administrate); // TODO
+			String username = s.username().orElse(null);
+			String displayName = s.displayName().orElse(null);
+			String csrf = s.map(Partyflow::allocateCsrfToken).orElse(null);
 		};
 		System.arraycopy(context, 0, arr, 2, context.length);
 		try {

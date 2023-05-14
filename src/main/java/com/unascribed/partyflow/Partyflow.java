@@ -47,6 +47,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -92,6 +93,7 @@ import com.unascribed.asyncsimplelog.AsyncSimpleLog;
 import com.unascribed.partyflow.config.Config;
 import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.config.Config.DatabaseSection.DatabaseDriver;
+import com.unascribed.partyflow.config.Config.SecuritySection.ScryptSection;
 import com.unascribed.partyflow.config.Config.StorageSection.StorageDriver;
 import com.unascribed.partyflow.handler.FilesHandler;
 import com.unascribed.partyflow.handler.api.v1.LoginApi;
@@ -120,7 +122,6 @@ import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.PartyflowErrorHandler;
 import com.unascribed.partyflow.handler.util.PathResolvingHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
-import com.unascribed.partyflow.handler.util.UserVisibleException;
 import com.unascribed.partyflow.logic.AACSupport;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.UserRole;
@@ -197,14 +198,18 @@ public class Partyflow {
 			}
 		} catch (FileNotFoundException e) {
 			log.error("partyflow-config.jkson does not exist. Cannot start.");
+			System.exit(1);
 			return;
 		} catch (IOException | DeserializationException e) {
 			log.error("Failed to load partyflow-config.jkson", e);
+			System.exit(1);
 			return;
 		} catch (SyntaxError e) {
 			log.error("Failed to load partyflow-config.jkson: syntax error {} in partyflow-config.jkson\n{}", e.getLineMessage().replaceFirst("^Errored ", ""), e.getMessage());
+			System.exit(1);
 			return;
 		}
+		if (config.security.scrypt == null) config.security.scrypt = new ScryptSection();
 		config.custom = unwrap(config.custom);
 		AsyncSimpleLog.setMinLogLevel(config.logger.level);
 		AsyncSimpleLog.setAnsi(config.logger.color);
@@ -222,6 +227,9 @@ public class Partyflow {
 				throw new AssertionError(e2);
 			}
 			log.debug("Expected bloom filter size: {} bytes", counter.getCount());
+			if (counter.getCount() > 2048) {
+				log.warn("The current value of expectedTraffic ({}) will result in a large Bloom filter ({}K)", config.database.expectedTraffic, counter.getCount()/1024);
+			}
 		}
 		
 		if (config.programs.runWineserver) {
@@ -270,18 +278,22 @@ public class Partyflow {
 					.count());
 		} catch (FileNotFoundException e) {
 			log.error("{} does not exist. Cannot start.", fname);
+			System.exit(1);
 			return;
 		} catch (IOException e) {
 			log.error("Failed to load {}", fname, e);
+			System.exit(1);
 			return;
 		} catch (SyntaxError e) {
 			log.error("Failed to load {}: syntax error {}\n{}", fname, e.getLineMessage().replaceFirst("^Errored ", ""), e.getMessage());
+			System.exit(1);
 			return;
 		}
 		try {
 			publicUri = new URI(config.http.publicUrl);
 		} catch (URISyntaxException e1) {
 			log.error("{} does not appear to be a valid URI", config.http.publicUrl);
+			System.exit(1);
 			return;
 		}
 		URLs.init();
@@ -324,8 +336,9 @@ public class Partyflow {
 							throw e;
 						}
 					}
-					if (dataVersion > 0 && ClassLoader.getSystemResource("sql/upgrade_to_"+dataVersion) == null) {
+					if (dataVersion > 0 && ClassLoader.getSystemResource("sql/upgrade_to_"+dataVersion+".sql") == null) {
 						log.error("Database version {} is not recognized by this version of Partyflow", dataVersion);
+						System.exit(1);
 						return;
 					}
 					while (true) {
@@ -349,6 +362,7 @@ public class Partyflow {
 			} else {
 				log.error("Failed to open database at {}", dbId, e);
 			}
+			System.exit(1);
 			return;
 		}
 		log.info("Opened database at {}", dbId);
@@ -365,6 +379,9 @@ public class Partyflow {
 			storageContainer = f.getName();
 		} else if (config.storage.driver == StorageDriver.s3) {
 			var c = config.storage.s3;
+			if (c.endpoint.contains("s3.wasabisys.com") && config.storage.pruneTime.compareTo(Duration.ofDays(90)) < 0) {
+				log.warn("Using Wasabi as a storage backend with a prune time shorter than 90 days (Wasabi's minimum retention time). This will cost you money!");
+			}
 			storage = ContextBuilder.newBuilder("s3")
 					.credentials(c.accessKeyId, c.secretAccessKey)
 					.modules(ImmutableList.of(new SLF4JLoggingModule()))
@@ -454,23 +471,35 @@ public class Partyflow {
 			} else {
 				log.error("Failed to start HTTP server", e);
 			}
+			System.exit(1);
 			return;
 		}
 		log.info("Listening on http://{}:{}", displayBind, config.http.port);
 		log.info("Ready after {}", sw);
 
-		try (Connection c = sql.getConnection()) {
-			try (Statement s = c.createStatement()) {
+		try (var c = sql.getConnection()) {
+			try (var s = c.createStatement()) {
 				try (ResultSet rs = s.executeQuery("SELECT 1 FROM users WHERE role = "+UserRole.ADMIN.id()+" LIMIT 1;")) {
 					if (!rs.first()) {
 						setupToken = randomString(32);
 						log.info("There are no admin users. Entering setup mode.\n"
 								+ "The secret token is {}", setupToken);
 					}
+				} catch (SQLException e) {
+					log.warn("Failed to check for the existence of admin users", e);
+				}
+				
+				try (var rs = s.executeQuery("SELECT release_id, title FROM releases WHERE concat_master IS NULL;")) {
+					while (rs.next()) {
+						log.info("Processing for release {} was interrupted, restarting", rs.getString("title"));
+						AddTrackHandler.regenerateAlbumFile(rs.getLong("release_id"));
+					}
+				} catch (SQLException e) {
+					log.warn("Failed to check for unprocessed releases", e);
 				}
 			}
 		} catch (SQLException e) {
-			log.warn("Failed to check for the existence of admin users", e);
+			log.warn("Failed to perform startup checks", e);
 		}
 
 		sched.scheduleWithFixedDelay(() -> {
@@ -577,19 +606,23 @@ public class Partyflow {
 	// misc utilities
 
 	public static String allocateCsrfToken(Session s) {
-		if (s == null) throw new IllegalArgumentException("Cannot allocate a CSRF token for a null session");
+		if (s.isEmpty()) throw new IllegalArgumentException("Cannot allocate a CSRF token for a guest session");
 		String token;
 		synchronized (secureRand) {
 			token = randomString(secureRand, 32);
 		}
-		csrfTokens.put(s.sessionId()+":"+token, System.currentTimeMillis()+(30*60*1000));
+		csrfTokens.put(s.sessionId().get()+":"+token, System.currentTimeMillis()+(30*60*1000));
 		return token;
 	}
 
 	public static boolean isCsrfTokenValid(Session s, String token) {
+		return isCsrfTokenValid(s.sessionId().orElse(null), token);
+	}
+
+	public static boolean isCsrfTokenValid(UUID sessionId, String token) {
 		if (token == null) return false;
-		if (s == null) return false;
-		Long l = csrfTokens.get(s.sessionId()+":"+token);
+		if (sessionId == null) return false;
+		Long l = csrfTokens.remove(sessionId+":"+token);
 		return l != null && l > System.currentTimeMillis();
 	}
 
@@ -649,11 +682,6 @@ public class Partyflow {
 		s = s.replace(")", "");
 		s = s.replace('"', '\'');
 		return s.strip().toLowerCase();
-	}
-
-	public static void validateCsrf(Session s, String csrf) throws UserVisibleException {
-		if (!isCsrfTokenValid(s, csrf))
-			throw new UserVisibleException(399, "Invalid CSRF token");
 	}
 
 }

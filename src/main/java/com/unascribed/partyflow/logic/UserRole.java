@@ -25,15 +25,24 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.unascribed.partyflow.logic.permission.Grant;
+import com.unascribed.partyflow.logic.permission.PermissionNode;
+
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
 public enum UserRole {
-	// TODO it'd be nice to have some kind of ACL instead of this hardcoded system
+	// TODO allow customization
 	GUEST(-1),
 	USER(0),
-	CREATOR(10),
-	MODERATOR(100),
-	ADMIN(255), // you can't have more permissions than "all"
+	CREATOR(10,
+		"release.create"
+	),
+	MODERATOR(100,
+		"moderate.bypass"
+	),
+	ADMIN(255, "*"), // 255 as you can't have more permissions than "all"
 	;
 	private static final Logger log = LoggerFactory.getLogger(UserRole.class);
 	
@@ -41,14 +50,27 @@ public enum UserRole {
 			.collect(ImmutableMap.toImmutableMap(UserRole::id, Function.identity()));
 	
 	private final int id;
-	UserRole(int id) { this.id = id; }
+	private final ImmutableSet<PermissionNode> grantedPermissions;
+	
+	UserRole(int id, String... grants) {
+		this.id = id;
+		if (grants.length == 0) {
+			this.grantedPermissions = ImmutableSet.of();
+		} else {
+			var tmpGrants = Arrays.stream(grants)
+					.map(Grant::of).toList();
+			this.grantedPermissions = PermissionNode.VALUES.stream()
+					.filter(p -> tmpGrants.stream().anyMatch(g -> g.grants(p)))
+					.collect(Sets.toImmutableEnumSet());
+		}
+	}
 	
 	public int id() { return id; }
-	
-	public boolean admin() {
-		return this == ADMIN;
-	}
 
+	public boolean grants(PermissionNode p) {
+		return grantedPermissions.contains(p);
+	}
+	
 	public static UserRole byId(int id) {
 		var res = BY_ID.get(id);
 		if (res == null) {

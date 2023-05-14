@@ -74,7 +74,7 @@ public class SimpleHandler {
     public static final int HTTP_305_USE_PROXY = 305;
     public static final int HTTP_307_TEMPORARY_REDIRECT = 307;
     public static final int HTTP_308_PERMANENT_REDIRECT = 308;
-
+    
     public static final int HTTP_400_BAD_REQUEST = 400;
     public static final int HTTP_401_UNAUTHORIZED = 401;
     public static final int HTTP_402_PAYMENT_REQUIRED = 402;
