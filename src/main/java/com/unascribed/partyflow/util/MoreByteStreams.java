@@ -35,5 +35,11 @@ public class MoreByteStreams {
 	public static String slurp(@WillClose InputStream in) throws IOException {
 		return new String(consume(in), Charsets.UTF_8);
 	}
+
+	public static byte[] consume(@WillClose InputStream in, long limit) throws IOException {
+		byte[] bys = consume(ByteStreams.limit(in, limit));
+		if (in.read() != -1) return null;
+		return bys;
+	}
 	
 }

@@ -42,7 +42,7 @@ public class PublishReleaseHandler extends SimpleHandler implements GetOrHead, U
 	@Override
 	public void getOrHead(String slug, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
-		res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+keepQuery(req)));
+		res.sendRedirect(URLs.relative("release/"+escPathSeg(slug)+keepQuery(req)));
 	}
 
 	@Override
@@ -53,9 +53,9 @@ public class PublishReleaseHandler extends SimpleHandler implements GetOrHead, U
 				.assertCsrf(params.get("csrf"));
 		
 		if (QReleases.publish(slug, s.userId(), true)) {
-			res.sendRedirect(URLs.url("release/"+escPathSeg(slug)));
+			res.sendRedirect(URLs.relative("release/"+escPathSeg(slug)));
 		} else {
-			res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+"?error=You're not allowed to do that"));
+			res.sendRedirect(URLs.relative("release/"+escPathSeg(slug)+"?error=You're not allowed to do that"));
 		}
 	}
 

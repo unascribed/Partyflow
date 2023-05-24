@@ -27,6 +27,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -54,6 +57,7 @@ import com.unascribed.partyflow.util.Commands;
 import com.unascribed.partyflow.util.ForkOutputStream;
 import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.partyflow.util.Processes;
+import com.unascribed.partyflow.util.Services;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.MoreObjects;
@@ -84,7 +88,7 @@ public class Transcoder {
 		WORK_DIR.mkdirs();
 		Blob masterBlob = null;
 		if (src != TESTTRACK_MASTER) {
-			masterBlob = Partyflow.storage.getBlob(Partyflow.storageContainer, src);
+			masterBlob = Storage.getBlob(src);
 			if (masterBlob == null) {
 				log.error("Master for {} {} is missing!", kind, slug);
 				return new TranscodeResult(null, 0, null);
@@ -97,7 +101,7 @@ public class Transcoder {
 		File artFile = null;
 		if (art != null && attachArt) {
 			artFile = File.createTempFile("transcode-", art.substring(art.lastIndexOf('.')), WORK_DIR);
-			Blob artBlob = Partyflow.storage.getBlob(Partyflow.storageContainer, art);
+			Blob artBlob = Storage.getBlob(art);
 			if (artBlob == null) {
 				log.warn("Art for {} {} is missing!", kind, slug);
 				attachArt = false;
@@ -248,16 +252,16 @@ public class Transcoder {
 				log.debug("{} of {} to {} completed", shortcut == null ? "Transcode" : "Remux", title, fmt);
 				String blobName;
 				do {
-					String rand = Partyflow.randomString(16);
+					String rand = Partyflow.randomString(Services.random, 16);
 					blobName = "transcodes/"+rand.substring(0, 3)+"/"+rand+"."+fmt.fileExtension();
-				} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
-				Blob transBlob = Partyflow.storage.blobBuilder(blobName)
+				} while (Storage.blobExists(blobName));
+				Blob transBlob = Storage.blobBuilder(blobName)
 						.payload(tmpFile)
 						.contentType(fmt.mimeType())
 						.contentDisposition(fmt.usage() == Usage.DOWNLOAD ? "attachment; filename="+filenameEncoded+"; filename*=utf-8''"+filenameEncoded : "inline")
 						.cacheControl(published ? "public, immutable" : "private")
 						.build();
-				Partyflow.storage.putBlob(Partyflow.storageContainer, transBlob, new PutOptions().multipart().setBlobAccess(BlobAccess.PUBLIC_READ));
+				Storage.putBlob(transBlob, new PutOptions().multipart().setBlobAccess(BlobAccess.PUBLIC_READ));
 				return new TranscodeResult(blobName, tmpFile.length(), filename);
 			} else {
 				return new TranscodeResult(null, 0, filename);
@@ -292,6 +296,30 @@ public class Transcoder {
 
 	public static String encodeFilename(String str) {
 		return UrlEscapers.urlFragmentEscaper().escape(str).replace(";", "%3B");
+	}
+	
+	public static void cleanup() {
+		try (var c = Partyflow.sql.getConnection()) {
+			try (var ps = c.prepareStatement("SELECT `transcode_id`, `file` FROM `transcodes` WHERE `last_downloaded` <= ? AND `master` != '__testtrack';");
+					var ps2 = c.prepareStatement("DELETE FROM `transcodes` WHERE `transcode_id` = ?;")) {
+				ps.setTimestamp(1, new Timestamp(Instant.now().minus(Partyflow.config.storage.pruneTime).toEpochMilli()));
+				try (var rs = ps.executeQuery()) {
+					int removed = 0;
+					while (rs.next()) {
+						ps2.setLong(1, rs.getLong("transcode_id"));
+						if (ps2.executeUpdate() > 0) {
+							Storage.removeBlob(rs.getString("file"));
+							removed++;
+						}
+					}
+					if (removed > 0) {
+						log.debug("Pruned {} old transcode{}", removed, removed == 1 ? "" : "s");
+					}
+				}
+			}
+		} catch (SQLException e) {
+			log.warn("Failed to prune old transcodes", e);
+		}
 	}
 
 }

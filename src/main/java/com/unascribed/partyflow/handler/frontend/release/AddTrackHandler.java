@@ -57,13 +57,14 @@ import com.unascribed.partyflow.handler.util.UserVisibleException;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.Storage;
 import com.unascribed.partyflow.logic.Transcoder;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.permission.Permission;
 import com.unascribed.partyflow.util.Commands;
 import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.partyflow.util.Processes;
-import com.unascribed.partyflow.util.ThreadPools;
+import com.unascribed.partyflow.util.Services;
 
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
@@ -109,7 +110,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 								String title = rs.getString("title");
 								String subtitle = rs.getString("subtitle");
 								boolean published = rs.getBoolean("published");
-								String art = URLs.resolveArt(rs.getString("art"));
+								String art = URLs.art(rs.getString("art"));
 								String error = query.get("error");
 							};
 						});
@@ -159,7 +160,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 				record TrackData(String title, int trackNumber, String blobName, long duration, double loudness, double peak, String lyrics) {}
 				List<Future<TrackData>> futures = new ArrayList<>();
 				for (Part master : masters) {
-					futures.add(ThreadPools.TRANSCODE.submit(() -> {
+					futures.add(Services.transcodePool.submit(() -> {
 						File tmpFile = File.createTempFile("transcode-", ".flac", WORK_DIR);
 						try {
 							log.debug("Processing master {}...", master.getSubmittedFileName());
@@ -206,22 +207,22 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 									.orElse(0D);
 							String blobName;
 							do {
-								String rand = Partyflow.randomString(16);
+								String rand = Partyflow.randomString(Services.random, 16);
 								blobName = "masters/"+rand.substring(0, 3)+"/"+rand+".flac";
-							} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
+							} while (Storage.blobExists(blobName));
 							String sfm = master.getSubmittedFileName();
 							if (sfm.contains(".")) {
 								sfm = sfm.substring(0, sfm.lastIndexOf('.'))+".flac";
 							}
 							String filename = Transcoder.encodeFilename(sfm);
-							Blob blob = Partyflow.storage.blobBuilder(blobName)
+							Blob blob = Storage.blobBuilder(blobName)
 									.payload(tmpFile)
 									.cacheControl("private")
 									.contentLength(tmpFile.length())
 									.contentDisposition("attachment; filename="+filename+"; filename*=utf-8''"+filename)
 									.contentType("audio/flac")
 									.build();
-							Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
+							Storage.putBlob(blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
 							String titleFromFilename = sfm.contains(".") ? sfm.substring(0, sfm.lastIndexOf('.')) : sfm;
 							Process probeIn = Commands.ffprobe("-v", "error", "-print_format", "flat", "-show_format", "-show_streams", "-").start();
 							try (var in = master.getInputStream();
@@ -345,9 +346,9 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 			throw new ServletException(e);
 		}
 		if (masters.size() == 1) {
-			res.sendRedirect(URLs.url("track/"+escPathSeg(lastSlug)));
+			res.sendRedirect(URLs.relative("track/"+escPathSeg(lastSlug)));
 		} else {
-			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)));
+			res.sendRedirect(URLs.relative("release/"+escPathSeg(slugs)));
 		}
 	}
 	
@@ -360,7 +361,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 	}
 	
 	public static void regenerateAlbumFile(long releaseId) {
-		ThreadPools.GENERIC.execute(() -> {
+		Services.genericPool.execute(() -> {
 			List<File> tmpFiles = new ArrayList<>();
 			try (Connection c = Partyflow.sql.getConnection()) {
 				List<String> concatLines = new ArrayList<>();
@@ -393,7 +394,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 				for (String m : masters) {
 					File tmpFile = File.createTempFile("concat-", ".flac", WORK_DIR);
 					tmpFiles.add(tmpFile);
-					try (var p = Partyflow.storage.getBlob(Partyflow.storageContainer, m).getPayload();
+					try (var p = Storage.getBlob(m).getPayload();
 							var in = p.openStream();
 							var out = new FileOutputStream(tmpFile)) {
 						ByteStreams.copy(in, out);
@@ -429,17 +430,17 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 						.orElse(0D);
 				String blobName;
 				do {
-					String rand = Partyflow.randomString(16);
+					String rand = Partyflow.randomString(Services.random, 16);
 					blobName = "concats/"+rand.substring(0, 3)+"/"+rand+".flac";
-				} while (Partyflow.storage.blobExists(Partyflow.storageContainer, blobName));
-				Blob blob = Partyflow.storage.blobBuilder(blobName)
+				} while (Storage.blobExists(blobName));
+				Blob blob = Storage.blobBuilder(blobName)
 						.payload(outFile)
 						.cacheControl("private")
 						.contentLength(outFile.length())
 						.contentDisposition("attachment")
 						.contentType("audio/flac")
 						.build();
-				Partyflow.storage.putBlob(Partyflow.storageContainer, blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
+				Storage.putBlob(blob, new PutOptions().multipart().setBlobAccess(BlobAccess.PRIVATE));
 				updateConcatMaster(c, releaseId, loudness, peak, blobName);
 			} catch (Throwable e) {
 				log.warn("Failed to regenerate album file for release ID {}", releaseId, e);
@@ -476,7 +477,7 @@ public class AddTrackHandler extends SimpleHandler implements GetOrHead, Multipa
 				log.debug("Processed concatenation successfully.\nAlbum loudness: {}LUFS, album peak: {}dBFS", loudness, peak);
 				if (success && oldBlob != null) {
 					log.trace("Deleting {}", oldBlob);
-					Partyflow.storage.removeBlob(Partyflow.storageContainer, oldBlob);
+					Storage.removeBlob(oldBlob);
 				}
 			} finally {
 				if (!committed) {

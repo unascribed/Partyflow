@@ -55,7 +55,7 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 	@Override
 	public void getOrHead(String slug, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
-		res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+keepQuery(req)));
+		res.sendRedirect(URLs.relative("release/"+escPathSeg(slug)+keepQuery(req)));
 	}
 	
 	@Override
@@ -78,19 +78,19 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 			description = sanitizeHtml(Strings.nullToEmpty(data.getPartAsString("description", 65536)));
 		}
 		if (title.trim().isEmpty()) {
-			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=Title is required"));
+			res.sendRedirect(URLs.relative("release/"+escPathSeg(slugs)+"?error=Title is required"));
 			return;
 		}
 		if (title.length() > 255) {
-			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=Title is too long"));
+			res.sendRedirect(URLs.relative("release/"+escPathSeg(slugs)+"?error=Title is too long"));
 			return;
 		}
 		if (subtitle.length() > 255) {
-			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=Subtitle is too long"));
+			res.sendRedirect(URLs.relative("release/"+escPathSeg(slugs)+"?error=Subtitle is too long"));
 			return;
 		}
 		if (description.length() > 16384) {
-			res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=Description is too long"));
+			res.sendRedirect(URLs.relative("release/"+escPathSeg(slugs)+"?error=Description is too long"));
 			return;
 		}
 		String artPath = null;
@@ -98,7 +98,7 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 			try {
 				artPath = CreateReleaseHandler.processArt(art);
 			} catch (IllegalArgumentException e) {
-				res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8")));
+				res.sendRedirect(URLs.relative("release/"+escPathSeg(slugs)+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8")));
 				return;
 			}
 		}
@@ -113,7 +113,7 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 					if (rs.first()) {
 						published = rs.getBoolean("published");
 					} else {
-						res.sendRedirect(URLs.url("release/"+escPathSeg(slugs)+"?error=You're not allowed to do that"));
+						res.sendRedirect(URLs.relative("release/"+escPathSeg(slugs)+"?error=You're not allowed to do that"));
 						return;
 					}
 				}
@@ -142,9 +142,9 @@ public class EditReleaseHandler extends SimpleHandler implements GetOrHead, Mult
 				ps.executeUpdate();
 			}
 			if (data.getPart("addTrack") != null) {
-				res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+"/add-track"));
+				res.sendRedirect(URLs.relative("release/"+escPathSeg(slug)+"/add-track"));
 			} else {
-				res.sendRedirect(URLs.url("release/"+escPathSeg(slug)));
+				res.sendRedirect(URLs.relative("release/"+escPathSeg(slug)));
 			}
 		} catch (SQLException e) {
 			throw new ServletException(e);

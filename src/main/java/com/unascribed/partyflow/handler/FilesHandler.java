@@ -36,6 +36,7 @@ import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Options;
+import com.unascribed.partyflow.logic.Storage;
 import com.unascribed.partyflow.logic.URLs;
 
 public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
@@ -50,13 +51,13 @@ public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException {
 		if (!Partyflow.config.storage.publicUrlPattern.startsWith("files/")
-				&& !Partyflow.config.storage.publicUrlPattern.startsWith(URLs.url("files/"))) {
+				&& !Partyflow.config.storage.publicUrlPattern.startsWith(URLs.relative("files/"))) {
 			res.setStatus(HTTP_307_TEMPORARY_REDIRECT);
 			res.setHeader("Location", Partyflow.config.storage.publicUrlPattern.replace("{}", path));
 			return;
 		}
 		try {
-			BlobAccess ba = Partyflow.storage.getBlobAccess(Partyflow.storageContainer, path);
+			BlobAccess ba = Storage.getBlobAccess(path);
 			if (ba == BlobAccess.PRIVATE) {
 				res.sendError(HTTP_404_NOT_FOUND);
 				return;
@@ -70,7 +71,7 @@ public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 		List<InclusiveByteRange> ranges = null;
 		Long fullLen = null;
 		if (rangesHdr != null && rangesHdr.hasMoreElements()) {
-			fullLen = Partyflow.storage.blobMetadata(Partyflow.storageContainer, path).getSize();
+			fullLen = Storage.blobMetadata(path).getSize();
 			if (fullLen != null) {
 				ranges = InclusiveByteRange.satisfiableRanges(rangesHdr, fullLen);
 				if (ranges == null || ranges.isEmpty()) {
@@ -89,7 +90,7 @@ public class FilesHandler extends SimpleHandler implements GetOrHead, Options {
 				opt.range(r.getFirst(), r.getLast());
 			}
 		}
-		Blob b = Partyflow.storage.getBlob(Partyflow.storageContainer, path, opt);
+		Blob b = Storage.getBlob(path, opt);
 		if (b != null) {
 			res.setHeader("Cache-Control", "public, immutable");
 			String etag = b.getMetadata().getETag();

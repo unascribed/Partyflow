@@ -28,14 +28,14 @@ import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.util.Commands;
 import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.partyflow.util.Processes;
-import com.unascribed.partyflow.util.ThreadPools;
+import com.unascribed.partyflow.util.Services;
 
 public class AACSupport {
 	
 	private static final Logger log = LoggerFactory.getLogger(AACSupport.class);
 
 	public static void test() {
-		ThreadPools.GENERIC.execute(() -> {
+		Services.genericPool.execute(() -> {
 			if ("qaac".equals(Partyflow.config.formats.aacMode)) {
 				testAltcmd(0, "qaac", "--check");
 			} else if ("fdkaac".equals(Partyflow.config.formats.aacMode)) {

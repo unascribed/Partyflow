@@ -26,7 +26,7 @@ import org.eclipse.jetty.server.MultiPartFormInputStream;
 
 import jakarta.servlet.http.Part;
 
-import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.util.MoreByteStreams;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
@@ -56,7 +56,7 @@ public class MultipartData {
 	public String getPartAsString(String name, int limit) throws IOException {
 		Part part = getPart(name);
 		if (part == null) return null;
-		return new String(Partyflow.readWithLimit(part.getInputStream(), limit), Charsets.UTF_8);
+		return new String(MoreByteStreams.consume(part.getInputStream(), limit), Charsets.UTF_8);
 	}
 
 }

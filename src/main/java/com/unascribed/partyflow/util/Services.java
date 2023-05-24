@@ -19,24 +19,41 @@
 
 package com.unascribed.partyflow.util;
 
+import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.random.RandomGenerator;
+import java.util.random.RandomGenerator.LeapableGenerator;
 
+import com.google.gson.Gson;
+import com.overzealous.remark.Remark;
+import com.overzealous.remark.RemarkOptions;
 import com.unascribed.partyflow.Partyflow;
 
-public class ThreadPools {
+/**
+ * Globally shared configured singletons.
+ */
+public class Services {
 
-	public static final ExecutorService GENERIC;
-	public static final ExecutorService TRANSCODE;
+	public static final Gson gson = new Gson();
+	public static final Remark remark = new Remark(RemarkOptions.github());
+
+	public static final ExecutorService genericPool;
+	public static final ExecutorService transcodePool;
+	
+	public static final RandomGenerator random = new ThreadSafeRandomFacade(LeapableGenerator.of("Xoroshiro128PlusPlus"));
+	public static final RandomGenerator secureRandom = new SecureRandom();
+	
 	
 	static {
 		int nproc = Runtime.getRuntime().availableProcessors();
-		GENERIC = Executors.newFixedThreadPool(nproc, namedFactory("Generic pool thread"));
+		genericPool = Executors.newFixedThreadPool(nproc, namedFactory("Generic pool thread"));
 		int maxTranscodes = Partyflow.config.programs.maxTranscodes;
 		if (maxTranscodes == 0) maxTranscodes = nproc;
-		TRANSCODE = Executors.newFixedThreadPool(maxTranscodes, namedFactory("Transcode pool thread"));
+		transcodePool = Executors.newFixedThreadPool(maxTranscodes, namedFactory("Transcode pool thread"));
 	}
 
 	private static ThreadFactory namedFactory(String name) {
@@ -47,5 +64,7 @@ public class ThreadPools {
 			return t;
 		};
 	}
-	
+
+	public static final ScheduledExecutorService cron = Executors.newSingleThreadScheduledExecutor();
+
 }

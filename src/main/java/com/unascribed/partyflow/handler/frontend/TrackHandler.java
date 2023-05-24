@@ -44,10 +44,8 @@ import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.overzealous.remark.Remark;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.handler.frontend.release.AddTrackHandler;
@@ -57,7 +55,9 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedOrMultipartPost;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.Storage;
 import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.util.Services;
 import com.unascribed.partyflow.data.QGeneric;
 
 import com.google.common.base.Strings;
@@ -66,11 +66,8 @@ import com.google.common.io.ByteStreams;
 public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncodedOrMultipartPost {
 
 	private static final Logger log = LoggerFactory.getLogger(TrackHandler.class);
-	private static final Gson gson = new Gson();
 
 	private static final Pattern PATH_PATTERN = Pattern.compile("^([^/]+)(/delete|/edit|/master)?$");
-
-	private final Remark remark = new Remark(com.overzealous.remark.Options.github());
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
@@ -129,15 +126,15 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 								String subtitle = rs.getString("tracks.subtitle");
 								String slug = trackSlug;
 								boolean editable = _editable;
-								String art = URLs.resolveArt(_art);
+								String art = URLs.art(_art);
 								String lyrics = rs.getString("lyrics");
 								String description = desc;
-								String descriptionMd = remark.convert(desc);
+								String descriptionMd = Services.remark.convert(desc);
 								String error = query.get("error");
 								double loudness = rs.getInt("tracks.loudness")/10D;
 								double durationSecs = rs.getLong("duration")/48000D;
-								String tracks_json = gson.toJson(_tracksJson);
-								String stream_formats_json = gson.toJson(TranscodeFormat.enumerateAsJson(tf -> tf.usage().canStream()));
+								String tracks_json = Services.gson.toJson(_tracksJson);
+								String stream_formats_json = Services.gson.toJson(TranscodeFormat.enumerateAsJson(tf -> tf.usage().canStream()));
 							});
 						} else {
 							res.sendError(HTTP_404_NOT_FOUND);
@@ -162,7 +159,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						if (rs.first()) {
 							res.setStatus(HTTP_200_OK);
 							// masters have private access, so we can't just redirect
-							Blob blob = Partyflow.storage.getBlob(Partyflow.storageContainer, rs.getString("master"));
+							Blob blob = Storage.getBlob(rs.getString("master"));
 							Long l = blob.getMetadata().getSize();
 							ContentMetadata cm = blob.getMetadata().getContentMetadata();
 							if (l != null) {
@@ -215,10 +212,10 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 							String art = Strings.emptyToNull(rs.getString("tracks.art"));
 							if (art != null) {
 								log.trace("Deleting {}", art);
-								Partyflow.storage.removeBlob(Partyflow.storageContainer, art);
+								Storage.removeBlob(art);
 							}
 							log.trace("Deleting {}", rs.getString("master"));
-							Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("master"));
+							Storage.removeBlob(rs.getString("master"));
 							releaseSlug = rs.getString("releases.slug");
 						} else {
 							res.sendError(HTTP_404_NOT_FOUND);
@@ -231,7 +228,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					try (ResultSet rs = ps.executeQuery()) {
 						while (rs.next()) {
 							log.trace("Deleting {}", rs.getString("file"));
-							Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("file"));
+							Storage.removeBlob(rs.getString("file"));
 						}
 					}
 				}
@@ -244,7 +241,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					ps.executeUpdate();
 				}
 				AddTrackHandler.regenerateAlbumFile(releaseId);
-				res.sendRedirect(URLs.url("release/"+escPathSeg(releaseSlug)));
+				res.sendRedirect(URLs.relative("release/"+escPathSeg(releaseSlug)));
 			} catch (SQLException e) {
 				throw new ServletException(e);
 			}
@@ -279,19 +276,19 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 			}
 			String lyrics = data.getPartAsString("lyrics", 65536);
 			if (title.trim().isEmpty()) {
-				res.sendRedirect(URLs.url("track/"+escPathSeg(m.group(1))+"?error=Title is required"));
+				res.sendRedirect(URLs.relative("track/"+escPathSeg(m.group(1))+"?error=Title is required"));
 				return;
 			}
 			if (title.length() > 255) {
-				res.sendRedirect(URLs.url("track/"+escPathSeg(m.group(1))+"?error=Title is too long"));
+				res.sendRedirect(URLs.relative("track/"+escPathSeg(m.group(1))+"?error=Title is too long"));
 				return;
 			}
 			if (subtitle.length() > 255) {
-				res.sendRedirect(URLs.url("track/"+escPathSeg(m.group(1))+"?error=Subtitle is too long"));
+				res.sendRedirect(URLs.relative("track/"+escPathSeg(m.group(1))+"?error=Subtitle is too long"));
 				return;
 			}
 			if (description.length() > 16384) {
-				res.sendRedirect(URLs.url("track/"+escPathSeg(m.group(1))+"?error=Description is too long"));
+				res.sendRedirect(URLs.relative("track/"+escPathSeg(m.group(1))+"?error=Description is too long"));
 				return;
 			}
 			String artPath = null;
@@ -299,7 +296,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 				try {
 					artPath = CreateReleaseHandler.processArt(art);
 				} catch (IllegalArgumentException e) {
-					res.sendRedirect(URLs.url("track/"+escPathSeg(m.group(1))+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8")));
+					res.sendRedirect(URLs.relative("track/"+escPathSeg(m.group(1))+"?error="+URLEncoder.encode(e.getMessage(), "UTF-8")));
 					return;
 				}
 			}
@@ -315,7 +312,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 						if (rs.first()) {
 							published = rs.getBoolean("published");
 						} else {
-							res.sendRedirect(URLs.url("track/"+escPathSeg(m.group(1))+"?error=You're not allowed to do that"));
+							res.sendRedirect(URLs.relative("track/"+escPathSeg(m.group(1))+"?error=You're not allowed to do that"));
 							return;
 						}
 					}
@@ -342,7 +339,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 					ps.setString(i++, m.group(1));
 					ps.executeUpdate();
 				}
-				res.sendRedirect(URLs.url("track/"+escPathSeg(slug)));
+				res.sendRedirect(URLs.relative("track/"+escPathSeg(slug)));
 			} catch (SQLException e) {
 				throw new ServletException(e);
 			}

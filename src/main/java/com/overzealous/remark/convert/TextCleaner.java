@@ -16,7 +16,7 @@
 
 package com.overzealous.remark.convert;
 
-import com.overzealous.remark.Options;
+import com.overzealous.remark.RemarkOptions;
 import com.overzealous.remark.util.StringUtils;
 
 import org.jsoup.nodes.Element;
@@ -69,7 +69,7 @@ public class TextCleaner {
 	 * Create a new TextCleaner based on the configured options.
 	 * @param options Options that will affect what is cleaned.
 	 */
-	public TextCleaner(Options options) {
+	public TextCleaner(RemarkOptions options) {
 		setupReplacements(options);
 		setupEscapes(options);
 	}
@@ -79,7 +79,7 @@ public class TextCleaner {
 	 * @param options Options that will affect what is replaced.
 	 */
 	@SuppressWarnings({"OverlyLongMethod"})
-	private void setupReplacements(Options options) {
+	private void setupReplacements(RemarkOptions options) {
 		this.replacements = new HashMap<> ();
 
 		// build replacement regex
@@ -151,7 +151,7 @@ public class TextCleaner {
 	 * Configures the basic escapes based on the configured options.
 	 * @param options Options that will affect what is escaped.
 	 */
-	private void setupEscapes(Options options) {
+	private void setupEscapes(RemarkOptions options) {
 		escapes = new ArrayList<>();
 
 		// confusingly, this replaces single backslashes with double backslashes.

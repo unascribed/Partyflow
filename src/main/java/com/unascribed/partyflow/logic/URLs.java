@@ -32,11 +32,11 @@ public class URLs {
 	private static String absBlobPattern;
 
 	/**
-	 * Delegates to either {@link #absUrl(String)} or {@link #url(String)} depending on the value of
+	 * Delegates to either {@link #absolute(String)} or {@link #relative(String)} depending on the value of
 	 * {@code abs}. The path must not start with a /.
 	 */
 	public static String url(boolean abs, String path) {
-		return abs ? absUrl(path) : url(path);
+		return abs ? absolute(path) : relative(path);
 	}
 
 	/**
@@ -46,8 +46,8 @@ public class URLs {
 	 * <p>
 	 * For example, {@code api/v1/whoami} could become {@code https://example.com/partyflow/api/v1/whoami}.
 	 */
-	public static String absUrl(String path) {
-		return publicRoot()+path;
+	public static String absolute(String path) {
+		return absoluteRoot()+path;
 	}
 
 	/**
@@ -57,7 +57,7 @@ public class URLs {
 	 * <p>
 	 * For example, {@code api/v1/whoami} could become {@code /partyflow/api/v1/whoami}.
 	 */
-	public static String url(String path) {
+	public static String relative(String path) {
 		return root()+path;
 	}
 
@@ -65,7 +65,7 @@ public class URLs {
 	 * Returns the "public root" of the Partyflow application, based on the configuration. This will
 	 * be a fully qualified URL with a scheme and host.
 	 */
-	public static String publicRoot() {
+	public static String absoluteRoot() {
 		return Partyflow.config.http.publicUrl+root();
 	}
 
@@ -85,8 +85,8 @@ public class URLs {
 		} else if (Partyflow.config.storage.publicUrlPattern.startsWith("http://") || Partyflow.config.storage.publicUrlPattern.startsWith("https://")) {
 			blobPattern = absBlobPattern = Partyflow.config.storage.publicUrlPattern;
 		} else {
-			blobPattern = url(Partyflow.config.storage.publicUrlPattern);
-			absBlobPattern = absUrl(Partyflow.config.storage.publicUrlPattern);
+			blobPattern = relative(Partyflow.config.storage.publicUrlPattern);
+			absBlobPattern = absolute(Partyflow.config.storage.publicUrlPattern);
 		}
 	}
 
@@ -98,7 +98,7 @@ public class URLs {
 	 * {@code /files/art/foobar.jpeg}<br>
 	 * {@code https://s3.example.com/us-central-7/art/foobar.jpeg}
 	 */
-	public static String resolveBlob(String blob) {
+	public static String blob(String blob) {
 		return _resolveBlob(blob, false);
 	}
 
@@ -110,19 +110,19 @@ public class URLs {
 	 * {@code https://example.com/partyflow/files/art/foobar.jpeg}<br>
 	 * {@code https://s3.example.com/us-central-7/art/foobar.jpeg}
 	 */
-	public static String resolveBlobAbs(String blob) {
+	public static String absoluteBlob(String blob) {
 		return _resolveBlob(blob, true);
 	}
 
-	public static String _resolveBlob(String blob, boolean abs) {
+	private static String _resolveBlob(String blob, boolean abs) {
 		return (abs ? absBlobPattern : blobPattern).replace("{}", blob);
 	}
 
 	/**
 	 * Resolve a blob path, returning the path to the static default art if {@code art} is null.
-	 * @see #resolveBlob
+	 * @see #blob
 	 */
-	public static String resolveArt(@Nullable String art) {
+	public static String art(@Nullable String art) {
 		return _resolveArt(art, "", false);
 	}
 
@@ -130,17 +130,17 @@ public class URLs {
 	 * Resolve a blob path, returning the path to the static default art if {@code art} is null.
 	 * The blob will have "-thumb.webp" appended, to retrieve the thumbnail instead of the full
 	 * copy.
-	 * @see #resolveBlob
+	 * @see #blob
 	 */
-	public static String resolveArtThumb(@Nullable String art) {
+	public static String artThumb(@Nullable String art) {
 		return _resolveArt(art, "-thumb.webp", false);
 	}
 
 	/**
 	 * Resolve a blob path, returning the path to the static default art if {@code art} is null.
-	 * @see #resolveBlobAbs
+	 * @see #absoluteBlob
 	 */
-	public static String resolveArtAbs(@Nullable String art) {
+	public static String absoluteArt(@Nullable String art) {
 		return _resolveArt(art, "", true);
 	}
 
@@ -148,9 +148,9 @@ public class URLs {
 	 * Resolve a blob path, returning the path to the static default art if {@code art} is null.
 	 * The blob will have "-thumb.webp" appended, to retrieve the thumbnail instead of the full
 	 * copy.
-	 * @see #resolveBlobAbs
+	 * @see #absoluteBlob
 	 */
-	public static String resolveArtThumbAbs(@Nullable String art) {
+	public static String absoluteArtThumb(@Nullable String art) {
 		return _resolveArt(art, "-thumb.webp", true);
 	}
 
@@ -158,7 +158,7 @@ public class URLs {
 		if (art == null) {
 			return url(abs, "static/default_art.svg");
 		} else {
-			return resolveBlob(art+suffix);
+			return blob(art+suffix);
 		}
 	}
 

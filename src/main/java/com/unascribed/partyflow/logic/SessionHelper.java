@@ -24,7 +24,9 @@ import static com.unascribed.partyflow.handler.util.SimpleHandler.HTTP_302_FOUND
 import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.UUID;
@@ -32,6 +34,10 @@ import java.util.function.Function;
 
 import javax.annotation.Nonnull;
 import javax.crypto.Mac;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -46,6 +52,7 @@ import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
 
 public class SessionHelper {
+	private static final Logger log = LoggerFactory.getLogger(SessionHelper.class);
 	
 	public sealed interface BaseSession<T extends BaseSession<T>> permits Session, AssertedSession {
 		UserRole role();
@@ -75,13 +82,13 @@ public class SessionHelper {
 		@Override
 		default AssertedSession assertPresent() throws UserVisibleException {
 			if (!isPresent())
-				throw new UserVisibleException(HTTP_302_FOUND, URLs.url("login?message=You must log in to do that."));
+				throw new UserVisibleException(HTTP_302_FOUND, URLs.relative("login?message=You must log in to do that."));
 			return new AssertedSession(sessionId().get(), userId().getAsInt(), username().get(), displayName().get(), role());
 		}
 		
 		@Override
 		default AssertedSession assertCsrf(String csrf) throws UserVisibleException {
-			if (!Partyflow.isCsrfTokenValid(this, csrf))
+			if (!CSRF.validate(this, csrf))
 				throw new UserVisibleException(399, "Invalid CSRF token");
 			return assertPresent();
 		}
@@ -95,7 +102,7 @@ public class SessionHelper {
 
 		@Override
 		public AssertedSession assertCsrf(String csrf) throws UserVisibleException {
-			if (!Partyflow.isCsrfTokenValid(sessionId, csrf))
+			if (!CSRF.validate(sessionId, csrf))
 				throw new UserVisibleException(399, "Invalid CSRF token");
 			return this;
 		}
@@ -216,6 +223,19 @@ public class SessionHelper {
 	public static String buildCookie(String token, int days) {
 		String maxAge = days == 0 ? "" : "Max-Age="+(days*24*60*60)+";";
 		return getCookieName()+"="+token+";"+maxAge+getCookieOptions();
+	}
+	
+	public static void cleanup() {
+		try (Connection c = Partyflow.sql.getConnection()) {
+			try (Statement s = c.createStatement()) {
+				int deleted = s.executeUpdate("DELETE FROM sessions WHERE expires < NOW();");
+				if (deleted > 0) {
+					log.debug("Pruned {} expired sessions", deleted);
+				}
+			}
+		} catch (SQLException e) {
+			log.warn("Failed to prune expired sessions", e);
+		}
 	}
 
 }

@@ -51,7 +51,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
-import com.unascribed.partyflow.util.ThreadPools;
+import com.unascribed.partyflow.util.Services;
 
 public class StaticHandler extends SimpleHandler implements GetOrHead {
 
@@ -149,7 +149,7 @@ public class StaticHandler extends SimpleHandler implements GetOrHead {
 
 	private InputStream buildDevQuine() throws IOException {
 		var out = new PipedOutputStream();
-		ThreadPools.GENERIC.execute(() -> {
+		Services.genericPool.execute(() -> {
 			try (var zos = new ZipOutputStream(out)) {
 				var root = new File(".").toPath();
 				var ignores = Files.readAllLines(root.resolve(".gitignore")).stream()

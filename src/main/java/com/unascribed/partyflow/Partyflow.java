@@ -22,7 +22,6 @@ package com.unascribed.partyflow;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.BindException;
 import java.net.URI;
@@ -35,29 +34,19 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
 import java.time.Duration;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.Temporal;
-import java.time.temporal.TemporalUnit;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.random.RandomGenerator;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import javax.annotation.Detainted;
 import javax.annotation.Tainted;
-import javax.annotation.WillClose;
 import javax.crypto.spec.SecretKeySpec;
 
 import jakarta.servlet.ServletException;
@@ -123,19 +112,19 @@ import com.unascribed.partyflow.handler.util.PartyflowErrorHandler;
 import com.unascribed.partyflow.handler.util.PathResolvingHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.logic.AACSupport;
+import com.unascribed.partyflow.logic.CSRF;
+import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.Storage;
+import com.unascribed.partyflow.logic.Transcoder;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.UserRole;
-import com.unascribed.partyflow.logic.SessionHelper.Session;
 import com.unascribed.partyflow.util.Commands;
 import com.unascribed.partyflow.util.Dankson;
-import com.unascribed.partyflow.util.MoreByteStreams;
-import com.unascribed.random.RandomXoshiro256StarStar;
-
+import com.unascribed.partyflow.util.Services;
 import com.google.common.base.Charsets;
 import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Maps;
 import com.google.common.hash.BloomFilter;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
@@ -156,22 +145,9 @@ public class Partyflow {
 
 	public static Config config;
 	public static DataSource sql;
-	public static BlobStore storage;
-	public static String storageContainer;
 	public static String setupToken;
 	public static Key sessionSecret;
 	public static URI publicUri;
-
-	private static final ConcurrentMap<String, Long> csrfTokens = Maps.newConcurrentMap();
-
-	public static final ScheduledExecutorService sched = Executors.newSingleThreadScheduledExecutor();
-
-	private static final ThreadLocal<RandomXoshiro256StarStar> rand = ThreadLocal.withInitial(RandomXoshiro256StarStar::new);
-	private static final SecureRandom secureRand = new SecureRandom();
-	
-	public static RandomXoshiro256StarStar getRandom() {
-		return rand.get();
-	}
 
 	public static void main(String[] args) {
 		Stopwatch sw = Stopwatch.createStarted();
@@ -314,7 +290,9 @@ public class Partyflow {
 				c.pass = null;
 				dbId = "(mariadb)"+c.host+":"+c.port+"/"+c.db;
 			} else {
-				throw new IllegalArgumentException("Unknown database driver");
+				log.error("Unknown database driver");
+				System.exit(1);
+				return;
 			}
 			try (Connection c = sql.getConnection()) {
 				try (Statement s = c.createStatement()) {
@@ -367,6 +345,8 @@ public class Partyflow {
 		}
 		log.info("Opened database at {}", dbId);
 
+		BlobStore storage;
+		String storageContainer;
 		if (config.storage.driver == StorageDriver.fs) {
 			File f = new File(config.storage.fs.dir).getAbsoluteFile();
 			f.mkdirs();
@@ -389,7 +369,12 @@ public class Partyflow {
 					.build(BlobStoreContext.class)
 					.getBlobStore();
 			storageContainer = c.bucket;
+		} else {
+			log.error("Unknown storage driver");
+			System.exit(1);
+			return;
 		}
+		Storage.init(storage, storageContainer);
 		log.info("Prepared storage");
 
 		String majorJavaVer;
@@ -481,7 +466,7 @@ public class Partyflow {
 			try (var s = c.createStatement()) {
 				try (ResultSet rs = s.executeQuery("SELECT 1 FROM users WHERE role = "+UserRole.ADMIN.id()+" LIMIT 1;")) {
 					if (!rs.first()) {
-						setupToken = randomString(32);
+						setupToken = randomString(Services.secureRandom, 32);
 						log.info("There are no admin users. Entering setup mode.\n"
 								+ "The secret token is {}", setupToken);
 					}
@@ -502,55 +487,9 @@ public class Partyflow {
 			log.warn("Failed to perform startup checks", e);
 		}
 
-		sched.scheduleWithFixedDelay(() -> {
-			try (Connection c = sql.getConnection()) {
-				try (Statement s = c.createStatement()) {
-					int deleted = s.executeUpdate("DELETE FROM sessions WHERE expires < NOW();");
-					if (deleted > 0) {
-						log.debug("Pruned {} expired sessions", deleted);
-					}
-				}
-			} catch (SQLException e) {
-				log.warn("Failed to prune expired sessions", e);
-			}
-		}, 0, 1, TimeUnit.HOURS);
-		sched.scheduleWithFixedDelay(() -> {
-			Iterator<Long> i = csrfTokens.values().iterator();
-			long now = System.currentTimeMillis();
-			int removed = 0;
-			while (i.hasNext()) {
-				if (i.next() < now) {
-					i.remove();
-					removed++;
-				}
-			}
-			if (removed > 0) {
-				log.debug("Pruned {} expired CSRF token{}", removed, removed == 1 ? "" : "s");
-			}
-		}, 15, 15, TimeUnit.MINUTES);
-		sched.scheduleWithFixedDelay(() -> {
-			try (var c = sql.getConnection()) {
-				try (var ps = c.prepareStatement("SELECT `transcode_id`, `file` FROM `transcodes` WHERE `last_downloaded` <= ? AND `master` != '__testtrack';");
-						var ps2 = c.prepareStatement("DELETE FROM `transcodes` WHERE `transcode_id` = ?;")) {
-					ps.setTimestamp(1, new Timestamp(Instant.now().minus(config.storage.pruneTime).toEpochMilli()));
-					try (var rs = ps.executeQuery()) {
-						int removed = 0;
-						while (rs.next()) {
-							ps2.setLong(1, rs.getLong("transcode_id"));
-							if (ps2.executeUpdate() > 0) {
-								storage.removeBlob(storageContainer, rs.getString("file"));
-								removed++;
-							}
-						}
-						if (removed > 0) {
-							log.debug("Pruned {} old transcode{}", removed, removed == 1 ? "" : "s");
-						}
-					}
-				}
-			} catch (SQLException e) {
-				log.warn("Failed to prune old transcodes", e);
-			}
-		}, 0, 1, config.storage.pruneTime.toHours() <= 0 ? TimeUnit.MINUTES : TimeUnit.HOURS);
+		Services.cron.scheduleWithFixedDelay(SessionHelper::cleanup, 0, 1, TimeUnit.HOURS);
+		Services.cron.scheduleWithFixedDelay(CSRF::cleanup, 15, 15, TimeUnit.MINUTES);
+		Services.cron.scheduleWithFixedDelay(Transcoder::cleanup, 0, 1, config.storage.pruneTime.toHours() <= 0 ? TimeUnit.MINUTES : TimeUnit.HOURS);
 		
 		if (Boolean.getBoolean("partyflow.sqlShell")) {
 			try (Connection c = sql.getConnection()) {
@@ -605,40 +544,9 @@ public class Partyflow {
 
 	// misc utilities
 
-	public static String allocateCsrfToken(Session s) {
-		if (s.isEmpty()) throw new IllegalArgumentException("Cannot allocate a CSRF token for a guest session");
-		String token;
-		synchronized (secureRand) {
-			token = randomString(secureRand, 32);
-		}
-		csrfTokens.put(s.sessionId().get()+":"+token, System.currentTimeMillis()+(30*60*1000));
-		return token;
-	}
-
-	public static boolean isCsrfTokenValid(Session s, String token) {
-		return isCsrfTokenValid(s.sessionId().orElse(null), token);
-	}
-
-	public static boolean isCsrfTokenValid(UUID sessionId, String token) {
-		if (token == null) return false;
-		if (sessionId == null) return false;
-		Long l = csrfTokens.remove(sessionId+":"+token);
-		return l != null && l > System.currentTimeMillis();
-	}
-
-	public static byte[] readWithLimit(@WillClose InputStream in, long limit) throws IOException {
-		byte[] bys = MoreByteStreams.consume(ByteStreams.limit(in, limit));
-		if (in.read() != -1) return null;
-		return bys;
-	}
-
 	private static final String RANDOM_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
 
-	public static String randomString(int len) {
-		return randomString(getRandom(), len);
-	}
-
-	public static String randomString(Random rand, int len) {
+	public static String randomString(RandomGenerator rand, int len) {
 		StringBuilder sb = new StringBuilder(len);
 		for (int i = 0; i < len; i++) {
 			sb.append(RANDOM_CHARS.charAt(rand.nextInt(RANDOM_CHARS.length())));
@@ -648,30 +556,6 @@ public class Partyflow {
 
 	private static final Pattern ILLEGAL = Pattern.compile("[?/#&;\\\\=\\^\\[\\]%]+");
 	private static final Pattern SPACE = Pattern.compile("[\\p{Space}]+");
-
-	public static final TemporalUnit SAMPLES = new TemporalUnit() {
-		
-		@Override
-		public boolean isTimeBased() { return false; }
-		@Override
-		public boolean isDurationEstimated() { return false; }
-		@Override
-		public boolean isDateBased() { return false; }
-		@Override
-		public Duration getDuration() { return Duration.ofNanos(20833/* and a third */); }
-		
-		@Override
-		public long between(Temporal temporal1Inclusive, Temporal temporal2Exclusive) {
-			long nanos = temporal1Inclusive.until(temporal2Exclusive, ChronoUnit.NANOS);
-			return (nanos*3)/62500;
-		}
-		
-		@Override
-		@SuppressWarnings("unchecked") // operation is safe
-		public <R extends Temporal> R addTo(R temporal, long amount) {
-			return (R)temporal.plus((amount*62500)/3, ChronoUnit.NANOS);
-		}
-	};
 
 	public static @Detainted String sanitizeSlug(@Tainted String name) {
 		if ("__testtrack".equals(name)) return "___testtrack";

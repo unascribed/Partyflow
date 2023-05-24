@@ -16,7 +16,7 @@
 
 package com.overzealous.remark.convert;
 
-import com.overzealous.remark.Options;
+import com.overzealous.remark.RemarkOptions;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
@@ -180,7 +180,7 @@ public class InlineStyle extends AbstractNodeHandler {
 	 */
 	private Rules checkInword(Element node, DocumentConverter converter) {
 		Rules result = new Rules();
-		Options.InWordEmphasis iwe = converter.options.getInWordEmphasis();
+		RemarkOptions.InWordEmphasis iwe = converter.options.getInWordEmphasis();
 		if(!iwe.isEmphasisPreserved() || iwe.isAdditionalSpacingNeeded()) {
 			// peek behind for inline styling
 			Node n = node.previousSibling();

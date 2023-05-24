@@ -46,6 +46,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.UserVisibleException;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.Storage;
 import com.unascribed.partyflow.logic.URLs;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
@@ -124,7 +125,7 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 		}
 		long masterSize = masters.stream()
 				.unordered().parallel()
-				.map(blob -> Partyflow.storage.blobMetadata(Partyflow.storageContainer, blob))
+				.map(Storage::blobMetadata)
 				.filter(Objects::nonNull)
 				.map(BlobMetadata::getSize)
 				.filter(Objects::nonNull)
@@ -155,8 +156,8 @@ public class DownloadHandler extends SimpleHandler implements GetOrHead {
 			String kind = _kind;
 			String kinds = "release".equals(kind) ? "releases" : "track";
 			String slug = _slug;
-			String art = URLs.resolveArt(_art);
-			String download_url = URLs.url("transcode/"+("release".equals(kind) ? "release-zip" : "track")+"/"+slug);
+			String art = URLs.art(_art);
+			String download_url = URLs.relative("transcode/"+("release".equals(kind) ? "release-zip" : "track")+"/"+slug);
 			List<Object> other_formats = otherFormats.stream().map(munger).toList();
 			List<Object> suggested_formats = suggestedFormats.stream().map(munger).toList();
 		});

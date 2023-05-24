@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *	 http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,13 +27,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Writer;
 import java.net.URL;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * The class that manages converting HTML to Markdown.
  *
  * <p>It is recommended that you save this class if it is going to be reused for better performance.  This class
- * is thread-safe, but can only process a single document concurrently.</p>
+ * is thread-safe, by creating internal thread-local converter instances.</p>
  *
  * <p><strong>Usage:</strong></p>
  * 
@@ -60,17 +59,14 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class Remark {
 	private final Cleaner cleaner;
-	@SuppressWarnings({"FieldCanBeLocal", "UnusedDeclaration"})
-	private final Options options;
-	private final DocumentConverter converter;
-	private final ReentrantLock converterLock = new ReentrantLock();
+	private final ThreadLocal<DocumentConverter> converter;
 	private boolean cleanedHtmlEchoed = false;
 
 	/**
 	 * Creates a default, pure Markdown-compatible Remark instance.
 	 */
 	public Remark() {
-		this(Options.markdown());
+		this(RemarkOptions.markdown());
 	}
 
 	/**
@@ -78,20 +74,19 @@ public class Remark {
 	 *
 	 * @param options Specified options to use on this instance.  See the docs for the Options class for common options sets.
 	 */
-	public Remark(Options options) {
-		this.options = options.getCopy();
+	public Remark(RemarkOptions options) {
 		Safelist whitelist = Safelist.basicWithImages()
 									  .addTags("div",
-                                              "h1", "h2", "h3", "h4", "h5", "h6",
-                                              "table", "tbody", "td", "tfoot", "th", "thead", "tr",
-                                              "hr",
-                                              "span", "font")
+											  "h1", "h2", "h3", "h4", "h5", "h6",
+											  "table", "tbody", "td", "tfoot", "th", "thead", "tr",
+											  "hr",
+											  "span", "font")
 									  .addAttributes("th", "colspan", "align", "style")
 									  .addAttributes("td", "colspan", "align", "style")
 									  .addAttributes(":all", "title", "style");
-        if(options.preserveRelativeLinks) {
-            whitelist.preserveRelativeLinks(true);
-        }
+		if(options.preserveRelativeLinks) {
+			whitelist.preserveRelativeLinks(true);
+		}
 		if(options.abbreviations) {
 			whitelist.addTags("abbr", "acronym");
 		}
@@ -102,9 +97,9 @@ public class Remark {
 		}
 		for(final IgnoredHtmlElement el : options.getIgnoredHtmlElements()) {
 			whitelist.addTags(el.getTagName());
-            if(!el.getAttributes().isEmpty()) {
-                whitelist.addAttributes(el.getTagName(), el.getAttributes().toArray(new String[el.getAttributes().size()]));
-            }
+			if(!el.getAttributes().isEmpty()) {
+				whitelist.addAttributes(el.getTagName(), el.getAttributes().toArray(new String[el.getAttributes().size()]));
+			}
 		}
 		cleaner = new Cleaner(whitelist);
 
@@ -114,24 +109,13 @@ public class Remark {
 			options.getIgnoredHtmlElements().add(IgnoredHtmlElement.create("table"));
 		}
 
-		converter = new DocumentConverter(options);
-	}
-
-	/**
-	 * Provides access to the DocumentConverter for customization.
-	 *
-	 * @return the configured DocumentConverter.
-	 */
-	@SuppressWarnings({"UnusedDeclaration"})
-	public DocumentConverter getConverter() {
-		return converter;
+		converter = ThreadLocal.withInitial(() -> new DocumentConverter(options));
 	}
 
 	/**
 	 * Returns true if the cleaned HTML document is echoed to {@code System.out}.
 	 * @return true if the cleaned HTML document is echoed
 	 */
-	@SuppressWarnings({"UnusedDeclaration"})
 	public boolean isCleanedHtmlEchoed() {
 		return cleanedHtmlEchoed;
 	}
@@ -195,7 +179,6 @@ public class Remark {
 	 * @param writer Writer to receive the converted output
 	 * @return A Remark that writes to streams.
 	 */
-	@SuppressWarnings({"WeakerAccess"})
 	public synchronized Remark withWriter(Writer writer) {
 		if(writer == null) {
 			throw new NullPointerException("Writer cannot be null.");
@@ -218,7 +201,6 @@ public class Remark {
 	 * @param os OutputStream to receive the converted output
 	 * @return A Remark that writes to streams.
 	 */
-	@SuppressWarnings({"WeakerAccess"})
 	public synchronized Remark withOutputStream(OutputStream os) {
 		if(os == null) {
 			throw new NullPointerException("OutputStream cannot be null.");
@@ -260,7 +242,6 @@ public class Remark {
 	 * @throws IOException If an error occurs while loading the file.
 	 * @see org.jsoup.Jsoup#parse(File, String, String)
 	 */
-	@SuppressWarnings({"WeakerAccess", "SameParameterValue"})
 	public String convert(File file, String charset) throws IOException {
 		return convert(file, charset, "");
 	}
@@ -299,7 +280,6 @@ public class Remark {
 	 * @return Markdown text.
 	 * @see org.jsoup.Jsoup#parse(String, String)
 	 */
-	@SuppressWarnings({"WeakerAccess", "SameParameterValue"})
 	public String convert(String html, String baseUri) {
 		Document doc = Jsoup.parse(html, baseUri);
 		return convert(doc);
@@ -312,7 +292,6 @@ public class Remark {
 	 * @return Markdown text.
 	 * @see org.jsoup.Jsoup#parseBodyFragment(String, String)
 	 */
-	@SuppressWarnings({"UnusedDeclaration"})
 	public String convertFragment(String body) {
 		return convertFragment(body, "");
 	}
@@ -336,7 +315,6 @@ public class Remark {
 	 * @param doc Document to be processed
 	 * @return Markdown text.
 	 */
-	@SuppressWarnings({"WeakerAccess"})
 	public String convert(Document doc) {
 		// Note: all convert methods should end up going through this method!
 		return processConvert(doc, null, null);
@@ -357,17 +335,13 @@ public class Remark {
 			System.out.println();
 		}
 		String result = null;
-		converterLock.lock();
-		try {
-			if(writer != null) {
-				converter.convert(doc, writer);
-			} else if(os != null) {
-				converter.convert(doc, os);
-			} else {
-				result = converter.convert(doc);
-			}
-		} finally {
-			converterLock.unlock();
+		var converter = this.converter.get();
+		if (writer != null) {
+			converter.convert(doc, writer);
+		} else if (os != null) {
+			converter.convert(doc, os);
+		} else {
+			result = converter.convert(doc);
 		}
 		return result;
 	}

@@ -36,6 +36,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedPost;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.Storage;
 import com.unascribed.partyflow.logic.URLs;
 import com.google.common.base.Strings;
 
@@ -46,7 +47,7 @@ public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, Ur
 	@Override
 	public void getOrHead(String slug, HttpServletRequest req, HttpServletResponse res, boolean head)
 			throws IOException, ServletException, SQLException {
-		res.sendRedirect(URLs.url("release/"+escPathSeg(slug)+keepQuery(req)));
+		res.sendRedirect(URLs.relative("release/"+escPathSeg(slug)+keepQuery(req)));
 	}
 
 	@Override
@@ -68,12 +69,12 @@ public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, Ur
 						String art = Strings.emptyToNull(rs.getString("art"));
 						if (art != null) {
 							log.trace("Deleting {}", art);
-							Partyflow.storage.removeBlob(Partyflow.storageContainer, art);
+							Storage.removeBlob(art);
 						}
 						String concatMaster = Strings.emptyToNull(rs.getString("concat_master"));
 						if (concatMaster != null) {
 							log.trace("Deleting {}", concatMaster);
-							Partyflow.storage.removeBlob(Partyflow.storageContainer, concatMaster);
+							Storage.removeBlob(concatMaster);
 						}
 					} else {
 						res.sendError(HTTP_404_NOT_FOUND);
@@ -86,7 +87,7 @@ public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, Ur
 				try (ResultSet rs = ps.executeQuery()) {
 					while (rs.next()) {
 						log.trace("Deleting {}", rs.getString("file"));
-						Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("file"));
+						Storage.removeBlob(rs.getString("file"));
 					}
 				}
 			}
@@ -95,14 +96,14 @@ public class DeleteReleaseHandler extends SimpleHandler implements GetOrHead, Ur
 				try (ResultSet rs = ps.executeQuery()) {
 					while (rs.next()) {
 						log.trace("Deleting {}", rs.getString("master"));
-						Partyflow.storage.removeBlob(Partyflow.storageContainer, rs.getString("master"));
+						Storage.removeBlob(rs.getString("master"));
 					}
 				}
 			}
 			try (PreparedStatement ps = c.prepareStatement("DELETE FROM `transcodes` WHERE `release_id` = ?;")) {
 				ps.setLong(1, releaseId);
 				ps.executeUpdate();
-				res.sendRedirect(URLs.url("releases"));
+				res.sendRedirect(URLs.relative("releases"));
 			}
 			try (PreparedStatement ps = c.prepareStatement("DELETE FROM `tracks` WHERE `release_id` = ?;")) {
 				ps.setLong(1, releaseId);

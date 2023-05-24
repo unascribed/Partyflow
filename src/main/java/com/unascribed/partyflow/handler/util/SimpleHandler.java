@@ -41,7 +41,7 @@ import org.eclipse.jetty.server.MultiPartFormInputStream;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 
-import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.partyflow.util.Unchecked;
 
 import com.google.common.base.Charsets;
@@ -199,7 +199,7 @@ public class SimpleHandler {
 			if (req.getContentType().equals("application/x-www-form-urlencoded")) {
 				byte[] bys;
 				try {
-					bys = Partyflow.readWithLimit(req.getInputStream(), 8192);
+					bys = MoreByteStreams.consume(req.getInputStream(), 8192);
 				} finally {
 					req.getInputStream().close();
 				}

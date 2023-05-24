@@ -38,6 +38,7 @@ public abstract class AbstractNodeHandler implements NodeHandler {
 	 * @param node	  Node to handle
 	 * @param converter Parent converter for this object.
 	 */
+	@Override
 	public void handleTextNode(TextNode node, DocumentConverter converter) {
 		converter.output.write(converter.cleaner.clean(node));
 	}
@@ -50,12 +51,13 @@ public abstract class AbstractNodeHandler implements NodeHandler {
 	 * @param node	  Node to handle
 	 * @param converter Parent converter for this object.
 	 */
+	@Override
 	public void handleIgnoredHTMLElement(Element node, DocumentConverter converter) {
 		if(node.isBlock()) {
 			converter.output.writeBlock(node.toString());
 		} else {
 			// Note: because this is an inline element, we want to make sure it stays that way!
-			// this means turning off prettyPrinting, so that JSoup doesn't add unecessary spacing around
+			// this means turning off prettyPrinting, so that JSoup doesn't add unnecessary spacing around
 			// the child nodes.
 			Document doc = node.ownerDocument();
 			boolean oldPrettyPrint = doc.outputSettings().prettyPrint();

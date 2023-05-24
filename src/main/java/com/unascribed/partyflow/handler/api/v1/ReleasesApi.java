@@ -48,14 +48,14 @@ public class ReleasesApi extends ApiHandler {
 			page = 1;
 		}
 		if (limit == 0)
-			return new ReleasesResponse(List.of(), null, URLs.absUrl("api/v1/releases?page="+(page+1)+"&limit=0"));
+			return new ReleasesResponse(List.of(), null, URLs.absolute("api/v1/releases?page="+(page+1)+"&limit=0"));
 		try (var c = Queries.begin()) {
 			var li = QReleases.getAll(session, limit, page);
 			boolean more = li.size() == limit+1;
 			if (more) li = li.subList(0, li.size()-1);
 			return new ReleasesResponse(li.stream().map(r -> ReleaseResponse.from(r, null)).toList(),
-					page > 1 ? URLs.absUrl("api/v1/releases?page="+(page-1)+"&limit="+limit) : null,
-					more ? URLs.absUrl("api/v1/releases?page="+(page+1)+"&limit="+limit) : null);
+					page > 1 ? URLs.absolute("api/v1/releases?page="+(page-1)+"&limit="+limit) : null,
+					more ? URLs.absolute("api/v1/releases?page="+(page+1)+"&limit="+limit) : null);
 		}
 	}
 	

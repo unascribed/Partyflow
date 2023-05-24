@@ -59,9 +59,10 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.UserVisibleException;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.Storage;
 import com.unascribed.partyflow.logic.Transcoder;
 import com.unascribed.partyflow.logic.Transcoder.TranscodeResult;
-import com.unascribed.partyflow.util.ThreadPools;
+import com.unascribed.partyflow.util.Services;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.MoreObjects;
@@ -147,8 +148,8 @@ public class TranscodeReleaseZipHandler extends SimpleHandler implements GetOrHe
 							int trackNumber = rs.getInt("track_number");
 							TranscodeFindResult fr = QTranscodes.findExistingTranscode(c, true, "track", rs.getString("slug"), format, master);
 							if (fr instanceof FoundTranscode ft) {
-								futures.add(ThreadPools.GENERIC.submit(() -> {
-									BlobMetadata meta = Partyflow.storage.blobMetadata(Partyflow.storageContainer, ft.blob());
+								futures.add(Services.genericPool.submit(() -> {
+									BlobMetadata meta = Storage.blobMetadata(ft.blob());
 									String filename;
 									if (meta.getContentMetadata().getContentDisposition() != null) {
 										String disp = meta.getContentMetadata().getContentDisposition();
@@ -176,7 +177,7 @@ public class TranscodeReleaseZipHandler extends SimpleHandler implements GetOrHe
 									shortcutSource = null;
 									shortcut = null;
 								}
-								futures.add(ThreadPools.TRANSCODE.submit(() -> {
+								futures.add(Services.transcodePool.submit(() -> {
 									if (format.direct()) {
 										File tmp = File.createTempFile("releasezip-", ".dat", Transcoder.WORK_DIR);
 										tmpFiles.add(tmp);
@@ -237,7 +238,7 @@ public class TranscodeReleaseZipHandler extends SimpleHandler implements GetOrHe
 				int lastArtDot = releaseArt.lastIndexOf('.');
 				if (lastArtDot != -1) {
 					String artFname = "cover"+releaseArt.substring(lastArtDot);
-					Blob b = Partyflow.storage.getBlob(Partyflow.storageContainer, releaseArt);
+					Blob b = Storage.getBlob(releaseArt);
 					ZipEntry ze = new ZipEntry(artFname);
 					zos.putNextEntry(ze);
 					try (var p = b.getPayload(); var in = p.openStream()) {
@@ -250,7 +251,7 @@ public class TranscodeReleaseZipHandler extends SimpleHandler implements GetOrHe
 					ZipEntry ze = new ZipEntry(cr.tr().filename());
 					zos.putNextEntry(ze);
 					if (cr.directFile() == null) {
-						try (var p = Partyflow.storage.getBlob(Partyflow.storageContainer, cr.tr().blob()).getPayload();
+						try (var p = Storage.getBlob(cr.tr().blob()).getPayload();
 								var in = p.openStream()) {
 							in.transferTo(zos);
 						}

@@ -33,6 +33,7 @@ import com.github.mustachejava.MustacheNotFoundException;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.Version;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
+import com.unascribed.partyflow.logic.CSRF;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.UserRole;
@@ -47,7 +48,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			String version = Version.FULL;
 		};
 		String root = URLs.root();
-		String publicUrl = URLs.publicRoot();
+		String publicUrl = URLs.absoluteRoot();
 	};
 	private static final Pattern FILE_EXT_PATTERN = Pattern.compile("\\.[^.]+$");
 
@@ -96,7 +97,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			boolean admin = role.grants(Permission.admin.administrate); // TODO
 			String username = s.username().orElse(null);
 			String displayName = s.displayName().orElse(null);
-			String csrf = s.map(Partyflow::allocateCsrfToken).orElse(null);
+			String csrf = s.map(CSRF::allocate).orElse(null);
 		};
 		System.arraycopy(context, 0, arr, 2, context.length);
 		try {

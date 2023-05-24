@@ -16,7 +16,7 @@
 
 package com.overzealous.remark.convert;
 
-import com.overzealous.remark.Options;
+import com.overzealous.remark.RemarkOptions;
 import com.overzealous.remark.util.BlockWriter;
 import com.overzealous.remark.util.StringUtils;
 import org.jsoup.nodes.Element;
@@ -39,7 +39,7 @@ public class Codeblock extends AbstractNodeHandler {
 	 */
 	public void handleNode(NodeHandler parent, Element node, DocumentConverter converter) {
 		BlockWriter out;
-		Options.FencedCodeBlocks fenced = converter.options.getFencedCodeBlocks();
+		RemarkOptions.FencedCodeBlocks fenced = converter.options.getFencedCodeBlocks();
 		if(fenced.isEnabled()) {
 			String fence = StringUtils.multiply(fenced.getSeparatorCharacter(),
 													   converter.options.fencedCodeBlocksWidth);

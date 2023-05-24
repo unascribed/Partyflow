@@ -26,10 +26,10 @@ import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.config.TranscodeFormat.Shortcut;
 import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.logic.Storage;
 
 import com.google.common.base.Strings;
 
@@ -64,7 +64,7 @@ public class QTranscodes extends Queries {
 						}
 						return null;
 					} else {
-						if (Partyflow.storage.blobExists(Partyflow.storageContainer, rs.getString("transcodes.file"))) {
+						if (Storage.blobExists(rs.getString("transcodes.file"))) {
 							if (updateLastDownload) {
 								try (PreparedStatement ps2 = c.prepareStatement("UPDATE `transcodes` SET `last_downloaded` = NOW() WHERE `transcode_id` = ?;")) {
 									ps2.setInt(1, rs.getInt("transcode_id"));

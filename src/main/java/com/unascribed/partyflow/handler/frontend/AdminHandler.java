@@ -21,7 +21,6 @@ package com.unascribed.partyflow.handler.frontend;
 
 import java.io.IOException;
 import java.sql.SQLException;
-
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,12 +28,18 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.unascribed.partyflow.data.QMeta;
+import com.unascribed.partyflow.handler.util.MultipartData;
+import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Get;
+import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.permission.Permission;
+import com.unascribed.partyflow.util.Services;
 
-public class AdminHandler extends SimpleHandler implements Get {
+public class AdminHandler extends SimpleHandler implements Get, MultipartPost {
 
 	private static final Logger log = LoggerFactory.getLogger(AdminHandler.class);
 
@@ -45,7 +50,24 @@ public class AdminHandler extends SimpleHandler implements Get {
 				.assertPresent()
 				.assertPermission(Permission.admin.administrate);
 		
+		var desc = QMeta.getSiteDescription();
 		
+		res.setStatus(HTTP_200_OK);
+		MustacheHandler.serveTemplate(req, res, "admin.hbs.html", new Object() {
+			String description = desc;
+			String descriptionMd = Services.remark.convert(desc);
+		});
 	}
 
+	@Override
+	public void multipartPost(String path, HttpServletRequest req, HttpServletResponse res, MultipartData data)
+			throws IOException, ServletException, SQLException {
+		var session = SessionHelper.get(req)
+				.assertPresent()
+				.assertCsrf(data.getPartAsString("csrf", 64))
+				.assertPermission(Permission.release.create);
+		
+		res.sendRedirect(URLs.relative("admin"));
+	}
+	
 }

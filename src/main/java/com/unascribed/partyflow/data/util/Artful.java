@@ -25,7 +25,7 @@ public interface Artful {
 
 	String artId();
 
-	default String art() { return URLs.resolveArt(artId()); }
-	default String artThumb() { return URLs.resolveArtThumb(artId()); }
+	default String art() { return URLs.art(artId()); }
+	default String artThumb() { return URLs.artThumb(artId()); }
 	
 }

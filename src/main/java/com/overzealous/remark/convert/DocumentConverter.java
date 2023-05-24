@@ -17,7 +17,7 @@
 package com.overzealous.remark.convert;
 
 import com.overzealous.remark.IgnoredHtmlElement;
-import com.overzealous.remark.Options;
+import com.overzealous.remark.RemarkOptions;
 import com.overzealous.remark.util.BlockWriter;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -39,7 +39,7 @@ import java.util.regex.Pattern;
 public class DocumentConverter {
 
 	// These properties do not change for the life of this converter
-	final Options options;
+	final RemarkOptions options;
 	final TextCleaner cleaner;
 	private final Set<String> ignoredHtmlTags;
 	final Map<String,NodeHandler> blockNodes;
@@ -68,7 +68,7 @@ public class DocumentConverter {
 	 * Creates a DocumentConverted with the given options.
 	 * @param options Options for this converter.
 	 */
-	public DocumentConverter(Options options) {
+	public DocumentConverter(RemarkOptions options) {
 		// configure final properties
 		this.options = options;
 		cleaner = new TextCleaner(options);
@@ -118,7 +118,7 @@ public class DocumentConverter {
 	}
 
 	@SuppressWarnings({"UnusedDeclaration"})
-	public Options getOptions() {
+	public RemarkOptions getOptions() {
 		return options;
 	}
 

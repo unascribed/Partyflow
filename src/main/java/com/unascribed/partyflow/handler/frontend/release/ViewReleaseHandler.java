@@ -29,10 +29,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.overzealous.remark.Remark;
 import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QTracks;
@@ -42,14 +40,11 @@ import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.util.Services;
 
 public class ViewReleaseHandler extends SimpleHandler implements GetOrHead {
 
 	private static final Logger log = LoggerFactory.getLogger(ViewReleaseHandler.class);
-	private static final Gson gson = new Gson();
-	
-	private final Remark remark = new Remark(com.overzealous.remark.Options.github());
-	
 	private final String template;
 	
 	public ViewReleaseHandler(String template) {
@@ -86,7 +81,7 @@ public class ViewReleaseHandler extends SimpleHandler implements GetOrHead {
 				String desc = r.description();
 				MustacheHandler.serveTemplate(req, res, template, r, new Object() {
 					boolean editable = _editable;
-					String descriptionMd = remark.convert(desc);
+					String descriptionMd = Services.remark.convert(desc);
 					String error = query.get("error");
 					String albumArt = r.art();
 					String albumTitle = r.title();
@@ -95,8 +90,8 @@ public class ViewReleaseHandler extends SimpleHandler implements GetOrHead {
 					boolean has_tracks = !_tracks.isEmpty();
 					List<Object> download_formats = TranscodeFormat.enumerate(tf -> tf.usage().canDownload());
 					List<Object> stream_formats = TranscodeFormat.enumerate(tf -> tf.usage().canStream());
-					String stream_formats_json = gson.toJson(TranscodeFormat.enumerateAsJson(tf -> tf.usage().canStream()));
-					String tracks_json = gson.toJson(_tracksJson);
+					String stream_formats_json = Services.gson.toJson(TranscodeFormat.enumerateAsJson(tf -> tf.usage().canStream()));
+					String tracks_json = Services.gson.toJson(_tracksJson);
 					boolean doneProcessing = r.concatMaster() != null;
 				});
 			} else {

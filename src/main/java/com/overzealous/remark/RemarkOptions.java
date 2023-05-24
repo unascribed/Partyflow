@@ -34,7 +34,7 @@ import java.util.Set;
  *
  * @author Phil DeJarnett
  */
-public class Options implements Cloneable {
+public class RemarkOptions implements Cloneable {
 
 	/**
 	 * Provides settings to control how Tables are converted.
@@ -222,8 +222,8 @@ public class Options implements Cloneable {
 	 *
 	 * @return Options for original Markdown compatibility
 	 */
-	public static Options markdown() {
-		return new Options();
+	public static RemarkOptions markdown() {
+		return new RemarkOptions();
 	}
 
 
@@ -242,8 +242,8 @@ public class Options implements Cloneable {
 	 *
 	 * @return Options for PHP Markdown Extra compatibility
 	 */
-	public static Options markdownExtra() {
-		Options opts = new Options();
+	public static RemarkOptions markdownExtra() {
+		RemarkOptions opts = new RemarkOptions();
 		opts.headerIds = true;
 		opts.fencedCodeBlocks = FencedCodeBlocks.ENABLED_TILDE;
 		opts.tables = Tables.MARKDOWN_EXTRA;
@@ -265,8 +265,8 @@ public class Options implements Cloneable {
 	 *
 	 * @return Options for MultiMarkdown compatibility
 	 */
-	public static Options multiMarkdown() {
-		Options opts = new Options();
+	public static RemarkOptions multiMarkdown() {
+		RemarkOptions opts = new RemarkOptions();
 		opts.tables = Tables.MULTI_MARKDOWN;
 		opts.definitionLists = true;
 		return opts;
@@ -288,8 +288,8 @@ public class Options implements Cloneable {
 	 * @return Options for pegdown compatibility
 	 */
 	@SuppressWarnings({"WeakerAccess"})
-	public static Options pegdownBase() {
-		Options opts = new Options();
+	public static RemarkOptions pegdownBase() {
+		RemarkOptions opts = new RemarkOptions();
 		opts.inWordEmphasis = InWordEmphasis.REMOVE_EMPHASIS;
 		return opts;
 	}
@@ -315,8 +315,8 @@ public class Options implements Cloneable {
 	 *
 	 * @return Options for pegdown compatibility
 	 */
-	public static Options pegdownAllExtensions() {
-		Options opts = pegdownBase();
+	public static RemarkOptions pegdownAllExtensions() {
+		RemarkOptions opts = pegdownBase();
 		opts.hardwraps = true;
 		opts.fencedCodeBlocks = FencedCodeBlocks.ENABLED_TILDE;
 		opts.reverseHtmlSmartPunctuation = true;
@@ -345,8 +345,8 @@ public class Options implements Cloneable {
 	 *
 	 * @return Options for github compatibility
 	 */
-	public static Options github() {
-		Options opts = new Options();
+	public static RemarkOptions github() {
+		RemarkOptions opts = new RemarkOptions();
 		opts.hardwraps = true;
 		opts.fencedCodeBlocks = FencedCodeBlocks.ENABLED_BACKTICK;
 		opts.autoLinks = true;
@@ -483,7 +483,7 @@ public class Options implements Cloneable {
 	 * Configures a default set of options.
 	 * The default set is configured to be most compatible with the original Markdown syntax.
 	 */
-	public Options() {
+	public RemarkOptions() {
 
 	}
 
@@ -567,10 +567,10 @@ public class Options implements Cloneable {
 		setReverseSmartPunctuation(reverse);
 	}
 	
-	public Options getCopy() {
-		Options copy;
+	public RemarkOptions getCopy() {
+		RemarkOptions copy;
 		try {
-			copy = (Options)this.clone();
+			copy = (RemarkOptions)this.clone();
 		} catch(CloneNotSupportedException e) {
 			throw new RuntimeException("Should never happen");
 		}

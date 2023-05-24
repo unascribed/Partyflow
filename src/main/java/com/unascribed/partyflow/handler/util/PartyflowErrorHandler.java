@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
+import com.unascribed.partyflow.util.Services;
 
 public class PartyflowErrorHandler extends ErrorHandler {
 
@@ -53,7 +54,7 @@ public class PartyflowErrorHandler extends ErrorHandler {
 			} else if (HttpStatus.isServerError(res.getStatus())) {
 				template = "internal-error.hbs.html";
 			}
-			String magic = Partyflow.randomString(16);
+			String magic = Partyflow.randomString(Services.random, 16);
 			Throwable cause = (Throwable)req.getAttribute(Dispatcher.ERROR_EXCEPTION);
 			if (cause != null) {
 				UserVisibleException uve;

@@ -27,7 +27,6 @@ import java.util.OptionalInt;
 
 import javax.annotation.Nullable;
 
-import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.data.QReleases.FullRelease;
 import com.unascribed.partyflow.data.QTracks.Track;
 import com.unascribed.partyflow.data.util.Queries;
@@ -36,6 +35,7 @@ import com.unascribed.partyflow.data.QTracks;
 import com.unascribed.partyflow.handler.util.ApiHandler;
 import com.unascribed.partyflow.handler.util.UserVisibleException;
 import com.unascribed.partyflow.logic.URLs;
+import com.unascribed.partyflow.util.SamplesUnit;
 import com.unascribed.partyflow.logic.SessionHelper.Session;
 
 public class ViewReleaseApi extends ApiHandler {
@@ -49,14 +49,14 @@ public class ViewReleaseApi extends ApiHandler {
 	}
 	
 	public record ArtData(String full, String thumb) {
-		public static ArtData fromDb(String id) { return new ArtData(URLs.resolveArtAbs(id), URLs.resolveArtThumbAbs(id)); }
+		public static ArtData fromDb(String id) { return new ArtData(URLs.absoluteArt(id), URLs.absoluteArtThumb(id)); }
 	}
 	
 	public record CreatorData(String username, String name, URLData url) {}
 	
 	public record URLData(String api, String frontend) {
 		public static URLData fromSlug(String kind, String slug) {
-			return new URLData(URLs.absUrl("api/v1/"+kind+"/"+slug), URLs.absUrl(kind+"/"+slug));
+			return new URLData(URLs.absolute("api/v1/"+kind+"/"+slug), URLs.absolute(kind+"/"+slug));
 		}
 	}
 	
@@ -86,7 +86,7 @@ public class ViewReleaseApi extends ApiHandler {
 					r.publishedAt(), r.createdAt(), r.lastUpdated(),
 					tracks == null ? null : tracks.stream()
 						.map(t -> new TrackResponse(t.slug(), t.title(), t.subtitle(), t.description(), t.lyrics(),
-								Duration.of(t.duration(), Partyflow.SAMPLES).toString(), t.trackNumber(), RGData.fromDb(t.loudness(), t.peak()),
+								Duration.of(t.duration(), SamplesUnit.INST).toString(), t.trackNumber(), RGData.fromDb(t.loudness(), t.peak()),
 								t.artId() == null ? releaseArt : ArtData.fromDb(t.artId()),
 								URLData.fromSlug("track", t.slug())))
 						.toList(),

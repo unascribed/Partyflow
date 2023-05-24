@@ -40,6 +40,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Any;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.UserRole;
+import com.unascribed.partyflow.util.MoreByteStreams;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;
@@ -78,7 +79,7 @@ public class SetupHandler extends SimpleHandler implements Any {
 				MustacheHandler.serveTemplate(req, res, "setup.hbs.html");
 			} else if (req.getMethod().equals("POST")) {
 				if (req.getContentType().equals("application/x-www-form-urlencoded")) {
-					byte[] bys = Partyflow.readWithLimit(req.getInputStream(), 8192);
+					byte[] bys = MoreByteStreams.consume(req.getInputStream(), 8192);
 					if (bys == null) {
 						res.sendError(HTTP_413_PAYLOAD_TOO_LARGE);
 						return true;
@@ -142,7 +143,7 @@ public class SetupHandler extends SimpleHandler implements Any {
 				res.sendError(HTTP_405_METHOD_NOT_ALLOWED);
 			}
 		} else {
-			res.sendRedirect(Partyflow.config.http.path+"setup");
+			res.sendRedirect(URLs.relative("setup"));
 		}
 		return true;
 	}

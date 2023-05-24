@@ -45,10 +45,13 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.Storage;
+import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.permission.Permission;
 import com.unascribed.partyflow.util.Commands;
 import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.partyflow.util.Processes;
+import com.unascribed.partyflow.util.Services;
 import com.unascribed.partyflow.data.QGeneric;
 import com.unascribed.partyflow.data.QReleases;
 
@@ -103,7 +106,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		}
 		String slug = QGeneric.findSlug("releases", Partyflow.sanitizeSlug(title));
 		QReleases.create(new Release(slug, session.userId(), title, subtitle, "", false, null, null));
-		res.sendRedirect(Partyflow.config.http.path+"release/"+slug);
+		res.sendRedirect(URLs.relative("release/"+slug));
 	}
 
 	public static String processArt(Part art) throws IOException, IllegalArgumentException {
@@ -126,23 +129,23 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		byte[] thumb = magick(art.getInputStream(), "webp", "-resize", "x128>", "-quality", "75");
 		String name;
 		do {
-			String rand = Partyflow.randomString(16);
+			String rand = Partyflow.randomString(Services.random, 16);
 			name = "art/"+rand.substring(0, 3)+"/"+rand+"."+format;
-		} while (Partyflow.storage.blobExists(Partyflow.storageContainer, name));
-		Blob mainBlob = Partyflow.storage.blobBuilder(name)
+		} while (Storage.blobExists(name));
+		Blob mainBlob = Storage.blobBuilder(name)
 				.payload(main)
 				.cacheControl("public, immutable")
 				.contentLength(main.length)
 				.contentType(mime)
 				.build();
-		Blob thumbBlob = Partyflow.storage.blobBuilder(name+"-thumb.webp")
+		Blob thumbBlob = Storage.blobBuilder(name+"-thumb.webp")
 				.payload(thumb)
 				.cacheControl("public, immutable")
 				.contentLength(thumb.length)
 				.contentType("image/webp")
 				.build();
-		Partyflow.storage.putBlob(Partyflow.storageContainer, mainBlob, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
-		Partyflow.storage.putBlob(Partyflow.storageContainer, thumbBlob, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
+		Storage.putBlob(mainBlob, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
+		Storage.putBlob(thumbBlob, new PutOptions().setBlobAccess(BlobAccess.PUBLIC_READ));
 		return mainBlob.getMetadata().getName();
 	}
 

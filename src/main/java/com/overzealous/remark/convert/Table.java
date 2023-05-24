@@ -16,7 +16,7 @@
 
 package com.overzealous.remark.convert;
 
-import com.overzealous.remark.Options;
+import com.overzealous.remark.RemarkOptions;
 import com.overzealous.remark.util.MarkdownTable;
 import com.overzealous.remark.util.MarkdownTableCell;
 import org.jsoup.nodes.Element;
@@ -68,7 +68,7 @@ public class Table extends AbstractNodeHandler {
 		}
 
 		// OK, now render this sucker
-		Options.Tables opts = converter.options.getTables();
+		RemarkOptions.Tables opts = converter.options.getTables();
 		converter.output.startBlock();
 		table.renderTable(converter.output, opts.isColspanEnabled(), opts.isRenderedAsCode());
 		converter.output.endBlock();

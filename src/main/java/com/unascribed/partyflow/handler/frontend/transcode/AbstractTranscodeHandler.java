@@ -52,7 +52,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.Transcoder;
 import com.unascribed.partyflow.logic.URLs;
-import com.unascribed.partyflow.util.ThreadPools;
+import com.unascribed.partyflow.util.Services;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.HashBasedTable;
@@ -170,9 +170,9 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 				if (prepare) {
 					res.setStatus(HTTP_204_NO_CONTENT);
 					res.getOutputStream().close();
-					res.setHeader("Transcode-Result", URLs.resolveBlob(ft.blob()));
+					res.setHeader("Transcode-Result", URLs.blob(ft.blob()));
 				} else {
-					res.sendRedirect(URLs.resolveBlob(ft.blob()));
+					res.sendRedirect(URLs.blob(ft.blob()));
 				}
 				return;
 			} else if (findRes instanceof FoundShortcut fs) {
@@ -239,7 +239,7 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 					}
 					if (!cache) return;
 				} else {
-					blobNameRes = ThreadPools.TRANSCODE.submit(transcoder).get();
+					blobNameRes = Services.transcodePool.submit(transcoder).get();
 				}
 				try (PreparedStatement ps = c.prepareStatement("INSERT INTO `transcodes` "
 						+ "(`master`, `format`, `file`, `track_id`, `release_id`, `created_at`, `last_downloaded`) "
@@ -267,9 +267,9 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 				if (prepare) {
 					res.setStatus(HTTP_204_NO_CONTENT);
 					res.getOutputStream().close();
-					res.setHeader("Transcode-Result", URLs.resolveBlob(blobNameRes));
+					res.setHeader("Transcode-Result", URLs.blob(blobNameRes));
 				} else {
-					res.sendRedirect(URLs.resolveBlob(blobNameRes));
+					res.sendRedirect(URLs.blob(blobNameRes));
 				}
 			}
 		} catch (SQLException | InterruptedException | ExecutionException e) {
