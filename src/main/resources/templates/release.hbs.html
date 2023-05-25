@@ -67,9 +67,9 @@
 					Add {{#has_tracks}}more {{/has_tracks}}tracks
 				</button>
 				<div class="md-wrapper">
-				<textarea rows="16" id="descriptionMd" name="descriptionMd" maxlength="16384" class="ghost-input description" placeholder="Description">{{descriptionMd}}</textarea>
+				<textarea rows="16" id="description.md" name="description.md" maxlength="16384" class="ghost-input description" placeholder="Description">{{descriptionMd}}</textarea>
 				</div>
-				<div id="quillTarget" class="description" style="display: none">{{{description}}}</div>
+				<div id="quillTarget" name="description.html" class="description" style="display: none">{{{description}}}</div>
 				<div class="buttons" style="z-index: 2">
 					<button type="submit">
 						<img src="{{root}}static/save.svg"/>

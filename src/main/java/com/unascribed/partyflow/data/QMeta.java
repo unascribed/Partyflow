@@ -20,19 +20,47 @@
 package com.unascribed.partyflow.data;
 
 import java.sql.SQLException;
+import java.util.Optional;
 
+import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.data.util.Queries;
 
 public class QMeta extends Queries {
 
-	public static String getSiteDescription() throws SQLException {
-		try (var rs = select("SELECT `value` FROM `meta` WHERE `name` = 'site_description';")) {
+	protected static void set(String key, String value) throws SQLException {
+		// assignment is so this will fail to compile if a new driver is added
+		int dummy = switch (Partyflow.config.database.driver) {
+			case mariadb ->
+				update("INSERT INTO `meta` (`name`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = ?;", key, value, value);
+			case h2 ->
+				update("MERGE INTO `meta` KEY(`name`) VALUES(?, ?);", key, value);
+		};
+	}
+	
+	protected static Optional<String> get(String key) throws SQLException {
+		try (var rs = select("SELECT `value` FROM `meta` WHERE `name` = ?;", key)) {
 			if (rs.first()) {
-				return rs.getString("value");
+				return Optional.of(rs.getString("value"));
 			} else {
-				return "<div class=\"message error\">missingno.</div>";
+				return Optional.empty();
 			}
 		}
+	}
+	
+	public static String getSiteName() throws SQLException {
+		return get("site_name").orElse("");
+	}
+	
+	public static void setSiteName(String siteName) throws SQLException {
+		set("site_name", siteName);
+	}
+
+	public static String getSiteDescription() throws SQLException {
+		return get("site_description").orElse("<div class=\"message error\">missingno.</div>");
+	}
+	
+	public static void setSiteDescription(String siteDescription) throws SQLException {
+		set("site_description", siteDescription);
 	}
 	
 }

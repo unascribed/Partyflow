@@ -63,7 +63,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 			.getLogger(CreateReleaseHandler.class);
 
 	private static final byte[] PNG_HEADER = {-119, 80, 78, 71};
-	private static final byte[] JPEG_HEADER = {-1, -40, -1, -32};
+	private static final byte[] JPEG_HEADER = {-1, -40};
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head)
@@ -119,7 +119,7 @@ public class CreateReleaseHandler extends SimpleHandler implements MultipartPost
 		if (Arrays.equals(probe, PNG_HEADER)) {
 			mime = "image/png";
 			format = "png";
-		} else if (Arrays.equals(probe, JPEG_HEADER)) {
+		} else if (Arrays.equals(Arrays.copyOf(probe, 2), JPEG_HEADER)) {
 			mime = "image/jpeg";
 			format = "jpeg";
 		} else {

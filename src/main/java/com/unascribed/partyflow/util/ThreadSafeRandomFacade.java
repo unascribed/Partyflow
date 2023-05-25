@@ -30,12 +30,10 @@ public class ThreadSafeRandomFacade implements RandomGenerator {
 	private final ThreadLocal<RandomGenerator> delegate;
 	
 	public ThreadSafeRandomFacade(LeapableGenerator parent) {
-		System.out.println(parent);
 		var iter = parent.leaps().iterator();
 		this.delegate = ThreadLocal.withInitial(() -> {
 			synchronized (iter) {
 				var child = iter.next();
-				System.out.println(child);
 				child.jump();
 				return child;
 			}

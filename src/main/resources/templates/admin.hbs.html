@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+	{{> _head.hbs.html}}
+	<title>Partyflow Admin</title>
+	<link rel="stylesheet" href="{{root}}static/quill.snow.css"/>
+	<style>
+		form {
+			max-width: 24em;
+			margin: auto;
+		}
+		form small {
+			width: 100%;
+			display: block;
+			padding-top: 0.5em;
+			padding-left: 1em;
+		}
+	</style>
+</head>
+<body>
+	{{> _header.hbs.html}}
+	<div class="inner">
+		<h1>Admin</h1>
+		{{#error}}
+			<div class="message error">{{error}}</div>
+		{{/error}}
+		<form class="inline" method="POST" enctype="multipart/form-data">
+			<input type="hidden" name="csrf" value="{{csrf}}"/>
+			<div class="bumper">
+				<label for="site_name">Site name</label><br/>
+				<input id="site_name" name="site_name" type="text" value="{{siteName}}"/><br/>
+			</div>
+			<div class="bumper">
+				<label>Site description</label><br/>
+				<div class="md-wrapper">
+				<textarea rows="16" id="site_description.md" name="site_description.md" maxlength="16384" class="description">{{descriptionMd}}</textarea>
+				</div>
+				<div id="quillTarget" name="site_description.html" class="description" style="display: none">{{{description}}}</div>
+			</div>
+			<div style="text-align: center">
+				<button>Save</button>
+			</div>
+		</form>
+	</div>
+	<script src="{{root}}static/quill.min.js"></script>
+	<script src="{{root}}assets/description-editor.js"></script>
+	<script src="{{root}}assets/edit-art.js"></script>
+	{{> _footer.hbs.html}}
+</body>
+</html>

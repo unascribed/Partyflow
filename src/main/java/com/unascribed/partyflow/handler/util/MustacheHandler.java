@@ -32,6 +32,7 @@ import com.github.mustachejava.MustacheFactory;
 import com.github.mustachejava.MustacheNotFoundException;
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.Version;
+import com.unascribed.partyflow.data.QMeta;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.logic.CSRF;
 import com.unascribed.partyflow.logic.SessionHelper;
@@ -98,6 +99,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			String username = s.username().orElse(null);
 			String displayName = s.displayName().orElse(null);
 			String csrf = s.map(CSRF::allocate).orElse(null);
+			String siteName = QMeta.getSiteName();
 		};
 		System.arraycopy(context, 0, arr, 2, context.length);
 		try {

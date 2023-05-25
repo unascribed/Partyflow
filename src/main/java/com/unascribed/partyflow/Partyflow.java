@@ -89,6 +89,7 @@ import com.unascribed.partyflow.handler.api.v1.LoginApi;
 import com.unascribed.partyflow.handler.api.v1.ReleasesApi;
 import com.unascribed.partyflow.handler.api.v1.ViewReleaseApi;
 import com.unascribed.partyflow.handler.api.v1.WhoAmIApi;
+import com.unascribed.partyflow.handler.frontend.AdminHandler;
 import com.unascribed.partyflow.handler.frontend.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.DownloadHandler;
 import com.unascribed.partyflow.handler.frontend.IndexHandler;
@@ -420,6 +421,7 @@ public class Partyflow {
 				handler("login", new LoginHandler()),
 				handler("logout", new LogoutHandler()),
 				handler("releases", new ReleasesHandler()),
+				handler("admin", new AdminHandler()),
 
 				handler("release/{}.rss", new ViewReleaseHandler("release-playlist.hbs.xml")),
 				handler("release/{}", new ViewReleaseHandler("release.hbs.html")),

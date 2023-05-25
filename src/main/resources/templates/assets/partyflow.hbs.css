@@ -293,7 +293,7 @@ code {
 	border: none;
 	border-bottom: 2px #ECEFF1 solid;
 	padding: 8px;
-	font-size: 12px;
+	font-size: 16px;
 	width: 100%;
 }
 :not([class^='ql-']) > input[type="text"]:invalid, input[type="password"]:invalid, textarea:invalid {
@@ -350,6 +350,15 @@ input.ghost-input, textarea.ghost-input {
 input.ghost-input:invalid, textarea.ghost-input:invalid {
 	box-shadow: none;
 	border-color: #F00;
+}
+
+.ql-container.ql-snow {
+	font-size: 16px;
+}
+
+.ql-editor p, .ql-editor ol, .ql-editor ul, .ql-editor pre, .ql-editor blockquote, .ql-editor h1, .ql-editor h2, .ql-editor h3, .ql-editor h4, .ql-editor h5, .ql-editor h6 {
+	margin: revert !important;
+	padding: revert !important;
 }
 
 .ql-toolbar {

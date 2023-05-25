@@ -34,6 +34,7 @@ import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.Get;
 import com.unascribed.partyflow.handler.util.SimpleHandler.MultipartPost;
+import com.unascribed.partyflow.logic.ProseHelper;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.permission.Permission;
@@ -56,6 +57,7 @@ public class AdminHandler extends SimpleHandler implements Get, MultipartPost {
 		MustacheHandler.serveTemplate(req, res, "admin.hbs.html", new Object() {
 			String description = desc;
 			String descriptionMd = Services.remark.convert(desc);
+			String error = req.getParameter("error");
 		});
 	}
 
@@ -66,6 +68,9 @@ public class AdminHandler extends SimpleHandler implements Get, MultipartPost {
 				.assertPresent()
 				.assertCsrf(data.getPartAsString("csrf", 64))
 				.assertPermission(Permission.release.create);
+		
+		QMeta.setSiteName(data.getPartAsString("site_name", 4096));
+		QMeta.setSiteDescription(ProseHelper.getSafeHtml(data, "site_description", true));
 		
 		res.sendRedirect(URLs.relative("admin"));
 	}
