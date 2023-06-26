@@ -1,3 +1,5 @@
+{{> _colors.hbs.css}}
+
 *, *:before, *:after {
 	box-sizing: border-box;
 }
@@ -11,25 +13,13 @@ body {
 	font-size: 16px;
 	padding-top: 80px;
 	padding-bottom: 112px;
-	font-family: sans-serif;
+	font-family: var(--font);
 	
-	--color-B: {{backgroundColor}};
-	--color-Bc: $contrast{{backgroundColor}};
-	--color-F: {{foregroundColor}};
-	--color-Fc: $contrast{{foregroundColor}};
-	--color-P1: {{primaryColor}};
-	--color-P1c: $contrast{{primaryColor}};
-	--color-P2: {{secondaryColor}};
-	--color-P2c: $contrast{{secondaryColor}};
-	--color-P: $mix{{primaryColor}}{{secondaryColor}};
-	--color-Pc: $contrast$mix{{primaryColor}}{{secondaryColor}};
-	--color-A: {{accentColor}};
-	--color-Ac: $contrast{{accentColor}};
-	--color-Ab: $brighten{{accentColor}};
-	--color-Abc: $contrast$brighten{{accentColor}};
+	--icon-filter: var(--color-Bcf);
+	--font: "{{fontFamily}}", system-ui, sans-serif;
 }
 a:link, a:visited {
-	color: #00B0FF;
+	color: var(--color-L);
 }
 
 button {
@@ -39,11 +29,12 @@ button {
 	width: 18px;
 	height: 18px;
 	vertical-align: top;
+	filter: var(--icon-filter);
 }
 
 .header {
-	background: linear-gradient({{primaryColor}}, $mix{{primaryColor}}$mix{{primaryColor}}{{secondaryColor}}, $mix{{primaryColor}}{{secondaryColor}}, $mix{{secondaryColor}}$mix{{primaryColor}}{{secondaryColor}}, {{secondaryColor}});
 	color: var(--color-Pc);
+	--icon-filter: var(--color-Pcf);
 	padding: 8px;
 	height: 64px;
 	position: fixed;
@@ -58,6 +49,23 @@ button {
 }
 .header a:link, .header a:visited, .header button.link {
 	color: var(--color-Pc);
+	--icon-filter: var(--color-Pcf);
+}
+.header a {
+	text-decoration: none;
+	display: inline-block;
+	height: 100%;
+	line-height: 48px;
+	filter: drop-shadow(2px 2px 3px #0006);
+}
+
+.header a img {
+	vertical-align: middle;
+}
+
+.site-name {
+	vertical-align: middle;
+	font-size: 24px;
 }
 
 .logo {
@@ -70,7 +78,7 @@ button {
 }
 
 footer {
-	border-top: 1px #FFFA solid;
+	border-top: 1px var(--color-Bc) solid;
 	text-align: center;
 	position: absolute;
 	bottom: 0;
@@ -179,7 +187,7 @@ a.release {
 	width: calc(100% - 208px) !important;
 	min-height: 3em;
 	resize: vertical;
-	font-family: sans-serif;
+	font-family: var(--font);
 	font-size: 16px;
 }
 
@@ -191,10 +199,11 @@ button:not([class^='ql-']) {
 	border: none;
 	border-radius: 2px;
 	color: var(--color-Ac);
+	--icon-filter: var(--color-Acf);
 	background-color: var(--color-A);
 	padding: 8px 16px;
 	font-size: 16px;
-	font-family: sans-serif;
+	font-family: var(--font);
 	min-height: 40px;
 	min-width: 112px;
 	line-height: 24px;
@@ -202,34 +211,40 @@ button:not([class^='ql-']) {
 	font-weight: bold;
 	transition: background-color 0.6s, opacity 0.4s;
 }
-button:not([class^='ql-']):hover, button:not([class^='ql-']):focus {
+button:not([class^='ql-']):hover:not(.disabled), button:not([class^='ql-']):focus:not(.disabled) {
 	background-color: var(--color-Ab);
 	color: var(--color-Abc);
+	--icon-filter: var(--color-Abcf);
 }
 button.danger {
 	background-color: #E53935;
 	color: #FFF;
+	--icon-filter: "";
 }
-button.danger:hover, button.danger:focus {
+button.danger:hover:not(.disabled), button.danger:focus:not(.disabled) {
 	background-color: #FF1744;
 	color: #FFF;
+	--icon-filter: "";
 }
 button.good {
 	background-color: #009688;
 	color: #FFF;
+	--icon-filter: "";
 }
-button.good:hover, button.good:focus {
+button.good:hover:not(.disabled), button.good:focus:not(.disabled) {
 	background-color: #0DBC9D;
 	color: #FFF;
+	--icon-filter: "";
 }
 button.subdued {
 	background-color: transparent;
 	color: var(--color-F);
 	border: 2px var(--color-Ab) solid;
+	--icon-filter: var(--color-Bcf);
 }
-button.subdued:hover, button.subdued:focus {
-	background-color: {{accentColor}}3F;
+button.subdued:hover:not(.disabled), button.subdued:focus:not(.disabled) {
 	color: var(--color-F);
+	--icon-filter: var(--color-Bcf);
 }
 button.disabled {
 	opacity: 0.5;
@@ -240,6 +255,7 @@ button:not([class^='ql-']) img {
 	width: 24px;
 	height: 24px;
 	vertical-align: middle;
+	filter: var(--icon-filter);
 }
 
 .md-wrapper {
@@ -261,7 +277,6 @@ button:not([class^='ql-']) img {
 }
 
 code {
-	background: {{accentColor}}33;
 	padding: 4px;
 	border-radius: 2px;
 	border: 1px var(--color-A) solid;
@@ -310,12 +325,14 @@ code {
 }
 
 :not([class^='ql-']) > input[type="text"], input[type="password"], textarea {
-	background: #37474F;
-	color: #ECEFF1;
+	background: var(--color-Bb);
+	color: var(--color-Bbc);
+	--icon-filter: var(--color-Bbcf);
 	border: none;
-	border-bottom: 2px #ECEFF1 solid;
+	border-bottom: 2px var(--color-F) solid;
 	padding: 8px;
 	font-size: 16px;
+	font-family: var(--font);
 	width: 100%;
 }
 :not([class^='ql-']) > input[type="text"]:invalid, input[type="password"]:invalid, textarea:invalid {
@@ -351,13 +368,13 @@ button.link {
 	padding: 0;
 	margin: 0;
 	display: inline;
-	color: #00B0FF;
+	color: var(--color-L);
 	text-decoration: underline;
 	font-size: inherit;
 	font-weight: normal;
 	min-width: 0;
 	min-height: 0;
-	font-family: sans-serif;
+	font-family: var(--font);
 	width: auto;
 	height: auto;
 }
@@ -376,6 +393,7 @@ input.ghost-input:invalid, textarea.ghost-input:invalid {
 
 .ql-container.ql-snow {
 	font-size: 16px;
+	font-family: var(--font);
 }
 
 .ql-editor p, .ql-editor ol, .ql-editor ul, .ql-editor pre, .ql-editor blockquote, .ql-editor h1, .ql-editor h2, .ql-editor h3, .ql-editor h4, .ql-editor h5, .ql-editor h6 {
@@ -386,6 +404,7 @@ input.ghost-input:invalid, textarea.ghost-input:invalid {
 .ql-toolbar {
 	background: var(--color-P);
 	color: var(--color-Pc);
+	--icon-filter: var(--color-Pcf);
 	height: 40px;
 }
 .ql-snow .ql-stroke {
@@ -426,7 +445,7 @@ input.ghost-input:invalid, textarea.ghost-input:invalid {
 	fill: var(--color-Ab) !important;
 }
 .ql-toolbar.ql-snow {
-	font-family: sans-serif !important;
+	font-family: var(--font) !important;
 }
 
 .track {
@@ -459,31 +478,41 @@ button.player-control {
 	padding: 0;
 	margin: 4px;
 	vertical-align: middle;
+	position: relative;
+}
+button.player-control:after {
+	content: "";
+	position: absolute;
+	display: block;
+	top: 0; left: 0;
+	width: 100%; height: 100%;
 	background-position: center;
 	background-size: 24px 24px;
 	background-repeat: no-repeat;
+	background-image: var(--icon);
+	filter: var(--icon-filter);
 	transition: background-size 0.2s ease-in-out;
 }
 .player-control.loading {
-	background-image: url({{root}}static/loader.svg);
+	--icon: url({{root}}static/loader.svg);
 }
 .player-control.play {
-	background-image: url({{root}}static/play.svg);
+	--icon: url({{root}}static/play.svg);
 }
 .player-control.pause {
-	background-image: url({{root}}static/pause.svg);
+	--icon: url({{root}}static/pause.svg);
 }
 .player-control.skip-prev {
-	background-image: url({{root}}static/skip-prev.svg);
+	--icon: url({{root}}static/skip-prev.svg);
 }
 .player-control.skip-next {
-	background-image: url({{root}}static/skip-next.svg);
+	--icon: url({{root}}static/skip-next.svg);
 }
 .player-control.replaygain {
-	background-image: url({{root}}static/replaygain.svg);
+	--icon: url({{root}}static/replaygain.svg);
 }
 .player-control.replaygain-off {
-	background-image: url({{root}}static/replaygain-off.svg);
+	--icon: url({{root}}static/replaygain-off.svg);
 }
 .player-control.trans {
 	background-size: 0 0 !important;
@@ -583,6 +612,7 @@ button.player-control {
 .volicon {
 	width: 24px;
 	height: 24px;
+	filter: var(--icon-filter);
 }
 .volicon path {
 	transition: opacity 0.4s;
@@ -866,5 +896,48 @@ textarea {
 }
 
 textarea#lyrics {
-	font-family: sans-serif;
+	font-family: var(--font);
+}
+
+.swatches {
+	display: flex;
+	margin-top: 16px;
+	margin-bottom: 24px;
+}
+.swatches .swatch {
+	text-align: center;
+	flex: 1;
+	font-weight: bold;
+}
+.swatches .swatch input {
+	width: 48px;
+	height: 32px;
+	margin-top: 8px;
+	padding: 1px;
+}
+.swatch button {
+	min-width: 32px;
+	min-height: 16px;
+	padding: 4px 8px;
+}
+
+.color-sample {
+	isolation: isolate;
+	overflow: hidden;
+	border: 1px currentColor solid;
+	margin-bottom: 16px;
+	background: var(--color-B);
+	color: var(--color-F);
+	--icon-filter: var(--color-Bcf);
+}
+.color-sample:after {
+	content: "";
+	display: table;
+	clear: both;
+}
+.color-sample .header, .color-sample footer {
+	position: static;
+}
+.color-sample .inner {
+	padding: 24px;
 }

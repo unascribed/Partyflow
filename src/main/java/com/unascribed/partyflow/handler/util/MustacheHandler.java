@@ -24,6 +24,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -43,6 +44,8 @@ import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.UserRole;
 import com.unascribed.partyflow.logic.permission.Permission;
+import com.unascribed.partyflow.util.OkColor;
+
 import com.google.common.base.Function;
 
 public class MustacheHandler extends SimpleHandler implements GetOrHead {
@@ -83,9 +86,9 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		}
 	}
 
-	private static final ThreadLocal<Map<String, String>> metaTL = ThreadLocal.withInitial(HashMap::new);
+	private static final ThreadLocal<Map<String, Object>> metaTL = ThreadLocal.withInitial(HashMap::new);
 	
-	private static final Pattern cssInsn = Pattern.compile("\\$(contrast|brighten|mix)#([0-9A-Fa-f]{6})(?:#([0-9A-Fa-f]{6}))?");
+	private static final Pattern cssInsn = Pattern.compile("\\$(contrast|contrast-filter|brighten|mix)#([0-9A-Fa-f]{6})(?:#([0-9A-Fa-f]{6}))?");
 	
 	public static void serveTemplate(HttpServletRequest req, HttpServletResponse res, String path, Object... context) throws IOException, ServletException, SQLException {
 		if (path.endsWith(".html")) {
@@ -107,10 +110,12 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			String username = s.username().orElse(null);
 			String displayName = s.displayName().orElse(null);
 			String csrf = s.map(CSRF::allocate).orElse(null);
+			String body = "body";
+			String fontFamilyId = QMeta.font_family.get().toLowerCase(Locale.ROOT).replace(' ', '-');
 		};
 		var meta = metaTL.get();
 		for (var v : QMeta.values()) {
-			meta.put(v.camelKey(), v.get());
+			meta.put(v.camelKey(), v == QMeta.bunny_font ? v.get().equals("on") : v.get());
 		}
 		arr[2] = meta;
 		System.arraycopy(context, 0, arr, 3, context.length);
@@ -129,16 +134,21 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 					if (!m.find()) break;
 					var sb = new StringBuilder(((CharSequence)buf).length());
 					do {
+						String output = null;
 						int rgb = Integer.parseInt(m.group(2), 16);
 						var ok = OkColor.fromRGB(rgb);
 						boolean needReconvert = true;
 						switch (m.group(1)) {
 							case "contrast" -> {
-								needReconvert = false;
-								rgb = ok.l > 0.6 ? 0 : -1;
+								ok.l = (ok.l+(ok.l > 0.6 ? 0 : 4))/5;
+								ok.a = ok.a/4;
+								ok.b = ok.b/4;
+							}
+							case "contrast-filter" -> {
+								output = ok.l > 0.6 ? "invert(95%)" : "''";
 							}
 							case "brighten" -> {
-								ok.l *= 1.2f;
+								ok.l += 0.1f;
 							}
 							case "mix" -> {
 								if (m.group(3) == null) {
@@ -151,10 +161,13 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 								ok.b = (ok.b+ok2.b)/2;
 							}
 						}
-						if (needReconvert) {
-							rgb = ok.toRGB();
+						if (output == null) {
+							if (needReconvert) {
+								rgb = ok.toRGB();
+							}
+							output = "#"+(Integer.toHexString(rgb|0xFF000000).substring(2));
 						}
-						m.appendReplacement(sb, "#"+(Integer.toHexString(rgb|0xFF000000).substring(2)));
+						m.appendReplacement(sb, output);
 					} while (m.find());
 					m.appendTail(sb);
 					buf = sb;

@@ -91,6 +91,7 @@ import com.unascribed.partyflow.handler.api.v1.ReleasesApi;
 import com.unascribed.partyflow.handler.api.v1.ViewReleaseApi;
 import com.unascribed.partyflow.handler.api.v1.WhoAmIApi;
 import com.unascribed.partyflow.handler.frontend.AdminHandler;
+import com.unascribed.partyflow.handler.frontend.ColorsHandler;
 import com.unascribed.partyflow.handler.frontend.CreateReleaseHandler;
 import com.unascribed.partyflow.handler.frontend.DownloadHandler;
 import com.unascribed.partyflow.handler.frontend.IndexHandler;
@@ -116,6 +117,7 @@ import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.logic.AACSupport;
 import com.unascribed.partyflow.logic.CSRF;
 import com.unascribed.partyflow.logic.SessionHelper;
+import com.unascribed.partyflow.logic.SpecialTrack;
 import com.unascribed.partyflow.logic.Storage;
 import com.unascribed.partyflow.logic.Transcoder;
 import com.unascribed.partyflow.logic.URLs;
@@ -418,6 +420,7 @@ public class Partyflow {
 				new SetupHandler().asJettyHandler(),
 				
 				handler("", new IndexHandler()),
+				handler("assets/colors.css", new ColorsHandler()),
 				handler("assets/{}", new MustacheHandler("assets/{}")),
 				handler("create-release", new CreateReleaseHandler()),
 				handler("login", new LoginHandler()),
@@ -562,7 +565,7 @@ public class Partyflow {
 	private static final Pattern SPACE = Pattern.compile("[\\p{Space}]+");
 
 	public static @Detainted String sanitizeSlug(@Tainted String name) {
-		if ("__testtrack".equals(name)) return "___testtrack";
+		if (SpecialTrack.BY_SLUG.containsKey(name)) return "_"+name;
 		String s = Normalizer.normalize(name, Form.NFC);
 		s = SPACE.matcher(s).replaceAll("-");
 		s = ILLEGAL.matcher(s).replaceAll("_");

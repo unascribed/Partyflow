@@ -41,7 +41,10 @@ public enum QMeta {
 	foreground_color("#ECEFF1", 7, "#[0-9A-Fa-f]{6}"),
 	primary_color("#AA22BB", 7, "#[0-9A-Fa-f]{6}"),
 	secondary_color("#6633CC", 7, "#[0-9A-Fa-f]{6}"),
-	accent_color("#D500F9", 7, "#[0-9A-Fa-f]{6}"),
+	accent_color("#4CAF50", 7, "#[0-9A-Fa-f]{6}"),
+	link_color("#00B0FF", 7, "#[0-9A-Fa-f]{6}"),
+	font_family("system-ui", 128, null),
+	bunny_font("off", 3, "(on|off)"),
 	;
 	
 	private final String camelKey;

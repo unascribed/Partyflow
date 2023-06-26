@@ -1,0 +1,51 @@
+{{body}} {
+	--color-B: {{backgroundColor}};
+	--color-Bc: $contrast{{backgroundColor}};
+	--color-Bcf: $contrast-filter{{backgroundColor}};
+	
+	--color-Bb: $brighten{{backgroundColor}};
+	--color-Bbc: $contrast$brighten{{backgroundColor}};
+	--color-Bbcf: $contrast-filter$brighten{{backgroundColor}};
+	
+	--color-F: {{foregroundColor}};
+	--color-Fc: $contrast{{foregroundColor}};
+	--color-Fcf: $contrast-filter{{foregroundColor}};
+	
+	--color-P1: {{primaryColor}};
+	--color-P1c: $contrast{{primaryColor}};
+	--color-P1cf: $contrast-filter{{primaryColor}};
+	
+	--color-P2: {{secondaryColor}};
+	--color-P2c: $contrast{{secondaryColor}};
+	--color-P2cf: $contrast-filter{{secondaryColor}};
+	
+	--color-P: $mix{{primaryColor}}{{secondaryColor}};
+	--color-Pc: $contrast$mix{{primaryColor}}{{secondaryColor}};
+	--color-Pcf: $contrast-filter$mix{{primaryColor}}{{secondaryColor}};
+	
+	--color-A: {{accentColor}};
+	--color-Ac: $contrast{{accentColor}};
+	--color-Acf: $contrast-filter{{accentColor}};
+	
+	--color-Ab: $brighten{{accentColor}};
+	--color-Abc: $contrast$brighten{{accentColor}};
+	--color-Abcf: $contrast-filter$brighten{{accentColor}};
+	
+	--color-L: {{linkColor}};
+	--color-Lc: $contrast{{linkColor}};
+	--color-Lcf: $contrast-filter{{linkColor}};
+}
+
+{{body}} .header {
+	background: linear-gradient({{primaryColor}}, $mix{{primaryColor}}$mix{{primaryColor}}{{secondaryColor}}, $mix{{primaryColor}}{{secondaryColor}}, $mix{{secondaryColor}}$mix{{primaryColor}}{{secondaryColor}}, {{secondaryColor}});
+}
+
+
+{{body}} button.subdued:hover:not(.disabled), {{body}} button.subdued:focus:not(.disabled) {
+	background-color: {{accentColor}}3F;
+}
+
+
+{{body}} code {
+	background: {{accentColor}}33;
+}

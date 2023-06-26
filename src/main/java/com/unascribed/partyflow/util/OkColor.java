@@ -17,7 +17,7 @@
  * If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.unascribed.partyflow.handler.util;
+package com.unascribed.partyflow.util;
 
 public class OkColor {
 

@@ -82,6 +82,9 @@ license {
 	matching('**/blue/endless/jankson/**') {
 		header = file('headers/jankson.txt')
 	}
+	matching('**/io/github/martincameron/ibxm2/**') {
+		header = file('headers/ibxm2.txt')
+	}
 	header = file('headers/partyflow.txt')
 	
 	include '**/*.java'

@@ -53,14 +53,18 @@ import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.config.TranscodeFormat.ReplayGainData;
 import com.unascribed.partyflow.config.TranscodeFormat.Shortcut;
 import com.unascribed.partyflow.config.TranscodeFormat.Usage;
+import com.unascribed.partyflow.util.BlobByteSource;
 import com.unascribed.partyflow.util.Commands;
 import com.unascribed.partyflow.util.ForkOutputStream;
+import com.unascribed.partyflow.util.IBXMByteSource;
 import com.unascribed.partyflow.util.MoreByteStreams;
 import com.unascribed.partyflow.util.Processes;
 import com.unascribed.partyflow.util.Services;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableList;
+import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Files;
 import com.google.common.net.UrlEscapers;
@@ -77,7 +81,6 @@ public class Transcoder {
 	
 	public record TranscodeResult(String blob, long size, String filename) {}
 
-	public static final String TESTTRACK_MASTER = "__testtrack";
 	public static final File WORK_DIR = new File(System.getProperty("java.io.tmpdir"), "partyflow/work");
 	private static final Pattern MAGICK_SIZE_PATTERN = Pattern.compile("([0-9]+)x([0-9]+)");
 	private static final AtomicInteger pipeNum = new AtomicInteger();
@@ -86,13 +89,19 @@ public class Transcoder {
 			String title, String releaseTitle, String creator, String art, String lyrics, int year, int trackNumber, ReplayGainData rgd,
 			boolean cache, boolean published, Shortcut shortcut, DirectStreamSupplier directOut) throws IOException, ServletException {
 		WORK_DIR.mkdirs();
-		Blob masterBlob = null;
-		if (src != TESTTRACK_MASTER) {
-			masterBlob = Storage.getBlob(src);
-			if (masterBlob == null) {
-				log.error("Master for {} {} is missing!", kind, slug);
-				return new TranscodeResult(null, 0, null);
-			}
+		var st = SpecialTrack.BY_SLUG.get(src);
+		ByteSource masterBlob;
+		if (st == null) {
+			masterBlob = new BlobByteSource(Storage.getBlob(src));
+		} else {
+			masterBlob = switch (st) {
+				case TEST_TRACK -> null;
+				case SAMPLE_SONG -> new IBXMByteSource("sample-song.xm.gz");
+			};
+		}
+		if (masterBlob == null && st != SpecialTrack.TEST_TRACK) {
+			log.error("Master for {} {} is missing!", kind, slug);
+			return new TranscodeResult(null, 0, null);
 		}
 		File tmpFile = cache ? File.createTempFile("transcode-", "."+fmt.fileExtension(), WORK_DIR) : null;
 		boolean attachArt = art != null && fmt.usage().canDownload() && !fmt.args().contains("-vn");
@@ -168,14 +177,14 @@ public class Transcoder {
 			List<Process> processes = new ArrayList<>();
 			List<String> inputArgs;
 			if (masterBlob == null) {
-				inputArgs = List.of("-t", "1", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo");
+				inputArgs = List.of("-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo:d=1");
 			} else {
 				inputArgs = List.of("-i", "-");
 			}
 			ProcessBuilder ffmBldr = Commands.ffmpeg("-v", "error",
 					useAltcmd ? List.of("-i", "-") : inputArgs, "-i", metaFile.getAbsolutePath(),
 							attachArt && artFile != null ? List.of("-i", artFile.getAbsolutePath()) : null,
-					shortcut == null ? fmt.args() : shortcut.args(),
+					shortcut == null ? removeCopyIf(fmt.args(), st != null) : shortcut.args(),
 					"-map_metadata", "1",
 					"-map", "a",
 					attachArt ?
@@ -211,8 +220,7 @@ public class Transcoder {
 				pipe(ffm, out);
 			}
 			if (masterBlob != null) {
-				try (var p = masterBlob.getPayload();
-						var in = p.openStream();
+				try (var in = masterBlob.openStream();
 						var out = input.getOutputStream()) {
 					ByteStreams.copy(in, out);
 				} catch (IOException e) {
@@ -271,6 +279,19 @@ public class Transcoder {
 			if (artFile != null) artFile.delete();
 			metaFile.delete();
 		}
+	}
+
+	private static List<String> removeCopyIf(ImmutableList<String> args, boolean when) {
+		if (!when) return args;
+		int idx = args.indexOf("-codec:a");
+		if (idx == -1) return args;
+		if (args.get(idx+1).equals("copy")) {
+			var li = new ArrayList<>(args);
+			li.remove(idx);
+			li.remove(idx);
+			return li;
+		}
+		return args;
 	}
 
 	@SuppressWarnings("resource")

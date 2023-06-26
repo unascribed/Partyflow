@@ -28,6 +28,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.data.QMeta;
 import com.unascribed.partyflow.handler.util.MultipartData;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
@@ -39,6 +40,8 @@ import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.URLs;
 import com.unascribed.partyflow.logic.permission.Permission;
 import com.unascribed.partyflow.util.Services;
+
+import com.google.common.base.MoreObjects;
 
 public class AdminHandler extends SimpleHandler implements Get, MultipartPost {
 
@@ -58,6 +61,7 @@ public class AdminHandler extends SimpleHandler implements Get, MultipartPost {
 			String description = desc;
 			String descriptionMd = Services.remark.convert(desc);
 			String error = req.getParameter("error");
+			String stream_formats_json = Services.gson.toJson(TranscodeFormat.enumerateAsJson(tf -> tf.usage().canStream()));
 		});
 	}
 
@@ -71,11 +75,13 @@ public class AdminHandler extends SimpleHandler implements Get, MultipartPost {
 		
 		for (var v : QMeta.values()) {
 			if (v == QMeta.site_description) continue;
-			var d = data.getPartAsString(v.name(), 4096);
+			if (v == QMeta.bunny_font) continue;
+			var d = data.getPartAsString(v.name(), v.reasonableLength());
 			if (d != null) {
 				v.set(d);
 			}
 		}
+		QMeta.bunny_font.set(MoreObjects.firstNonNull(data.getPartAsString("bunny_font", 3), "off"));
 		QMeta.site_description.set(ProseHelper.getSafeHtml(data, "site_description", true));
 		
 		res.sendRedirect(URLs.relative("admin"));

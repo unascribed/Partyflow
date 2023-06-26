@@ -43,7 +43,6 @@ with customizable colors.
 
 - No way to make new accounts
 - No way to pay for releases
-- Color customization can't fix icon colors
 - No per-user color customization yet
 - Can't set the release date on releases to the past (for backcatalog)
 - Can't override templates or static files
