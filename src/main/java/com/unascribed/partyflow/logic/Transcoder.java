@@ -168,7 +168,7 @@ public class Transcoder {
 			List<Process> processes = new ArrayList<>();
 			List<String> inputArgs;
 			if (masterBlob == null) {
-				inputArgs = List.of("-t", "1", "-ac", "2", "-ar", "48k", "-f", "s16le", "-i", "/dev/zero");
+				inputArgs = List.of("-t", "1", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo");
 			} else {
 				inputArgs = List.of("-i", "-");
 			}

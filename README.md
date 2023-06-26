@@ -56,11 +56,11 @@ with customizable colors.
   - This is now a lot less bad as I ported over the new player to the edit page
 - Halfway through a refactor to move business logic into *Api classes that also expose a JSON HTTP API
 - Halfway through a refactor to put all SQL queries in one place for ease of reference
-- Windows support is currently broken due to usage of /dev/zero and some other stuff
 - All the SQL queries need to be confirmed to be compatible with MariaDB; I've tested a major number but not quite all
 - Some stuff needs to get migrated to use Jetty APIs instead of pointlessly reimplementing it, like query strings
 - All the booleans under "formats" should get moved into the database and controlled from the admin UI
 - The core really needs to become a library so it can be reused
+- I've never tested it on Windows but it probably works?
 
 # Running it
 If you're okay with it being unfinished as described above, here's what you need to do to run it:
