@@ -41,10 +41,10 @@ with customizable colors.
 ## The bad 📝
 (What still needs work)
 
-- No admin page
 - No way to make new accounts
 - No way to pay for releases
-- No color customization yet
+- Color customization can't fix icon colors
+- No per-user color customization yet
 - Can't set the release date on releases to the past (for backcatalog)
 - Can't override templates or static files
 - No translation support
