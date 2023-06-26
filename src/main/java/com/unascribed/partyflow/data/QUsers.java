@@ -24,12 +24,12 @@ import java.util.concurrent.Semaphore;
 
 import com.lambdaworks.crypto.SCrypt;
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 import com.unascribed.partyflow.logic.UserRole;
 
 import com.google.common.math.IntMath;
 
-public class QUsers extends Queries {
+public class QUsers extends QBase {
 
 	private enum Unit { UNIT }
 	

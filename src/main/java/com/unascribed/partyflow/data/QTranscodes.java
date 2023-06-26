@@ -28,12 +28,12 @@ import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.config.TranscodeFormat.Shortcut;
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 import com.unascribed.partyflow.logic.Storage;
 
 import com.google.common.base.Strings;
 
-public class QTranscodes extends Queries {
+public class QTranscodes extends QBase {
 	
 	private static final Logger log = LoggerFactory.getLogger(QTranscodes.class);
 	

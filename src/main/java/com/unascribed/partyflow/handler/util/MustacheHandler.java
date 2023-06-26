@@ -20,7 +20,11 @@
 package com.unascribed.partyflow.handler.util;
 
 import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import jakarta.servlet.ServletException;
@@ -79,6 +83,10 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		}
 	}
 
+	private static final ThreadLocal<Map<String, String>> metaTL = ThreadLocal.withInitial(HashMap::new);
+	
+	private static final Pattern cssInsn = Pattern.compile("\\$(contrast|brighten|mix)#([0-9A-Fa-f]{6})(?:#([0-9A-Fa-f]{6}))?");
+	
 	public static void serveTemplate(HttpServletRequest req, HttpServletResponse res, String path, Object... context) throws IOException, ServletException, SQLException {
 		if (path.endsWith(".html")) {
 			res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -89,7 +97,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		} else if (path.endsWith(".xml")) {
 			res.setHeader("Content-Type", "text/xml; charset=utf-8");
 		}
-		Object[] arr = new Object[context.length+2];
+		Object[] arr = new Object[context.length+3];
 		arr[0] = globalContext;
 		var s = SessionHelper.get(req);
 		UserRole role = s.role();
@@ -99,13 +107,61 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			String username = s.username().orElse(null);
 			String displayName = s.displayName().orElse(null);
 			String csrf = s.map(CSRF::allocate).orElse(null);
-			String siteName = QMeta.getSiteName();
 		};
-		System.arraycopy(context, 0, arr, 2, context.length);
+		var meta = metaTL.get();
+		for (var v : QMeta.values()) {
+			meta.put(v.camelKey(), v.get());
+		}
+		arr[2] = meta;
+		System.arraycopy(context, 0, arr, 3, context.length);
 		try {
+			Writer w = res.getWriter();
+			if (path.endsWith(".css")) {
+				w = new StringWriter();
+			}
 			(Partyflow.config.http.cacheTemplates ? mustache : new DefaultMustacheFactory("templates"))
-				.compile(path).execute(res.getWriter(), arr);
-			res.getWriter().close();
+				.compile(path).execute(w, arr);
+			w.close();
+			if (path.endsWith(".css") && w instanceof StringWriter sw) {
+				Appendable buf = sw.getBuffer();
+				while (true) {
+					var m = cssInsn.matcher((CharSequence)buf);
+					if (!m.find()) break;
+					var sb = new StringBuilder(((CharSequence)buf).length());
+					do {
+						int rgb = Integer.parseInt(m.group(2), 16);
+						var ok = OkColor.fromRGB(rgb);
+						boolean needReconvert = true;
+						switch (m.group(1)) {
+							case "contrast" -> {
+								needReconvert = false;
+								rgb = ok.l > 0.6 ? 0 : -1;
+							}
+							case "brighten" -> {
+								ok.l *= 1.2f;
+							}
+							case "mix" -> {
+								if (m.group(3) == null) {
+									m.appendReplacement(sb, m.group().replace("$", "\\$"));
+									continue;
+								}
+								var ok2 = OkColor.fromRGB(Integer.parseInt(m.group(3), 16));
+								ok.l = (ok.l+ok2.l)/2;
+								ok.a = (ok.a+ok2.a)/2;
+								ok.b = (ok.b+ok2.b)/2;
+							}
+						}
+						if (needReconvert) {
+							rgb = ok.toRGB();
+						}
+						m.appendReplacement(sb, "#"+(Integer.toHexString(rgb|0xFF000000).substring(2)));
+					} while (m.find());
+					m.appendTail(sb);
+					buf = sb;
+				}
+				res.getWriter().write(buf.toString());
+				res.getWriter().close();
+			}
 		} catch (MustacheNotFoundException e) {
 			res.sendError(404);
 		}

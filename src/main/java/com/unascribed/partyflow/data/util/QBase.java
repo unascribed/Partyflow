@@ -81,7 +81,7 @@ import com.unascribed.partyflow.util.UncheckedSQLException;
 
 import com.google.common.io.CharStreams;
 
-public class Queries {
+public class QBase {
 	
 	@Documented @Target(ElementType.RECORD_COMPONENT) @Retention(RetentionPolicy.RUNTIME)
 	public @interface Column { String value(); }
@@ -290,7 +290,7 @@ public class Queries {
 	private static final Map<Class<? extends Record>, MethodHandle> canonicalConstructors = new ConcurrentHashMap<>();
 	
 	private static MethodHandle getCanonicalConstructor(Class<? extends Record> type) {
-		return canonicalConstructors.computeIfAbsent(type, Queries::computeCanonicalConstructor);
+		return canonicalConstructors.computeIfAbsent(type, QBase::computeCanonicalConstructor);
 	}
 	
 	private static MethodHandle computeCanonicalConstructor(Class<? extends Record> type) {

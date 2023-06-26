@@ -23,9 +23,9 @@ import java.sql.SQLException;
 
 import javax.annotation.Untainted;
 
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 
-public class QGeneric extends Queries {
+public class QGeneric extends QBase {
 
 	public static String findSlug(@Untainted String table, String slug) throws SQLException {
 		try (var c = conn(); var s = c.prepareStatement("SELECT 1 FROM "+table+" WHERE slug = ?;")) {

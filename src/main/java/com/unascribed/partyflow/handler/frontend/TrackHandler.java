@@ -35,8 +35,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 
-import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.HtmlRenderer;
 import org.jclouds.blobstore.domain.Blob;
 import org.jclouds.io.ContentMetadata;
 import org.jsoup.Jsoup;
@@ -54,6 +52,7 @@ import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
 import com.unascribed.partyflow.handler.util.SimpleHandler.UrlEncodedOrMultipartPost;
+import com.unascribed.partyflow.logic.ProseHelper;
 import com.unascribed.partyflow.logic.SessionHelper;
 import com.unascribed.partyflow.logic.Storage;
 import com.unascribed.partyflow.logic.URLs;
@@ -265,15 +264,7 @@ public class TrackHandler extends SimpleHandler implements GetOrHead, UrlEncoded
 			Part art = data.getPart("art");
 			String title = Strings.nullToEmpty(data.getPartAsString("title", 1024));
 			String subtitle = Strings.nullToEmpty(data.getPartAsString("subtitle", 1024));
-			String descriptionMd = data.getPartAsString("descriptionMd", 65536);
-			String description;
-			if (descriptionMd != null) {
-				Parser parser = Parser.builder().build();
-				HtmlRenderer rend = HtmlRenderer.builder().build();
-				description = sanitizeHtml(rend.render(parser.parse(descriptionMd)));
-			} else {
-				description = sanitizeHtml(Strings.nullToEmpty(data.getPartAsString("description", 65536)));
-			}
+			String description = ProseHelper.getSafeHtml(data, "description", false);
 			String lyrics = data.getPartAsString("lyrics", 65536);
 			if (title.trim().isEmpty()) {
 				res.sendRedirect(URLs.relative("track/"+escPathSeg(m.group(1))+"?error=Title is required"));

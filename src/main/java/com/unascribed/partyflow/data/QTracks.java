@@ -27,9 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.data.util.Artful;
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 
-public class QTracks extends Queries {
+public class QTracks extends QBase {
 	
 	private static final Logger log = LoggerFactory.getLogger(QTracks.class);
 	

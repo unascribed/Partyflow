@@ -23,13 +23,13 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 import com.unascribed.partyflow.Partyflow;
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 import com.unascribed.partyflow.logic.UserRole;
 import com.unascribed.partyflow.logic.SessionHelper.GuestSession;
 import com.unascribed.partyflow.logic.SessionHelper.RealSession;
 import com.unascribed.partyflow.logic.SessionHelper.Session;
 
-public class QSessions extends Queries {
+public class QSessions extends QBase {
 
 	public static Session get(UUID sessionId) throws SQLException {
 		try (var rs = select("SELECT `sessions`.`user_id`, `users`.`display_name`, `users`.`username`, `users`.`role` FROM `sessions` "

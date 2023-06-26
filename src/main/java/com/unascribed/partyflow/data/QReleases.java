@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import com.unascribed.partyflow.Partyflow;
 import com.unascribed.partyflow.data.util.Artful;
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.PrimitiveSink;
@@ -43,7 +43,7 @@ import com.unascribed.partyflow.logic.SessionHelper.Session;
 import com.unascribed.partyflow.util.UncheckedSQLException;
 import com.unascribed.partyflow.util.Yap;
 
-public class QReleases extends Queries {
+public class QReleases extends QBase {
 	
 	private static final Logger log = LoggerFactory.getLogger(QReleases.class);
 	

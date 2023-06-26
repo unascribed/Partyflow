@@ -51,7 +51,7 @@ public class AdminHandler extends SimpleHandler implements Get, MultipartPost {
 				.assertPresent()
 				.assertPermission(Permission.admin.administrate);
 		
-		var desc = QMeta.getSiteDescription();
+		var desc = QMeta.site_description.get();
 		
 		res.setStatus(HTTP_200_OK);
 		MustacheHandler.serveTemplate(req, res, "admin.hbs.html", new Object() {
@@ -69,8 +69,14 @@ public class AdminHandler extends SimpleHandler implements Get, MultipartPost {
 				.assertCsrf(data.getPartAsString("csrf", 64))
 				.assertPermission(Permission.release.create);
 		
-		QMeta.setSiteName(data.getPartAsString("site_name", 4096));
-		QMeta.setSiteDescription(ProseHelper.getSafeHtml(data, "site_description", true));
+		for (var v : QMeta.values()) {
+			if (v == QMeta.site_description) continue;
+			var d = data.getPartAsString(v.name(), 4096);
+			if (d != null) {
+				v.set(d);
+			}
+		}
+		QMeta.site_description.set(ProseHelper.getSafeHtml(data, "site_description", true));
 		
 		res.sendRedirect(URLs.relative("admin"));
 	}

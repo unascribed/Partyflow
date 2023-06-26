@@ -29,7 +29,7 @@ import javax.annotation.Nullable;
 
 import com.unascribed.partyflow.data.QReleases.FullRelease;
 import com.unascribed.partyflow.data.QTracks.Track;
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QTracks;
 import com.unascribed.partyflow.handler.util.ApiHandler;
@@ -97,7 +97,7 @@ public class ViewReleaseApi extends ApiHandler {
 	@GET
 	public static ReleaseResponse invoke(Session session, @RequestPath String slug, @Nullable Boolean includeTracks)
 			throws UserVisibleException, SQLException {
-		try (var c = Queries.begin()) {
+		try (var c = QBase.begin()) {
 			var releaseOpt = QReleases.get(session, slug);
 			if (releaseOpt.isPresent()) {
 				var r = releaseOpt.get();

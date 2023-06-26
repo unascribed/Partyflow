@@ -24,7 +24,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import com.unascribed.partyflow.data.QReleases;
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 import com.unascribed.partyflow.handler.api.v1.ViewReleaseApi.ReleaseResponse;
 import com.unascribed.partyflow.handler.util.ApiHandler;
 import com.unascribed.partyflow.handler.util.UserVisibleException;
@@ -49,7 +49,7 @@ public class ReleasesApi extends ApiHandler {
 		}
 		if (limit == 0)
 			return new ReleasesResponse(List.of(), null, URLs.absolute("api/v1/releases?page="+(page+1)+"&limit=0"));
-		try (var c = Queries.begin()) {
+		try (var c = QBase.begin()) {
 			var li = QReleases.getAll(session, limit, page);
 			boolean more = li.size() == limit+1;
 			if (more) li = li.subList(0, li.size()-1);

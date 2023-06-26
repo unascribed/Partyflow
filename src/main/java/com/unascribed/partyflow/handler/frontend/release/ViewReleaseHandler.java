@@ -35,7 +35,7 @@ import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.data.QReleases;
 import com.unascribed.partyflow.data.QTracks;
 import com.unascribed.partyflow.data.QTracks.Track;
-import com.unascribed.partyflow.data.util.Queries;
+import com.unascribed.partyflow.data.util.QBase;
 import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler.GetOrHead;
@@ -56,7 +56,7 @@ public class ViewReleaseHandler extends SimpleHandler implements GetOrHead {
 			throws IOException, ServletException, SQLException {
 		Map<String, String> query = parseQuery(req);
 		var s = SessionHelper.get(req);
-		try (var c = Queries.begin()) {
+		try (var c = QBase.begin()) {
 			var releaseOpt = QReleases.get(s, slug);
 			if (releaseOpt.isPresent()) {
 				var r = releaseOpt.get();

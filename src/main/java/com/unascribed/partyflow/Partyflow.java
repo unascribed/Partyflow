@@ -84,6 +84,7 @@ import com.unascribed.partyflow.config.TranscodeFormat;
 import com.unascribed.partyflow.config.Config.DatabaseSection.DatabaseDriver;
 import com.unascribed.partyflow.config.Config.SecuritySection.ScryptSection;
 import com.unascribed.partyflow.config.Config.StorageSection.StorageDriver;
+import com.unascribed.partyflow.data.QMeta;
 import com.unascribed.partyflow.handler.FilesHandler;
 import com.unascribed.partyflow.handler.api.v1.LoginApi;
 import com.unascribed.partyflow.handler.api.v1.ReleasesApi;
@@ -345,6 +346,7 @@ public class Partyflow {
 			return;
 		}
 		log.info("Opened database at {}", dbId);
+		QMeta.populate();
 
 		BlobStore storage;
 		String storageContainer;

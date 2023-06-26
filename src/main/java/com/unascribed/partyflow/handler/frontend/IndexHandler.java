@@ -35,7 +35,7 @@ public class IndexHandler extends SimpleHandler implements GetOrHead {
 
 	@Override
 	public void getOrHead(String path, HttpServletRequest req, HttpServletResponse res, boolean head) throws IOException, ServletException, SQLException {
-		var desc = QMeta.getSiteDescription();
+		var desc = QMeta.site_description.get();
 		MustacheHandler.serveTemplate(req, res, "index.hbs.html", new Object() {
 			String site_description = desc;
 		});
