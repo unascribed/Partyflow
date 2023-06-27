@@ -15,10 +15,8 @@
 		let hours = Math.floor((time/60/60));
 		if (thours > 0) {
 			return hours+":"+pad(minutes)+":"+pad(seconds);
-		} else if (tminutes > 0) {
-			return minutes+":"+pad(seconds);
 		} else {
-			return seconds.toString();
+			return minutes+":"+pad(seconds);
 		}
 	}
 	document.body.classList.add("yesscript");
@@ -91,8 +89,34 @@
 	const formats = JSON.parse(data.formats);
 	const tracks = JSON.parse(data.tracks);
 	if (tracks.length === 0) return;
+	
+	const tracksHtml = document.querySelector("#tracks");
+	if (tracksHtml.dataset.auto === "true") {
+		tracks.forEach((track) => {
+			let ele = document.createElement("div");
+			ele.innerHTML = `
+			<div class="track">
+				<button class="player-control play"></button>
+				<a href="#" onclick="false">
+					<span class="trackNumber"></span>
+					<span class="title"></span>
+					<span class="subtitle"></span>
+				</a>
+				<span class="track-duration"></span>
+			</div>
+			`;
+			ele = ele.firstElementChild;
+			console.log(ele);
+			ele.dataset.trackSlug = track.slug;
+			ele.querySelector(".title").textContent = track.title;
+			ele.querySelector(".subtitle").textContent = track.subtitle;
+			tracksHtml.appendChild(ele);
+		});
+	}
+	
 	const firstTrack = tracks[0];
 	const release = data.releaseSlug;
+	const overrideSlug = data.overrideSlug;
 	/** @type {HTMLDivElement} */
 	const widget = document.querySelector("#player-widget");
 	/** @type {HTMLButtonElement} */
@@ -125,7 +149,7 @@
 	
 	if (AudioContext) {
 		maxVolume = 1.5;
-		const ctx = new AudioContext();
+		const ctx = new AudioContext({latencyHint: "playback"});
 		const src = ctx.createMediaElementSource(audio);
 		const gain = ctx.createGain();
 		src.connect(gain).connect(ctx.destination);
@@ -324,7 +348,7 @@
 			});
 		}
 	});
-	audio.src = "{{root}}transcode/"+(release ? "release/"+release : "track/"+tracks[0].slug)+"?format="+selectedFormat.name;
+	audio.src = "{{root}}transcode/"+(release ? "release/"+release : "track/"+(overrideSlug || tracks[0].slug))+"?format="+selectedFormat.name;
 	function updateBuffered() {
 		if (audio.buffered.length > 0 && currentTrack !== null) {
 			let end = audio.buffered.end(audio.buffered.length-1);

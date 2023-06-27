@@ -159,10 +159,10 @@ public abstract class AbstractTranscodeHandler extends SimpleHandler implements 
 			
 			if (format.usage() == Usage.DOWNLOAD && !prepare && releaseId != null) {
 				try {
-					var addr = InetAddresses.forString(req.getRemoteAddr());
+					var addr = InetAddresses.forString(req.getRemoteAddr().replace("[", "").replace("]", ""));
 					QReleases.maybeRecordDownload(releaseId, addr);
 				} catch (IllegalArgumentException e) {
-					e.printStackTrace();
+					log.warn("Exception recording download", e);
 				}
 			}
 			

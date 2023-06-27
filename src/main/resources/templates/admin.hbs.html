@@ -80,7 +80,7 @@
 				<div class="swatch">
 					<label for="accent_color">Accent</label><br/>
 					<input id="accent_color" name="accent_color" type="color" value="{{accentColor}}"/><br/>
-					<button data-value="#4CAF50">Reset</button>
+					<button data-value="#00E676">Reset</button>
 				</div>
 				<div class="swatch">
 					<label for="link_color">Link</label><br/>
@@ -96,23 +96,19 @@
 						<button onclick="false" class="link">Log out</button>
 					</div>
 				</div>
-				<div class="inner">
+				<div class="inner release">
 					<a href="https://git.sleeping.town/unascribed/Partyflow" onclick="false">Partyflow!</a>
 					This is <b>some sample text</b> inside of the sample box that's available for you to
 					preview your colors and fonts before you save them. <i><b>Wow!</b> That's high-tech!</i>
 					<hr>
 					{{> _player-widget.hbs.html }}
-					<div id="tracks" style="margin-bottom: 32px">
-						<div class="track" data-track-slug="__samplesong">
-							<button class="yesscript player-control play"></button>
-							<a href="#" onclick="false">
-								<span class="trackNumber"></span>
-								<span class="title">Something Sinister</span>
-								<span class="subtitle"></span>
-							</a>
-							<span class="track-duration"></span>
-						</div>
+					<div id="tracks" style="margin-bottom: 32px" data-auto="true">
 					</div>
+					<a target="_blank" rel="noopener" href="https://modarchive.org/index.php?request=view_by_moduleid&query=186833">Something Sinister</a>
+					by ant512, released under the
+					<a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.<br/>
+					Rendered by your Partyflow server using <a target="_blank" rel="noopener" href="https://github.com/martincameron/micromod">IBXM2</a>.
+					<br/><br/>
 					<button type="button">
 						<img src="/static/eye.svg"> Test Button 1
 					</button>
@@ -191,8 +187,57 @@
 	siteSpan.textContent = siteName.value;
 	update();
 	</script>
-	<script data-loudness="-6.3" data-formats="{{stream_formats_json}}"
-				data-tracks='[{"title":"Something Sinister","subtitle":"","slug":"__samplesong","art":null,"start":0,"end":118.41}]'
+	<script data-loudness="-6.3" data-formats="{{stream_formats_json}}" data-override-slug="__samplesong"
+				data-tracks='[
+					{
+						"title": "Something Sinister",
+						"subtitle": "Intro",
+						"slug": "__samplesong1",
+						"art": null,
+						"start": 0,
+						"end": 12.79
+					},
+					{
+						"title": "Something Sinister",
+						"subtitle": "A",
+						"slug": "__samplesong2",
+						"art": null,
+						"start": 12.79,
+						"end": 38.4
+					},
+					{
+						"title": "Something Sinister",
+						"subtitle": "A → B",
+						"slug": "__samplesong3",
+						"art": null,
+						"start": 38.4,
+						"end": 51.19
+					},
+					{
+						"title": "Something Sinister",
+						"subtitle": "B",
+						"slug": "__samplesong4",
+						"art": null,
+						"start": 51.19,
+						"end": 75.19
+					},
+					{
+						"title": "Something Sinister",
+						"subtitle": "B → A",
+						"slug": "__samplesong5",
+						"art": null,
+						"start": 75.19,
+						"end": 87.99
+					},
+					{
+						"title": "Something Sinister",
+						"subtitle": "A (Reprise)",
+						"slug": "__samplesong6",
+						"art": null,
+						"start": 87.99,
+						"end": 118.4
+					}
+				]'
 				src="{{root}}assets/gapless-player.js"></script>
 	{{> _footer.hbs.html}}
 </body>

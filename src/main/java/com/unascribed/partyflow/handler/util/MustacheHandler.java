@@ -104,6 +104,7 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 		arr[0] = globalContext;
 		var s = SessionHelper.get(req);
 		UserRole role = s.role();
+		var fontFamily = QMeta.font_family.get();
 		arr[1] = new Object() {
 			boolean loggedIn = s.isPresent();
 			boolean admin = role.grants(Permission.admin.administrate); // TODO
@@ -111,7 +112,8 @@ public class MustacheHandler extends SimpleHandler implements GetOrHead {
 			String displayName = s.displayName().orElse(null);
 			String csrf = s.map(CSRF::allocate).orElse(null);
 			String body = "body";
-			String fontFamilyId = QMeta.font_family.get().toLowerCase(Locale.ROOT).replace(' ', '-');
+			String fontFamilyId = fontFamily.toLowerCase(Locale.ROOT).replace(' ', '-');
+			String fontFamilyQ = fontFamily.contains(" ") ? "\""+fontFamily+"\"" : fontFamily;
 		};
 		var meta = metaTL.get();
 		for (var v : QMeta.values()) {

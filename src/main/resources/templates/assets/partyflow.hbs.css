@@ -16,7 +16,7 @@ body {
 	font-family: var(--font);
 	
 	--icon-filter: var(--color-Bcf);
-	--font: "{{fontFamily}}", system-ui, sans-serif;
+	--font: {{fontFamilyQ}}, system-ui, sans-serif;
 }
 a:link, a:visited {
 	color: var(--color-L);
@@ -326,7 +326,7 @@ code {
 
 :not([class^='ql-']) > input[type="text"], input[type="password"], textarea {
 	background: var(--color-Bb);
-	color: var(--color-Bbc);
+	color: var(--color-F);
 	--icon-filter: var(--color-Bbcf);
 	border: none;
 	border-bottom: 2px var(--color-F) solid;
@@ -648,6 +648,7 @@ button.player-control:after {
 	transition: height 0.6s;
 	overflow: hidden;
 	border-radius: 4px;
+	z-index: 10;
 }
 .voldrop:hover .contents, .voldrop:focus-within .contents, .voldrop.open .contents {
 	height: 246px;
