@@ -2,7 +2,7 @@ plugins {
 	id 'java'
 	id 'eclipse'
 	id 'org.cadixdev.licenser' version '0.6.1'
-	id 'com.github.ben-manes.versions' version '0.48.0'
+	id 'com.github.ben-manes.versions' version '0.50.0'
 }
 
 repositories {
@@ -18,7 +18,7 @@ targetCompatibility = 17
 archivesBaseName = 'Partyflow'
 
 dependencies {
-	implementation('org.eclipse.jetty:jetty-server:11.0.16') {
+	implementation('org.eclipse.jetty:jetty-server:11.0.19') {
 		exclude group: 'org.slf4j'
 	}
 	implementation 'org.apache.jclouds:jclouds-blobstore:2.5.0'
@@ -27,12 +27,12 @@ dependencies {
 	}
 	
 	implementation 'blue.endless:jankson:1.2.3'
-	implementation 'com.google.guava:guava:32.1.2-jre'
-	implementation 'com.github.spullara.mustache.java:compiler:0.9.10'
+	implementation 'com.google.guava:guava:33.0.0-jre'
+	implementation 'com.github.spullara.mustache.java:compiler:0.9.11'
 	implementation 'org.slf4j:slf4j-api:1.7.36'
 	implementation 'com.unascribed:asyncsimplelog:4.6.1'
 	implementation 'org.mariadb.jdbc:mariadb-java-client:3.1.4'
-	implementation 'org.jsoup:jsoup:1.16.1'
+	implementation 'org.jsoup:jsoup:1.17.2'
 	implementation 'org.commonmark:commonmark:0.21.0'
 	implementation 'org.slf4j:jcl-over-slf4j:1.7.36'
 	implementation 'org.apache.commons:commons-jexl3:3.3'
@@ -42,8 +42,8 @@ dependencies {
 	implementation 'org.apache.jclouds.api:s3:2.5.0'
 	
 	// Database drivers
-	implementation 'com.h2database:h2:2.2.222'
-	implementation 'org.mariadb.jdbc:mariadb-java-client:3.2.0'
+	implementation 'com.h2database:h2:2.2.224'
+	implementation 'org.mariadb.jdbc:mariadb-java-client:3.3.2'
 }
 
 jar {
@@ -143,3 +143,13 @@ task precompressStaticResources {
 jar.dependsOn precompressStaticResources
 
 processResources.finalizedBy precompressStaticResources
+
+tasks.named("dependencyUpdates").configure {
+	gradleReleaseChannel = 'current'
+	revision = 'release'
+	rejectVersionIf {
+		it.candidate.version.contains("alpha") || it.candidate.version.contains("beta")
+			|| (it.candidate.group == 'org.slf4j' && it.candidate.version.startsWith("2."))
+			|| (it.candidate.group == 'org.eclipse.jetty' && it.candidate.version.startsWith("12."))
+	}
+}
