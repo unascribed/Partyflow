@@ -381,7 +381,7 @@ button.link {
 
 input.ghost-input, textarea.ghost-input {
 	background: none !important;
-	border: 1px rgba(255, 255, 255, 0.5) dashed !important;
+	border: 1px var(--color-Ft) dashed !important;
 	color: inherit;
 	padding: 4px;
 	display: block;
@@ -526,7 +526,6 @@ button.player-control:after {
 
 #player-widget {
 	display: flex;
-	flex-wrap: wrap;
 	flex-direction: row;
 	align-items: center;
 	margin-bottom: 16px;
@@ -535,6 +534,9 @@ button.player-control:after {
 #player-widget .rightside {
 	flex-grow: 1;
 	padding-bottom: 8px;
+	display: flex;
+	flex-wrap: wrap;
+	min-width: 0;
 }
 #player-widget .rightside .track-name {
 	margin-left: 16px;
@@ -542,9 +544,25 @@ button.player-control:after {
 #player-widget .rightside .play-position {
 	float: right;
 	margin-right: 8px;
+	flex-grow: 0;
+	white-space: nowrap;
 }
 #player-widget .rightside .seekbar {
 	margin-top: 16px;
+}
+#player-widget button {
+	flex-shrink: 0;
+	flex-grow: 0;
+}
+#player-widget .rightside .seekbar-outer {
+	flex-basis: 100%;
+}
+#player-widget .rightside .track-name {
+	flex-grow: 1;
+	flex-basis: 0;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
 }
 
 .play-position {

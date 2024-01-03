@@ -10,6 +10,7 @@
 	--color-F: {{foregroundColor}};
 	--color-Fc: $contrast{{foregroundColor}};
 	--color-Fcf: $contrast-filter{{foregroundColor}};
+	--color-Ft: {{foregroundColor}}7F;
 	
 	--color-P1: {{primaryColor}};
 	--color-P1c: $contrast{{primaryColor}};
@@ -44,7 +45,6 @@
 {{body}} button.subdued:hover:not(.disabled), {{body}} button.subdued:focus:not(.disabled) {
 	background-color: {{accentColor}}3F;
 }
-
 
 {{body}} code {
 	background: {{accentColor}}33;

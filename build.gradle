@@ -2,7 +2,7 @@ plugins {
 	id 'java'
 	id 'eclipse'
 	id 'org.cadixdev.licenser' version '0.6.1'
-	id 'com.github.ben-manes.versions' version '0.46.0'
+	id 'com.github.ben-manes.versions' version '0.48.0'
 }
 
 repositories {
@@ -18,7 +18,7 @@ targetCompatibility = 17
 archivesBaseName = 'Partyflow'
 
 dependencies {
-	implementation('org.eclipse.jetty:jetty-server:11.0.15') {
+	implementation('org.eclipse.jetty:jetty-server:11.0.16') {
 		exclude group: 'org.slf4j'
 	}
 	implementation 'org.apache.jclouds:jclouds-blobstore:2.5.0'
@@ -26,8 +26,8 @@ dependencies {
 		transitive = false
 	}
 	
-	implementation 'blue.endless:jankson:1.2.2'
-	implementation 'com.google.guava:guava:31.1-jre'
+	implementation 'blue.endless:jankson:1.2.3'
+	implementation 'com.google.guava:guava:32.1.2-jre'
 	implementation 'com.github.spullara.mustache.java:compiler:0.9.10'
 	implementation 'org.slf4j:slf4j-api:1.7.36'
 	implementation 'com.unascribed:asyncsimplelog:4.6.1'
@@ -42,8 +42,8 @@ dependencies {
 	implementation 'org.apache.jclouds.api:s3:2.5.0'
 	
 	// Database drivers
-	implementation 'com.h2database:h2:2.1.214'
-	implementation 'org.mariadb.jdbc:mariadb-java-client:3.1.0'
+	implementation 'com.h2database:h2:2.2.222'
+	implementation 'org.mariadb.jdbc:mariadb-java-client:3.2.0'
 }
 
 jar {
@@ -65,7 +65,7 @@ jar {
 	
 	manifest.attributes (
 		'Main-Class': 'com.unascribed.partyflow.Partyflow',
-		'Implementation-Version': java.util.UUID.randomUUID().toString().replace("-", "")
+		'Implementation-Version': java.security.SecureRandom.getSeed(16).encodeHex()
 	)
 }
 

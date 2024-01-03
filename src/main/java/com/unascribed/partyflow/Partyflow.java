@@ -38,6 +38,7 @@ import java.text.Normalizer;
 import java.text.Normalizer.Form;
 import java.time.Duration;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -68,7 +69,9 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.util.Jetty;
 import org.h2.jdbcx.JdbcConnectionPool;
+import org.h2.mvstore.MVStoreException;
 import org.h2.tools.Shell;
+import org.h2.tools.Upgrade;
 import org.jclouds.ContextBuilder;
 import org.jclouds.blobstore.BlobStore;
 import org.jclouds.blobstore.BlobStoreContext;
@@ -114,6 +117,7 @@ import com.unascribed.partyflow.handler.util.MustacheHandler;
 import com.unascribed.partyflow.handler.util.PartyflowErrorHandler;
 import com.unascribed.partyflow.handler.util.PathResolvingHandler;
 import com.unascribed.partyflow.handler.util.SimpleHandler;
+import com.unascribed.partyflow.jclouds.Java11HttpClientCommandExecutorServiceModule;
 import com.unascribed.partyflow.logic.AACSupport;
 import com.unascribed.partyflow.logic.CSRF;
 import com.unascribed.partyflow.logic.SessionHelper;
@@ -287,7 +291,27 @@ public class Partyflow {
 			var esc = UrlEscapers.urlFormParameterEscaper();
 			if (config.database.driver == DatabaseDriver.h2) {
 				dbId = "(h2)"+config.database.h2.file+".db.mv";
-				sql = JdbcConnectionPool.create("jdbc:h2:"+pesc.escape(config.database.h2.file).replace("%2F", "/"), "", "");
+				var url = "jdbc:h2:"+pesc.escape(config.database.h2.file).replace("%2F", "/");
+				sql = JdbcConnectionPool.create(url, "", "");
+				try (var c = sql.getConnection()) {
+				} catch (SQLException e) {
+					if (e.getCause() instanceof MVStoreException && e.getCause().getMessage().contains("write format 2 is smaller")) {
+						log.warn("Upgrading H2 database from v2.1 to v2.2");
+						try {
+							if (Upgrade.upgrade(url, new Properties(), 214)) {
+								log.info("H2 database upgrade successful");
+							} else {
+								throw new IllegalArgumentException("Can't upgrade this database");
+							}
+						} catch (Exception e1) {
+							log.error("Upgrade of H2 database failed", e1);
+							System.exit(2);
+							return;
+						}
+					} else {
+						// handle it later
+					}
+				}
 			} else if (config.database.driver == DatabaseDriver.mariadb) {
 				var c = config.database.mariadb;
 				sql = new MariaDbPoolDataSource("jdbc:mariadb://"+pesc.escape(c.host)+":"+c.port+"/"+pesc.escape(c.db)+"?user="+esc.escape(c.user)+"&password="+esc.escape(c.pass)+"&autoReconnect=true");
@@ -338,7 +362,7 @@ public class Partyflow {
 		} catch (IOException e) {
 			log.error("Failed to load init.sql off classpath", e);
 		} catch (SQLException e) {
-			if (e.getCause() != null && e.getCause() instanceof IllegalStateException && e.getCause().getMessage().contains("file is locked")) {
+			if (e.getCause() != null && (e.getCause() instanceof IllegalStateException || e.getCause() instanceof MVStoreException) && e.getCause().getMessage().contains("file is locked")) {
 				log.error("Failed to open the database at {}: The file is in use.\n"
 						+ "Close any other instances of Partyflow or database editors and try again", dbId);
 			} else {
@@ -358,6 +382,7 @@ public class Partyflow {
 			Properties bsProps = new Properties();
 			bsProps.setProperty(FilesystemConstants.PROPERTY_BASEDIR, f.getParent());
 			storage = ContextBuilder.newBuilder("filesystem")
+					.modules(List.of(new Java11HttpClientCommandExecutorServiceModule()))
 					.overrides(bsProps)
 					.build(BlobStoreContext.class)
 					.getBlobStore();
@@ -504,6 +529,15 @@ public class Partyflow {
 			} catch (SQLException e) {
 				e.printStackTrace();
 			}
+			if (sql instanceof JdbcConnectionPool p) {
+				p.dispose();
+			}
+			try {
+				server.stop();
+			} catch (Exception e) {
+				log.error("Error stopping server", e);
+			}
+			System.exit(0);
 		}
 	}
 	

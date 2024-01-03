@@ -91,7 +91,7 @@
 	if (tracks.length === 0) return;
 	
 	const tracksHtml = document.querySelector("#tracks");
-	if (tracksHtml.dataset.auto === "true") {
+	if (tracksHtml && tracksHtml.dataset.auto === "true") {
 		tracks.forEach((track) => {
 			let ele = document.createElement("div");
 			ele.innerHTML = `
@@ -106,7 +106,6 @@
 			</div>
 			`;
 			ele = ele.firstElementChild;
-			console.log(ele);
 			ele.dataset.trackSlug = track.slug;
 			ele.querySelector(".title").textContent = track.title;
 			ele.querySelector(".subtitle").textContent = track.subtitle;
@@ -431,6 +430,10 @@
 		volbarPosition.style.width = ((v/maxVolume)*100)+"%";
 		localStorage.setItem("volume", String(v));
 	}
+	function onFrame() {
+		updateTime();
+		if (!audio.paused) requestAnimationFrame(onFrame);
+	}
 	audio.addEventListener("progress", updateBuffered);
 	audio.addEventListener("timeupdate", updateTime);
 	audio.addEventListener("canplay", () => {
@@ -449,6 +452,7 @@
 		if (mouseDownInSeekbar) return;
 		trans(globalPlayPause, "play", "pause");
 		if (currentTrack) trans(currentTrack.button, "play", "pause");
+		requestAnimationFrame(onFrame);
 	});
 	updateVolume();
 	updateTime();

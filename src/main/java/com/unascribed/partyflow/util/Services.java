@@ -50,10 +50,10 @@ public class Services {
 	
 	static {
 		int nproc = Runtime.getRuntime().availableProcessors();
-		genericPool = Executors.newFixedThreadPool(nproc, namedFactory("Generic pool thread"));
+		genericPool = Executors.newFixedThreadPool(nproc, namedFactory("Generic Pool"));
 		int maxTranscodes = Partyflow.config.programs.maxTranscodes;
 		if (maxTranscodes == 0) maxTranscodes = nproc;
-		transcodePool = Executors.newFixedThreadPool(maxTranscodes, namedFactory("Transcode pool thread"));
+		transcodePool = Executors.newFixedThreadPool(maxTranscodes, namedFactory("Transcode Pool"));
 	}
 
 	private static ThreadFactory namedFactory(String name) {
@@ -65,6 +65,6 @@ public class Services {
 		};
 	}
 
-	public static final ScheduledExecutorService cron = Executors.newSingleThreadScheduledExecutor();
+	public static final ScheduledExecutorService cron = Executors.newSingleThreadScheduledExecutor(namedFactory("Scheduler"));
 
 }

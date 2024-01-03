@@ -109,6 +109,7 @@ storage {
 	// {} will be replaced with the file path
 	// The default will serve files through Partyflow, which is inefficient when using remote hosting.
 	// In that case, you should set this to your bucket's URL, Cloudfront host, bunny.net pull zone, whatever.
+	// Note that you will need CORS headers for audio playback to function properly!
 	publicUrlPattern: "files/{}"
 	// For example, a direct Wasabi config would look like this:
 	//publicUrlPattern: "https://BUCKET_NAME.s3.wasabisys.com/{}"
