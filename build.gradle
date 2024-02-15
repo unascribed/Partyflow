@@ -18,18 +18,18 @@ targetCompatibility = 17
 archivesBaseName = 'Partyflow'
 
 dependencies {
-	implementation('org.eclipse.jetty:jetty-server:11.0.19') {
-		exclude group: 'org.slf4j'
-	}
+	implementation 'org.eclipse.jetty:jetty-server:11.0.19'
 	implementation 'org.apache.jclouds:jclouds-blobstore:2.5.0'
-	implementation('org.apache.jclouds.driver:jclouds-slf4j:2.5.0') {
-		transitive = false
-	}
+	implementation 'org.apache.jclouds.driver:jclouds-slf4j:2.5.0'
 	
 	implementation 'blue.endless:jankson:1.2.3'
 	implementation 'com.google.guava:guava:33.0.0-jre'
 	implementation 'com.github.spullara.mustache.java:compiler:0.9.11'
-	implementation 'org.slf4j:slf4j-api:1.7.36'
+	implementation('org.slf4j:slf4j-api') {
+		version {
+			strictly '1.7.36'
+		}
+	}
 	implementation 'com.unascribed:asyncsimplelog:4.6.1'
 	implementation 'org.mariadb.jdbc:mariadb-java-client:3.1.4'
 	implementation 'org.jsoup:jsoup:1.17.2'
